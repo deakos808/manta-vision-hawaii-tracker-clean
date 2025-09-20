@@ -4,7 +4,7 @@ import * as fs from "https://deno.land/std@0.224.0/fs/mod.ts";
 
 const SUPABASE_URL = "https://apweteosdbgsolmvcmhn.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwd2V0ZW9zZGJnc29sbXZjbWhuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njk4NzgyOSwiZXhwIjoyMDYyNTYzODI5fQ.z0CMeV4Sqyzpan-Sj3hVSr6xIXg380T7LXV70JMuFcs";
+  "JWT_REDACTED";
 const EMBED_ENDPOINT = "http://localhost:5050/embed";
 const BUCKET_BASE = `${SUPABASE_URL}/storage/v1/object/public/manta-images/`;
 
