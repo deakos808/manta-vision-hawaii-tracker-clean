@@ -1,0 +1,9 @@
+[functions]
+[functions.embeddings-sighting]
+verify_jwt = false
+
+[functions.embeddings-catalog]
+verify_jwt = false
+
+[functions.embeddings-photo]
+verify_jwt = false

@@ -1,0 +1,3 @@
+[functions.catalog-selfmatch]
+verify_jwt = false
+env_file = ".env"

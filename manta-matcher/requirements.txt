@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pillow
+python-multipart
+aiofiles
+tqdm
+numpy
+openai
+httpx
+supabase
+pgvector
+

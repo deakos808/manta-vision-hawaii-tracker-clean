@@ -1,0 +1,2 @@
+[functions.envtest]
+verify_jwt = false

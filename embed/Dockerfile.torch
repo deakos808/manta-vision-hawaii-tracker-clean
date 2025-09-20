@@ -1,0 +1,6 @@
+FROM pytorch/pytorch:2.3.1-cpu
+WORKDIR /app
+COPY embed_server.py /app/embed_server.py
+RUN pip install --no-cache-dir fastapi uvicorn[standard] pillow requests timm torchvision
+EXPOSE 5050
+CMD ["uvicorn", "embed_server:app", "--host", "0.0.0.0", "--port", "5050"]

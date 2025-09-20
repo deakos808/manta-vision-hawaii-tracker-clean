@@ -1,0 +1,9 @@
+{
+  "pages/DashboardPage": "pages/admin/DashboardPage",
+  "pages/DiagnosticsPage": "pages/admin/DiagnosticsPage",
+  "pages/LandingPage": "pages/public/LandingPage",
+  "pages/NotFoundPage": "pages/public/NotFoundPage",
+  "pages/MissingSightingPhotosPage": "pages/admin/MissingSightingPhotosPage",
+  "pages/MissingCatalogPhotosPage": "pages/admin/MissingCatalogPhotosPage",
+  "pages/ReviewSightingDetailsPage": "pages/admin/ReviewSightingDetailsPage"
+}

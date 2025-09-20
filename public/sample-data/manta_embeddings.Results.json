@@ -1,0 +1,5 @@
+[
+  { "fk_manta_id": 101, "photo_id": 301, "score": 1.0 },
+  { "fk_manta_id": 102, "photo_id": 302, "score": 0.8732 },
+  ...
+]
