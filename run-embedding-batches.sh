@@ -10,7 +10,7 @@ TOTAL=800
 FN_URL="https://apweteosdbgsolmvcmhn.supabase.co/functions/v1/embeddings-manta"
 
 # Optional: paste your anon key here or export from shell
-AUTH="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwd2V0ZW9zZGJnc29sbXZjbWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5ODc4MjksImV4cCI6MjA2MjU2MzgyOX0.tjo2en6kNIIAcpZH_hvyG_CbXB1AIfwCajR1CdTaXv4"
+AUTH="JWT_REDACTED"
 
 echo "🚀 Starting Manta Embedding Batch Loop..."
 

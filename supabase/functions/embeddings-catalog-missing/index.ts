@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 
 const SUPABASE_URL = "https://apweteosdbgsolmvcmhn.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz...";
+const SUPABASE_ANON_KEY = "JWT_REDACTED";
 const BUCKET = "manta-images";
 const EMBED_ENDPOINT = "http://192.168.1.15:5050/embed";
 
