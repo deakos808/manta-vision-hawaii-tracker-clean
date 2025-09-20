@@ -1,0 +1,379 @@
+manta-vision-hawaii-tracker/
+├── .supabase/
+│   └── functions/
+│       └── fix-123/
+│           └── index.ts
+├── .vscode/
+│   └── settings.json
+├── embed/
+│   ├── docker-compose.yml
+│   ├── Dockerfile
+│   ├── Dockerfile.torch
+│   └── embed_server.py
+├── generated/
+│   └── version.ts
+├── hawaii-manta-tracker/
+├── logs/
+│   └── embed_photos_ventral.csv
+├── manta-matcher/
+│   ├── .DS_Store
+│   ├── .env
+│   ├── .env.example
+│   ├── backfill_photo_metadata.py
+│   ├── backfill_photo_population.py
+│   ├── embed_existing_photos.py
+│   ├── main.py
+│   └── requirements.txt
+├── public/
+│   ├── sample-data/
+│   │   ├── manta_embeddings.Results.json
+│   │   └── selfmatch_results.json
+│   ├── favicon.ico
+│   ├── manta-logo.svg
+│   ├── placeholder.svg
+│   └── robots.txt
+├── scripts/
+│   ├── .env
+│   ├── assign_view_labels.py
+│   ├── check_embedding.py
+│   ├── compare-identical-photo-embeddings.ts
+│   ├── compare-multiple-photo-embeddings.ts
+│   ├── compare-to-anchor-4882.ts
+│   ├── consistency_check.py
+│   ├── deploy-all-functions.sh
+│   ├── embed-all-ventral-photos.ts
+│   ├── embed-catalog-batch.ts
+│   ├── embed-single-catalog-photo.ts
+│   ├── fixImportPaths.cjs
+│   ├── init-edge-functions.sh
+│   ├── label_view.py
+│   ├── moveMap.json
+│   ├── multi_cosine.py
+│   ├── repeat_matrix.py
+│   ├── run-local-catalog-embeddings.ts
+│   ├── run-local-selfmatch.ts
+│   ├── run_catalog_batches.sh
+│   ├── scanBadImports.ts
+│   ├── test-single-photo-match.ts
+│   ├── update_view_labels.py
+│   └── updateVersionEnv.js
+├── src/
+│   ├── assets/
+│   │   ├── hamer_logo_1.png
+│   │   └── wave-pattern.svg
+│   ├── components/
+│   │   ├── admin/
+│   │   │   ├── AdminCsvUpdateTool.tsx
+│   │   │   ├── UniversalCsvUpdateTool.tsx
+│   │   │   └── UpdateCatalogEmbeddingsButton.tsx
+│   │   ├── auth/
+│   │   │   └── RequireAuth.tsx
+│   │   ├── catalog/
+│   │   │   └── CatalogFilterBox.tsx
+│   │   ├── debug/
+│   │   │   └── SessionDebug.tsx
+│   │   ├── importTools/
+│   │   │   ├── CsvImportPreview.tsx
+│   │   │   ├── DryRunPreviewTable.tsx
+│   │   │   └── ImagePreview.tsx
+│   │   ├── layout/
+│   │   │   ├── AppLayout.tsx
+│   │   │   ├── Header.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   └── Navigation.tsx
+│   │   ├── mantas/
+│   │   │   └── MantaFilterBox.tsx
+│   │   ├── maps/
+│   │   │   ├── MapboxMap.tsx
+│   │   │   └── MapDialog.tsx
+│   │   ├── matching/
+│   │   │   ├── CatalogMatchModal.tsx
+│   │   │   ├── MantaPhotoUploader.tsx
+│   │   │   └── SearchCatalogModal.tsx
+│   │   ├── photos/
+│   │   │   ├── PhotoCardImage.tsx
+│   │   │   ├── PhotoFilterBox.tsx
+│   │   │   └── PhotoUploadForm.tsx
+│   │   ├── sightings/
+│   │   │   ├── SightingCard.tsx
+│   │   │   ├── SightingFilterBox.tsx
+│   │   │   └── SightingsMap.tsx
+│   │   ├── ui/
+│   │   │   ├── accordion.tsx
+│   │   │   ├── alert-dialog.tsx
+│   │   │   ├── alert.tsx
+│   │   │   ├── aspect-ratio.tsx
+│   │   │   ├── avatar.tsx
+│   │   │   ├── badge.tsx
+│   │   │   ├── breadcrumb.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── calendar.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── carousel.tsx
+│   │   │   ├── chart.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── collapsible.tsx
+│   │   │   ├── command.tsx
+│   │   │   ├── context-menu.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── drawer.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── form.tsx
+│   │   │   ├── hover-card.tsx
+│   │   │   ├── input-otp.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── menubar.tsx
+│   │   │   ├── navigation-menu.tsx
+│   │   │   ├── pagination.tsx
+│   │   │   ├── popover.tsx
+│   │   │   ├── progress.tsx
+│   │   │   ├── radio-group.tsx
+│   │   │   ├── resizable.tsx
+│   │   │   ├── scroll-area.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── separator.tsx
+│   │   │   ├── sheet.tsx
+│   │   │   ├── sidebar.tsx
+│   │   │   ├── skeleton.tsx
+│   │   │   ├── slider.tsx
+│   │   │   ├── sonner.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── table.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx
+│   │   │   ├── toast.tsx
+│   │   │   ├── toaster.tsx
+│   │   │   ├── toggle-group.tsx
+│   │   │   ├── toggle.tsx
+│   │   │   ├── tooltip.tsx
+│   │   │   └── use-toast.ts
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── MantaEntryForm.tsx
+│   │   └── TempSightingMap.tsx
+│   ├── hooks/
+│   │   ├── use-mobile.tsx
+│   │   ├── use-toast.ts
+│   │   ├── useRequiredConfimeUser.ts
+│   │   ├── useSignout.ts
+│   │   └── useUserRole.ts
+│   ├── integrations/
+│   │   └── supabase/
+│   │       ├── client.old.ts
+│   │       └── types.ts
+│   ├── lib/
+│   │   ├── approveTempSighting.ts
+│   │   ├── embedding.ts
+│   │   ├── mantaImageManager.ts
+│   │   ├── parseCsvFile.ts
+│   │   ├── supabase.ts
+│   │   ├── supabaseHelper.ts
+│   │   └── utils.ts
+│   ├── pages/
+│   │   ├── admin/
+│   │   │   ├── AddSightingPage.tsx
+│   │   │   ├── AdminDashboardPage.tsx
+│   │   │   ├── AdminDataOverviewPage.tsx
+│   │   │   ├── AdminDiagnosticsPage.tsx
+│   │   │   ├── AdminPhotoStorageCheckPage.tsx
+│   │   │   ├── AdminPhotoTestPage.tsx
+│   │   │   ├── AdminReviewNewSightingsPage.tsx
+│   │   │   ├── AdminReviewPage.tsx
+│   │   │   ├── AdminRolesPage.tsx
+│   │   │   ├── BestCatalogImageDiagnostics.tsx
+│   │   │   ├── BestMantaImageDiagnostics.tsx
+│   │   │   ├── ChooseBestMantaPhotoPage.tsx
+│   │   │   ├── CsvDataReviewPage.tsx
+│   │   │   ├── CsvDebugPage.tsx
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── DataIntegrityPage.tsx
+│   │   │   ├── DiagnosticsPage.tsx
+│   │   │   ├── ImportPage.tsx
+│   │   │   ├── MantaDiagnosticsPage.tsx
+│   │   │   ├── MantaMatchDiagnosticsPage.tsx
+│   │   │   ├── MantaPhotoDiagnosticsPage.tsx
+│   │   │   ├── MatchDiagnosticsPage.tsx
+│   │   │   ├── MatchingPage.tsx
+│   │   │   ├── MissingCatalogPhotosPage.tsx
+│   │   │   ├── MissingSightingPhotosPage.tsx
+│   │   │   └── ReviewSightingDetailsPage.tsx
+│   │   ├── api/
+│   │   │   └── dwonload-manta-results.ts
+│   │   ├── browse_data/
+│   │   │   ├── BrowseData.tsx
+│   │   │   ├── Catalog.tsx
+│   │   │   ├── Mantas.tsx
+│   │   │   ├── Photos.tsx
+│   │   │   └── Sightings.tsx
+│   │   ├── matching/
+│   │   │   └── TestMatchPage.tsx
+│   │   ├── public/
+│   │   │   ├── LandingPage.tsx
+│   │   │   └── NotFoundPage.tsx
+│   │   ├── ImageTestPage.tsx
+│   │   ├── ImportPage.tsx
+│   │   ├── MantaProfilePage.tsx
+│   │   ├── MetadataImportPage.tsx
+│   │   ├── NotFound.tsx
+│   │   ├── PhotoBatchUploadPage.tsx
+│   │   ├── PublicLandingPage.tsx
+│   │   ├── SearchSightingsMockPage.tsx
+│   │   ├── SignInPage.tsx
+│   │   └── SignUpPage.tsx
+│   ├── providers/
+│   │   └── AuthProvider.tsx
+│   ├── utils/
+│   │   ├── csvSchemas.ts
+│   │   ├── ValidateCsvRows.ts
+│   │   └── validateCsvSchema.ts
+│   ├── .DS_Store
+│   ├── App.css
+│   ├── App.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   ├── settings.py
+│   ├── version.ts
+│   └── vite-env.d.ts
+├── supabase/
+│   ├── functions/
+│   │   ├── catalog_selfmatch/
+│   │   │   ├── config.toml
+│   │   │   └── index.ts
+│   │   ├── confirm-user/
+│   │   │   └── index.ts
+│   │   ├── create-user/
+│   │   │   └── index.ts
+│   │   ├── db_check/
+│   │   │   └── index.ts
+│   │   ├── embeddings-catalog/
+│   │   │   └── index.ts
+│   │   ├── embeddings-catalog-missing/
+│   │   │   └── index.ts
+│   │   ├── embeddings-manta/
+│   │   │   └── index.ts
+│   │   ├── embeddings-photo/
+│   │   │   └── index.ts
+│   │   ├── envtest/
+│   │   │   ├── index.ts
+│   │   │   └── supabase.toml
+│   │   ├── fix-123/
+│   │   ├── generate-newphoto-embedding/
+│   │   │   ├── deno.json
+│   │   │   └── index.ts
+│   │   ├── jwt-debug/
+│   │   │   ├── deno.json
+│   │   │   └── index.ts
+│   │   ├── list-users/
+│   │   │   └── index.ts
+│   │   ├── match-manta/
+│   │   │   └── index.ts
+│   │   ├── stream-sighting-embedding-update/
+│   │   │   └── index
+│   │   ├── test-embed-fix/
+│   │   │   └── index.ts
+│   │   ├── update-password/
+│   │   │   └── index.ts
+│   │   └── whoami/
+│   │       └── index.ts
+│   ├── .env
+│   ├── config.toml
+│   └── supabase.toml
+├── Table Joins Schema/
+│   └── Manta_App_Table_Joins_Schema_30JUL2025.rtf
+├── #
+├── .DS_Store
+├── .env
+├── .env.prod-func
+├── .gitignore
+├── .python-version
+├── 6086.jpg
+├── 837.b64
+├── 837.jpg
+├── bump
+├── bun.lockb
+├── cloud_schema.sql
+├── comparePhotos.js
+├── components.json
+├── deno.lock
+├── deploy-log.txt
+├── dir-tree.txt
+├── embed.ts
+├── embed_probe.py
+├── embed_server.py
+├── embed_smoke.py
+├── embedding-log-offset-0.txt
+├── embedding-log-offset-10.txt
+├── embedding-log-offset-100.txt
+├── embedding-log-offset-110.txt
+├── embedding-log-offset-120.txt
+├── embedding-log-offset-130.txt
+├── embedding-log-offset-140.txt
+├── embedding-log-offset-150.txt
+├── embedding-log-offset-160.txt
+├── embedding-log-offset-170.txt
+├── embedding-log-offset-180.txt
+├── embedding-log-offset-190.txt
+├── embedding-log-offset-20.txt
+├── embedding-log-offset-200.txt
+├── embedding-log-offset-210.txt
+├── embedding-log-offset-220.txt
+├── embedding-log-offset-230.txt
+├── embedding-log-offset-240.txt
+├── embedding-log-offset-250.txt
+├── embedding-log-offset-260.txt
+├── embedding-log-offset-270.txt
+├── embedding-log-offset-280.txt
+├── embedding-log-offset-290.txt
+├── embedding-log-offset-30.txt
+├── embedding-log-offset-300.txt
+├── embedding-log-offset-310.txt
+├── embedding-log-offset-320.txt
+├── embedding-log-offset-330.txt
+├── embedding-log-offset-340.txt
+├── embedding-log-offset-350.txt
+├── embedding-log-offset-360.txt
+├── embedding-log-offset-370.txt
+├── embedding-log-offset-380.txt
+├── embedding-log-offset-390.txt
+├── embedding-log-offset-40.txt
+├── embedding-log-offset-400.txt
+├── embedding-log-offset-410.txt
+├── embedding-log-offset-420.txt
+├── embedding-log-offset-430.txt
+├── embedding-log-offset-440.txt
+├── embedding-log-offset-450.txt
+├── embedding-log-offset-460.txt
+├── embedding-log-offset-470.txt
+├── embedding-log-offset-480.txt
+├── embedding-log-offset-490.txt
+├── embedding-log-offset-50.txt
+├── embedding-log-offset-500.txt
+├── embedding-log-offset-60.txt
+├── embedding-log-offset-70.txt
+├── embedding-log-offset-80.txt
+├── embedding-log-offset-90.txt
+├── eslint.config.js
+├── fallback
+├── frontend-file-structure.txt
+├── img.b64
+├── index.html
+├── manta_embeddings_export.csv
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── project-structure.txt
+├── README.md
+├── run-embedding-batches.sh
+├── run-local.ts
+├── tailwind.config.ts
+├── test.jpg
+├── timestamp
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── tsconfig.scripts.json
+├── upload_prompt.py
+├── uploadMissingPhotos.js
+├── uses
+├── vercel.json
+└── vite.config.ts

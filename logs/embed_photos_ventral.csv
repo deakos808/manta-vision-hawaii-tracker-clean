@@ -1,0 +1,350 @@
+📸 Embedding 1000 ventral photos...
+
+📥 Embedding photo 6642
+⚠️ Suspicious norm = 1.0000 — skipping 6642
+
+📥 Embedding photo 4582
+⚠️ Suspicious norm = 1.0000 — skipping 4582
+
+📥 Embedding photo 6261
+⚠️ Suspicious norm = 1.0000 — skipping 6261
+
+📥 Embedding photo 6364
+⚠️ Suspicious norm = 1.0000 — skipping 6364
+
+📥 Embedding photo 2927
+⚠️ Suspicious norm = 1.0000 — skipping 2927
+
+📥 Embedding photo 6239
+⚠️ Suspicious norm = 1.0000 — skipping 6239
+
+📥 Embedding photo 5162
+⚠️ Suspicious norm = 1.0000 — skipping 5162
+
+📥 Embedding photo 6542
+⚠️ Suspicious norm = 1.0000 — skipping 6542
+
+📥 Embedding photo 6086
+⚠️ Suspicious norm = 1.0000 — skipping 6086
+
+📥 Embedding photo 6185
+⚠️ Suspicious norm = 1.0000 — skipping 6185
+
+📥 Embedding photo 6356
+⚠️ Suspicious norm = 1.0000 — skipping 6356
+
+📥 Embedding photo 6620
+⚠️ Suspicious norm = 1.0000 — skipping 6620
+
+📥 Embedding photo 4583
+⚠️ Suspicious norm = 1.0000 — skipping 4583
+
+📥 Embedding photo 6087
+⚠️ Suspicious norm = 1.0000 — skipping 6087
+
+📥 Embedding photo 4584
+⚠️ Suspicious norm = 1.0000 — skipping 4584
+
+📥 Embedding photo 6212
+⚠️ Suspicious norm = 1.0000 — skipping 6212
+
+📥 Embedding photo 6004
+⚠️ Suspicious norm = 1.0000 — skipping 6004
+
+📥 Embedding photo 6461
+⚠️ Suspicious norm = 1.0000 — skipping 6461
+
+📥 Embedding photo 6021
+⚠️ Suspicious norm = 1.0000 — skipping 6021
+
+📥 Embedding photo 6069
+⚠️ Suspicious norm = 1.0000 — skipping 6069
+
+📥 Embedding photo 6141
+⚠️ Suspicious norm = 1.0000 — skipping 6141
+
+📥 Embedding photo 6183
+⚠️ Suspicious norm = 1.0000 — skipping 6183
+
+📥 Embedding photo 6222
+[2025-08-01T08:30:00.831Z] 📸 Embedding 1000 ventral photos...
+[2025-08-01T08:30:00.841Z] 
+📥 Embedding photo 6642
+[2025-08-01T08:30:02.531Z] ✅ Norm: 1.0000 | Hash: 8ec11b450bcb49e2a22546013d5e9f9124437c9a
+[2025-08-01T08:30:02.955Z] ❌ Update failed for photo 6642: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:02.955Z] 
+📥 Embedding photo 4582
+[2025-08-01T08:30:04.397Z] ✅ Norm: 1.0000 | Hash: e831c774160e5c64f6ab4a58253d9ff30e8a7d0c
+[2025-08-01T08:30:04.815Z] ❌ Update failed for photo 4582: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:04.815Z] 
+📥 Embedding photo 6261
+[2025-08-01T08:30:06.054Z] ✅ Norm: 1.0000 | Hash: 3bd6cea77e758ceb852a4301e4c42664019f9b97
+[2025-08-01T08:30:06.237Z] ❌ Update failed for photo 6261: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:06.238Z] 
+📥 Embedding photo 6364
+[2025-08-01T08:30:07.496Z] ✅ Norm: 1.0000 | Hash: 47e729b7bf10df49a68d314e42e64b4a0a467ae6
+[2025-08-01T08:30:07.681Z] ❌ Update failed for photo 6364: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:07.681Z] 
+📥 Embedding photo 2927
+[2025-08-01T08:30:08.929Z] ✅ Norm: 1.0000 | Hash: 14eb258da209cbb3ad68cd99d1dd3a2463b17dd7
+[2025-08-01T08:30:09.144Z] ❌ Update failed for photo 2927: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:09.144Z] 
+📥 Embedding photo 6239
+[2025-08-01T08:30:10.369Z] ✅ Norm: 1.0000 | Hash: a0efcfaa7a591269c4640b65c52b6a500625506c
+[2025-08-01T08:30:10.744Z] ❌ Update failed for photo 6239: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:10.744Z] 
+📥 Embedding photo 5162
+[2025-08-01T08:30:12.061Z] ✅ Norm: 1.0000 | Hash: fb01097b49397228244d65216b7af9c42ae896d5
+[2025-08-01T08:30:12.484Z] ❌ Update failed for photo 5162: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:12.484Z] 
+📥 Embedding photo 6542
+[2025-08-01T08:30:13.790Z] ✅ Norm: 1.0000 | Hash: b2bafaa99313aac0bbdb58f812ba925f774a05ff
+[2025-08-01T08:30:13.977Z] ❌ Update failed for photo 6542: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:13.977Z] 
+📥 Embedding photo 6086
+[2025-08-01T08:30:15.306Z] ✅ Norm: 1.0000 | Hash: b7873c57e9f9128a774d0e001f8b44bb109dc6c2
+[2025-08-01T08:30:15.485Z] ❌ Update failed for photo 6086: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:15.485Z] 
+📥 Embedding photo 6185
+[2025-08-01T08:30:17.133Z] ✅ Norm: 1.0000 | Hash: 7b9b3ada16fd1b2b614caf087f6a194e7aa231d6
+[2025-08-01T08:30:17.330Z] ❌ Update failed for photo 6185: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:17.330Z] 
+📥 Embedding photo 6356
+[2025-08-01T08:30:18.705Z] ✅ Norm: 1.0000 | Hash: 50f373d36346ac33ee0be696ca3d677ef0762a43
+[2025-08-01T08:30:18.888Z] ❌ Update failed for photo 6356: Could not find the 'embedding' column of 'photos' in the schema cache
+[2025-08-01T08:30:18.888Z] 
+📥 Embedding photo 6620
+[2025-08-01T08:34:52.091Z] 📸 Embedding 1000 ventral photos...
+[2025-08-01T08:34:52.095Z] 
+📥 Embedding photo 6642
+[2025-08-01T08:34:53.871Z] ✅ Norm: 1.0000 | Hash: 8ec11b450bcb49e2a22546013d5e9f9124437c9a
+[2025-08-01T08:34:54.173Z] ✅ Saved → photos.embedding
+[2025-08-01T08:34:54.276Z] 
+📥 Embedding photo 4582
+[2025-08-01T08:34:55.638Z] ✅ Norm: 1.0000 | Hash: e831c774160e5c64f6ab4a58253d9ff30e8a7d0c
+[2025-08-01T08:34:56.058Z] ✅ Saved → photos.embedding
+[2025-08-01T08:34:56.162Z] 
+📥 Embedding photo 6261
+[2025-08-01T08:34:57.386Z] ✅ Norm: 1.0000 | Hash: 3bd6cea77e758ceb852a4301e4c42664019f9b97
+[2025-08-01T08:34:57.580Z] ✅ Saved → photos.embedding
+[2025-08-01T08:34:57.682Z] 
+📥 Embedding photo 6364
+[2025-08-01T08:34:58.919Z] ✅ Norm: 1.0000 | Hash: 47e729b7bf10df49a68d314e42e64b4a0a467ae6
+[2025-08-01T08:34:59.111Z] ✅ Saved → photos.embedding
+[2025-08-01T08:34:59.213Z] 
+📥 Embedding photo 2927
+[2025-08-01T08:35:00.537Z] ✅ Norm: 1.0000 | Hash: 14eb258da209cbb3ad68cd99d1dd3a2463b17dd7
+[2025-08-01T08:35:00.747Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:00.849Z] 
+📥 Embedding photo 6239
+[2025-08-01T08:35:02.191Z] ✅ Norm: 1.0000 | Hash: a0efcfaa7a591269c4640b65c52b6a500625506c
+[2025-08-01T08:35:02.408Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:02.510Z] 
+📥 Embedding photo 5162
+[2025-08-01T08:35:03.720Z] ✅ Norm: 1.0000 | Hash: fb01097b49397228244d65216b7af9c42ae896d5
+[2025-08-01T08:35:03.911Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:04.013Z] 
+📥 Embedding photo 6542
+[2025-08-01T08:35:05.221Z] ✅ Norm: 1.0000 | Hash: b2bafaa99313aac0bbdb58f812ba925f774a05ff
+[2025-08-01T08:35:05.550Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:05.652Z] 
+📥 Embedding photo 6086
+[2025-08-01T08:35:06.964Z] ✅ Norm: 1.0000 | Hash: b7873c57e9f9128a774d0e001f8b44bb109dc6c2
+[2025-08-01T08:35:07.143Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:07.246Z] 
+📥 Embedding photo 6185
+[2025-08-01T08:35:08.598Z] ✅ Norm: 1.0000 | Hash: 7b9b3ada16fd1b2b614caf087f6a194e7aa231d6
+[2025-08-01T08:35:08.793Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:08.895Z] 
+📥 Embedding photo 6356
+[2025-08-01T08:35:10.170Z] ✅ Norm: 1.0000 | Hash: 50f373d36346ac33ee0be696ca3d677ef0762a43
+[2025-08-01T08:35:10.360Z] ✅ Saved → photos.embedding
+[2025-08-01T08:35:10.463Z] 
+📥 Embedding photo 6620
+[2025-08-01T15:28:23.149Z] 📸 Embedding 1000 ventral photos...
+[2025-08-01T15:28:23.157Z] 
+📥 Embedding photo 6642
+[2025-08-01T15:28:24.932Z] ✅ Norm: 1.0000 | Hash: 8ec11b450bcb49e2a22546013d5e9f9124437c9a
+[2025-08-01T15:28:25.442Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:25.547Z] 
+📥 Embedding photo 4582
+[2025-08-01T15:28:26.873Z] ✅ Norm: 1.0000 | Hash: e831c774160e5c64f6ab4a58253d9ff30e8a7d0c
+[2025-08-01T15:28:27.292Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:27.395Z] 
+📥 Embedding photo 6261
+[2025-08-01T15:28:28.673Z] ✅ Norm: 1.0000 | Hash: 3bd6cea77e758ceb852a4301e4c42664019f9b97
+[2025-08-01T15:28:28.936Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:29.039Z] 
+📥 Embedding photo 6364
+[2025-08-01T15:28:30.283Z] ✅ Norm: 1.0000 | Hash: 47e729b7bf10df49a68d314e42e64b4a0a467ae6
+[2025-08-01T15:28:30.764Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:30.868Z] 
+📥 Embedding photo 2927
+[2025-08-01T15:28:32.070Z] ✅ Norm: 1.0000 | Hash: 14eb258da209cbb3ad68cd99d1dd3a2463b17dd7
+[2025-08-01T15:28:32.274Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:32.377Z] 
+📥 Embedding photo 6239
+[2025-08-01T15:28:33.554Z] ✅ Norm: 1.0000 | Hash: a0efcfaa7a591269c4640b65c52b6a500625506c
+[2025-08-01T15:28:33.759Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:33.861Z] 
+📥 Embedding photo 5162
+[2025-08-01T15:28:35.146Z] ✅ Norm: 1.0000 | Hash: fb01097b49397228244d65216b7af9c42ae896d5
+[2025-08-01T15:28:35.332Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:35.435Z] 
+📥 Embedding photo 6542
+[2025-08-01T15:28:36.665Z] ✅ Norm: 1.0000 | Hash: b2bafaa99313aac0bbdb58f812ba925f774a05ff
+[2025-08-01T15:28:36.869Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:36.971Z] 
+📥 Embedding photo 6086
+[2025-08-01T15:28:38.286Z] ✅ Norm: 1.0000 | Hash: b7873c57e9f9128a774d0e001f8b44bb109dc6c2
+[2025-08-01T15:28:38.467Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:38.569Z] 
+📥 Embedding photo 6185
+[2025-08-01T15:28:39.879Z] ✅ Norm: 1.0000 | Hash: 7b9b3ada16fd1b2b614caf087f6a194e7aa231d6
+[2025-08-01T15:28:40.113Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:40.215Z] 
+📥 Embedding photo 6356
+[2025-08-01T15:28:41.412Z] ✅ Norm: 1.0000 | Hash: 50f373d36346ac33ee0be696ca3d677ef0762a43
+[2025-08-01T15:28:41.684Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:41.786Z] 
+📥 Embedding photo 6620
+[2025-08-01T15:28:43.148Z] ✅ Norm: 1.0000 | Hash: 881274ba58481c2b49c76d5f3c14c516a0df126e
+[2025-08-01T15:28:43.366Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:43.468Z] 
+📥 Embedding photo 4583
+[2025-08-01T15:28:44.692Z] ✅ Norm: 1.0000 | Hash: 5e92b25adf1cc351c6b012ce0be844138235ed55
+[2025-08-01T15:28:44.886Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:44.988Z] 
+📥 Embedding photo 6087
+[2025-08-01T15:28:46.267Z] ✅ Norm: 1.0000 | Hash: ff302ce417fa411672ed68780f9ad2342532dc96
+[2025-08-01T15:28:46.450Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:46.552Z] 
+📥 Embedding photo 4584
+[2025-08-01T15:28:47.749Z] ✅ Norm: 1.0000 | Hash: 53a6924f06def511056213aae5bdf49b0e1c85ae
+[2025-08-01T15:28:47.940Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:48.042Z] 
+📥 Embedding photo 6212
+[2025-08-01T15:28:49.224Z] ✅ Norm: 1.0000 | Hash: 43027a3ab3e9b9a71ca780f1a6cdae1a5f0b49d0
+[2025-08-01T15:28:49.431Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:49.532Z] 
+📥 Embedding photo 6004
+[2025-08-01T15:28:51.004Z] ✅ Norm: 1.0000 | Hash: 1718add4032613ec435b516a582fcea927522d60
+[2025-08-01T15:28:51.191Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:51.293Z] 
+📥 Embedding photo 6461
+[2025-08-01T15:28:52.516Z] ✅ Norm: 1.0000 | Hash: 0170e72248395b682c7c4ba87bebba4604942564
+[2025-08-01T15:28:52.746Z] ✅ Saved → photos.embedding
+[2025-08-01T15:28:52.847Z] 
+📥 Embedding photo 6021
+[2025-08-01T15:34:13.523Z] 📸 Processing 1000 photos (offset 0)...
+[2025-08-01T15:34:13.527Z] 
+📥 Embedding photo 6642
+[2025-08-01T15:34:15.120Z] ⚠️ Norm = 1.0000 — skipping 6642 as possible junk
+[2025-08-01T15:34:15.120Z] 
+📥 Embedding photo 4582
+[2025-08-01T15:34:16.467Z] ⚠️ Norm = 1.0000 — skipping 4582 as possible junk
+[2025-08-01T15:34:16.467Z] 
+📥 Embedding photo 6261
+[2025-08-01T15:34:17.713Z] ⚠️ Norm = 1.0000 — skipping 6261 as possible junk
+[2025-08-01T15:34:17.713Z] 
+📥 Embedding photo 6364
+[2025-08-01T15:34:19.014Z] ⚠️ Norm = 1.0000 — skipping 6364 as possible junk
+[2025-08-01T15:34:19.015Z] 
+📥 Embedding photo 2927
+[2025-08-01T15:34:20.232Z] ⚠️ Norm = 1.0000 — skipping 2927 as possible junk
+[2025-08-01T15:34:20.232Z] 
+📥 Embedding photo 6239
+[2025-08-01T15:34:21.528Z] ⚠️ Norm = 1.0000 — skipping 6239 as possible junk
+[2025-08-01T15:34:21.528Z] 
+📥 Embedding photo 5162
+[2025-08-01T15:34:22.884Z] ⚠️ Norm = 1.0000 — skipping 5162 as possible junk
+[2025-08-01T15:34:22.884Z] 
+📥 Embedding photo 6542
+[2025-08-01T15:34:24.149Z] ⚠️ Norm = 1.0000 — skipping 6542 as possible junk
+[2025-08-01T15:34:24.149Z] 
+📥 Embedding photo 6086
+[2025-08-01T15:34:25.425Z] ⚠️ Norm = 1.0000 — skipping 6086 as possible junk
+[2025-08-01T15:34:25.425Z] 
+📥 Embedding photo 6185
+[2025-08-01T15:34:26.851Z] ⚠️ Norm = 1.0000 — skipping 6185 as possible junk
+[2025-08-01T15:34:26.851Z] 
+📥 Embedding photo 6356
+[2025-08-01T15:34:28.144Z] ⚠️ Norm = 1.0000 — skipping 6356 as possible junk
+[2025-08-01T15:34:28.144Z] 
+📥 Embedding photo 6620
+[2025-08-01T15:34:28.458Z] ❌ Error during embedding: Maximum call stack size exceeded
+[2025-08-01T15:34:28.458Z] ⚠️ Skipping 6620 — invalid vector
+[2025-08-01T15:34:28.458Z] 
+📥 Embedding photo 4583
+[2025-08-01T15:34:29.730Z] ⚠️ Norm = 1.0000 — skipping 4583 as possible junk
+[2025-08-01T15:34:29.730Z] 
+📥 Embedding photo 6087
+[2025-08-01T15:34:31.291Z] ⚠️ Norm = 1.0000 — skipping 6087 as possible junk
+[2025-08-01T15:34:31.291Z] 
+📥 Embedding photo 4584
+[2025-08-01T15:34:32.480Z] ⚠️ Norm = 1.0000 — skipping 4584 as possible junk
+[2025-08-01T15:34:32.480Z] 
+📥 Embedding photo 6212
+[2025-08-01T15:34:33.762Z] ⚠️ Norm = 1.0000 — skipping 6212 as possible junk
+[2025-08-01T15:34:33.763Z] 
+📥 Embedding photo 6004
+[2025-08-01T15:34:35.013Z] ⚠️ Norm = 1.0000 — skipping 6004 as possible junk
+[2025-08-01T15:34:35.013Z] 
+📥 Embedding photo 6461
+[2025-08-01T15:34:36.494Z] ⚠️ Norm = 1.0000 — skipping 6461 as possible junk
+[2025-08-01T15:34:36.494Z] 
+📥 Embedding photo 6021
+[2025-08-01T15:34:37.776Z] ⚠️ Norm = 1.0000 — skipping 6021 as possible junk
+[2025-08-01T15:34:37.776Z] 
+📥 Embedding photo 6069
+[2025-08-01T15:34:39.098Z] ⚠️ Norm = 1.0000 — skipping 6069 as possible junk
+[2025-08-01T15:34:39.098Z] 
+📥 Embedding photo 6141
+[2025-08-01T15:34:40.388Z] ⚠️ Norm = 1.0000 — skipping 6141 as possible junk
+[2025-08-01T15:34:40.388Z] 
+📥 Embedding photo 6183
+[2025-08-01T15:34:41.965Z] ⚠️ Norm = 1.0000 — skipping 6183 as possible junk
+[2025-08-01T15:34:41.965Z] 
+📥 Embedding photo 6222
+[2025-08-01T15:34:43.252Z] ⚠️ Norm = 1.0000 — skipping 6222 as possible junk
+[2025-08-01T15:34:43.252Z] 
+📥 Embedding photo 6236
+[2025-08-01T15:34:44.497Z] ⚠️ Norm = 1.0000 — skipping 6236 as possible junk
+[2025-08-01T15:34:44.497Z] 
+📥 Embedding photo 6341
+[2025-08-01T15:34:45.775Z] ⚠️ Norm = 1.0000 — skipping 6341 as possible junk
+[2025-08-01T15:34:45.775Z] 
+📥 Embedding photo 6344
+[2025-08-01T15:34:47.204Z] ⚠️ Norm = 1.0000 — skipping 6344 as possible junk
+[2025-08-01T15:34:47.204Z] 
+📥 Embedding photo 4586
+[2025-08-01T15:34:49.675Z] ⚠️ Norm = 1.0000 — skipping 4586 as possible junk
+[2025-08-01T15:34:49.675Z] 
+📥 Embedding photo 6013
+[2025-08-01T15:34:52.065Z] ⚠️ Norm = 1.0000 — skipping 6013 as possible junk
+[2025-08-01T15:34:52.065Z] 
+📥 Embedding photo 5999
+[2025-08-01T15:34:54.782Z] ⚠️ Norm = 1.0000 — skipping 5999 as possible junk
+[2025-08-01T15:34:54.782Z] 
+📥 Embedding photo 6070
+[2025-08-01T15:34:57.288Z] ⚠️ Norm = 1.0000 — skipping 6070 as possible junk
+[2025-08-01T15:34:57.288Z] 
+📥 Embedding photo 6048
+[2025-08-01T15:34:59.503Z] ⚠️ Norm = 1.0000 — skipping 6048 as possible junk
+[2025-08-01T15:34:59.503Z] 
+📥 Embedding photo 6099
+[2025-08-01T15:35:01.705Z] ⚠️ Norm = 1.0000 — skipping 6099 as possible junk
+[2025-08-01T15:35:01.705Z] 
+📥 Embedding photo 6110
+[2025-08-01T15:35:07.379Z] ⚠️ Norm = 1.0000 — skipping 6110 as possible junk
+[2025-08-01T15:35:07.379Z] 
+📥 Embedding photo 6104
+[2025-08-01T15:35:09.754Z] ⚠️ Norm = 1.0000 — skipping 6104 as possible junk
+[2025-08-01T15:35:09.754Z] 
+📥 Embedding photo 6108
+[2025-08-01T15:35:11.963Z] ⚠️ Norm = 1.0000 — skipping 6108 as possible junk
+[2025-08-01T15:35:11.963Z] 
+📥 Embedding photo 6166
+[2025-08-01T15:35:14.165Z] ⚠️ Norm = 1.0000 — skipping 6166 as possible junk
+[2025-08-01T15:35:14.165Z] 
+📥 Embedding photo 6173

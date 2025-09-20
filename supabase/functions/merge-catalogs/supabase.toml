@@ -1,0 +1,2 @@
+[functions.merge-catalogs]
+verify_jwt = false

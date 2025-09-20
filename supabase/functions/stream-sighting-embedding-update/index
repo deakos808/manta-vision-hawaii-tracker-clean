@@ -1,0 +1,86 @@
+// File: supabase/functions/stream-sighting-embedding-update/index.ts   FULL OVERWRITE
+// ---------------------------------------------------------------------------
+// Streams progress while embedding “best sighting” photos.
+//
+// • No JWT required (verify_jwt = false in config.toml)
+// • Uses service-role key from env to read/write private tables
+// ---------------------------------------------------------------------------
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { Database } from "../../_shared/supabase-types.ts";          // ⇦ adjust if you don’t generate types
+
+// ─── Supabase admin client ────────────────────────────────────────────
+const supabaseAdmin = createClient<Database>(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,   // Edge Functions run server-side
+  { auth: { persistSession: false } },
+);
+
+// Utility: send an SSE line
+const sse = (obj: Record<string, unknown>) => `data: ${JSON.stringify(obj)}\n\n`;
+
+// Placeholder: how many embeddings to process in one run
+const BATCH_LIMIT = 100;
+
+export const handler = async (_req: Request): Promise<Response> => {
+  const encoder = new TextEncoder();
+
+  // Create a manual ReadableStream so we can push chunks incrementally
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // 1. Fetch photos that still need embeddings
+        const { data: photos, error } = await supabaseAdmin
+          .from("photos")
+          .select("pk_photo_id, storage_path")
+          .eq("is_best_sighting_photo", true)
+          .is("embedding_generated_at", null)
+          .limit(BATCH_LIMIT);
+
+        if (error) throw error;
+
+        const total = photos.length;
+        controller.enqueue(encoder.encode(sse({ log: `Found ${total} photos`, progress: 0 })));
+
+        let processed = 0;
+        for (const photo of photos) {
+          // 2. (Pretend to) generate embedding — replace with your real model
+          // const embedding = await generateEmbedding(photo.storage_path);
+          await new Promise((r) => setTimeout(r, 50)); // ← fake latency
+
+          // 3. Save to photo_embeddings table
+          const { error: upErr } = await supabaseAdmin
+            .from("photo_embeddings")
+            .upsert({
+              fk_photo_id: photo.pk_photo_id,
+              // embedding,
+            });
+
+          if (upErr) throw upErr;
+
+          processed += 1;
+          const pct = Math.round((processed / total) * 100);
+          controller.enqueue(encoder.encode(sse({ progress: pct })));
+        }
+
+        controller.enqueue(encoder.encode(sse({ log: "Done ✅", done: true })));
+        controller.close();
+      } catch (err) {
+        console.error(err);
+        controller.enqueue(encoder.encode(sse({ log: `Error: ${err.message}`, done: true })));
+        controller.close();
+      }
+    },
+  });
+
+  const headers = new Headers({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "Access-Control-Allow-Origin": "*",   // optional: adjust for prod
+  });
+
+  return new Response(stream, { headers });
+};
+
+// For Deno Deploy / Supabase Edge Runtime
+export default handler;

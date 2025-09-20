@@ -1,0 +1,8 @@
+{
+  "name": "generate-newphoto-embedding",
+  "verify_jwt": false,
+  "imports": {
+    "https://deno.land/std@0.208.0/http/server.ts": "std/http/server.ts",
+    "https://esm.sh/": "esm.sh/"
+  }
+}

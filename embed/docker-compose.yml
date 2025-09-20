@@ -1,0 +1,21 @@
+# File: embed/docker-compose.yml (place this at repo_root/embed/docker-compose.yml)
+
+services:
+  manta-embed:
+    container_name: manta-embed
+    platform: linux/amd64       # force x86_64 image on Apple Silicon/ARM hosts
+    build:
+      context: .                # context is the directory this file lives in: repo_root/embed
+      dockerfile: Dockerfile    # change if your Dockerfile has a different name
+    environment:
+      - DIM=1024
+    command: uvicorn embed_server:app --host 0.0.0.0 --port 5050
+    ports:
+      - "5050:5050"
+    networks:
+      - manta-net
+    restart: unless-stopped
+
+networks:
+  manta-net:
+    external: true
