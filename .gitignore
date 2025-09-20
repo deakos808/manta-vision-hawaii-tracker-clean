@@ -16,3 +16,7 @@ env/
 *.so
 *.pt
 *.onnx
+.env
+.env.*
+*.env
+*.env.*
