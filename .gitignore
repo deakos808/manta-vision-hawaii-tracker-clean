@@ -31,3 +31,10 @@ env/
 env*
 *prod*
 *secret*
+.env
+.env.*
+*.env
+*.env.*
+env*
+*secret*
+*prod*
