@@ -24,3 +24,10 @@ env/
 .env.*
 *.env
 *.env.*
+.env
+.env.*
+*.env
+*.env.*
+env*
+*prod*
+*secret*
