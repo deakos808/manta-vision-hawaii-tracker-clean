@@ -41,7 +41,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "createUser failed", detail: created.error.message }), { status: 400, headers });
   }
 
-  const linkRes = await admin.auth.admin.generateLink({ type: "recovery", email });
+  const linkRes = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo: (Deno.env.get("REDIRECT_BASE") ?? "http://localhost:8080") + "/set-password" } });
   if (linkRes.error) {
     return new Response(JSON.stringify({ error: "generateLink failed", detail: linkRes.error.message }), { status: 400, headers });
   }
