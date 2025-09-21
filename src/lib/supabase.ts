@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const envUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-// diag: confirm envs are baked into the bundle
-console.log('ENV URL[0..11]=', String(supabaseUrl || '').slice(0,12));
-console.log('ENV KEY[0..11]=', String(supabaseAnonKey || '').slice(0,12));
+// diag: print lengths/prefixes so we know what the bundle contains
+console.log("ENV URL len =", envUrl.length, "prefix =", envUrl.slice(0, 12));
+console.log("ENV KEY len =", envKey.length, "prefix =", envKey.slice(0, 12));
 
-export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+// TEMP fallback so you can sign in immediately if env is missing
+const supabaseUrl = envUrl || "https://apweteosdbgsolmvcmhn.supabase.co";
+const supabaseAnonKey =
+  envKey ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwd2V0ZW9zZGJnc29sbXZjbWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5ODc4MjksImV4cCI6MjA2MjU2MzgyOX0.tjo2en6kNIIAcpZH_hvyG_CbXB1AIfwCajR1CdTaXv4";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -17,4 +23,4 @@ export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
 
 export const EDGE_BASE =
   import.meta.env.VITE_SUPABASE_EDGE_URL ??
-  `${String(supabaseUrl || '').replace(/\/$/, '')}/functions/v1`;
+  `${String(supabaseUrl).replace(/\/$/, "")}/functions/v1`;
