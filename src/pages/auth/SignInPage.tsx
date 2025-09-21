@@ -1,3 +1,4 @@
+import { debugSignIn } from "@/lib/authTest";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
