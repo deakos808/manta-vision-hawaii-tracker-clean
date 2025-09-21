@@ -1,5 +1,7 @@
 console.log(~NV URL[0..11]=', (import.meta.env?.VITE_SUPABASE_URL||"").slice(0,12));
 console.log(~NV KEY[0..11]=', (import.meta.env?.VITE_SUPABASE_ANON_KEY||"").slice(0,12));
+console.log(~NV URL[0..11]=', (import.meta.env?.VITE_SUPABASE_URL||"").slice(0,12));
+console.log(~NV KEY[0..11]=', (import.meta.env?.VITE_SUPABASE_ANON_KEY||"").slice(0,12));
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
