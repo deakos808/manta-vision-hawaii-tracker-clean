@@ -14,11 +14,27 @@ export default function SetPasswordPage() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "error" | "ok"; text: string } | null>(null);
 
+  // Capture recovery tokens from the URL hash and create a session
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const email = data.session?.user?.email ?? null;
-      setSessionEmail(email);
-    });
+    (async () => {
+      const hash = window.location.hash || "";
+      const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          setMsg({ type: "error", text: error.message || "Could not initialize session from link. Please open a fresh invite/recovery link." });
+        } else {
+          setSessionEmail(data.session?.user?.email ?? null);
+        }
+      } else {
+        const { data } = await supabase.auth.getSession();
+        setSessionEmail(data.session?.user?.email ?? null);
+      }
+    })();
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -26,7 +42,7 @@ export default function SetPasswordPage() {
     setMsg(null);
 
     if (!sessionEmail) {
-      setMsg({ type: "error", text: "Session missing. Please open your invite/recovery link again." });
+      setMsg({ type: "error", text: "Session not found. Open your invite/recovery link again, then set your password here." });
       return;
     }
     if (pw1.length < 8) {
@@ -39,23 +55,17 @@ export default function SetPasswordPage() {
     }
 
     setBusy(true);
-    const { data, error } = await supabase.auth.updateUser({ password: pw1 });
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
     setBusy(false);
 
     if (error) {
-      console.error("[set-password] updateUser error:", error);
-      setMsg({ type: "error", text: error.message || "Failed to set password" });
+      setMsg({ type: "error", text: error.message || "Failed to set password." });
       return;
     }
 
-    console.log("[set-password] updateUser ok:", data);
-    setMsg({ type: "ok", text: "Password set. Redirecting to sign-in…" });
-
-    // Ensure we don't keep the recovery session around
+    setMsg({ type: "ok", text: "Password set! Redirecting to sign in…" });
     await supabase.auth.signOut();
-
-    // Hard redirect to avoid any stale state
-    window.location.assign("/signin");
+    window.location.assign("/signin?email=" + encodeURIComponent(sessionEmail));
   }
 
   return (
@@ -68,9 +78,7 @@ export default function SetPasswordPage() {
           <CardHeader>
             <CardTitle>Set Your Password</CardTitle>
             <CardDescription>
-              {sessionEmail
-                ? <>Creating a password for <span className="font-medium">{sessionEmail}</span>.</>
-                : "Open your invite or recovery link, then set your password."}
+              {sessionEmail ? <>Creating a password for <span className="font-medium">{sessionEmail}</span>.</> : "Open your invite or recovery link, then set your password."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -79,17 +87,10 @@ export default function SetPasswordPage() {
                 {msg.text}
               </div>
             )}
-            {!sessionEmail && (
-              <div className="text-sm text-red-600 mb-3">
-                Session not found. Please open your invite/recovery link again.
-              </div>
-            )}
             <form onSubmit={onSubmit} className="space-y-3">
               <Input type="password" placeholder="New password (min 8 chars)" value={pw1} onChange={e => setPw1(e.target.value)} />
               <Input type="password" placeholder="Confirm password" value={pw2} onChange={e => setPw2(e.target.value)} />
-              <Button type="submit" disabled={busy || !sessionEmail} className="w-full">
-                {busy ? "Saving..." : "Set Password"}
-              </Button>
+              <Button type="submit" disabled={busy} className="w-full">{busy ? "Saving..." : "Set Password"}</Button>
             </form>
           </CardContent>
         </Card>
