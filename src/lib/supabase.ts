@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Frontend client: NO custom global headers (prevents brittle preflights)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Fail fast in dev if envs are missing
+if (!supabaseUrl) console.error("VITE_SUPABASE_URL is missing");
+if (!supabaseAnonKey) console.error("VITE_SUPABASE_ANON_KEY is missing");
+
+export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
+    persistSession: true,
     detectSessionInUrl: true,
   },
 });
+
+export const EDGE_BASE =
+  import.meta.env.VITE_SUPABASE_EDGE_URL ?? `${supabaseUrl?.replace(/\/$/, "")}/functions/v1`;
