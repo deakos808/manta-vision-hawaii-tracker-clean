@@ -1,33 +1,29 @@
-// src/components/layout/Navigation.tsx
-
-import { Link } from 'react-router-dom';
-import { useUser, useSession } from '@supabase/auth-helpers-react';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Button } from '@/components/ui/button';
+import { useSession } from "@supabase/auth-helpers-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Link } from "react-router-dom";
 
 export default function Navigation() {
-  const user = useUser();
   const session = useSession();
   const role = useUserRole();
 
-  const isAdmin = role === 'admin';
+  console.log("[Navigation] session =", session?.user?.email);
+  console.log("[Navigation] role =", role);
 
   return (
-    <nav className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between">
-      <div className="text-lg font-semibold flex items-center space-x-4">
-        <Link to="/" className="text-white hover:underline">
-          Manta ID <span className="text-sm bg-white text-blue-600 rounded px-2 ml-1">v1.0</span>
-        </Link>
-        <Link to="/dashboard" className="hover:underline">Dashboard</Link>
-        <Link to="/sightings/add" className="hover:underline">Add Sighting</Link>
-        <Link to="/browse/data" className="hover:underline">Search Database</Link>
-        {isAdmin && <Link to="/admin" className="hover:underline">Admin</Link>}
+    <nav className="p-4 border-b flex justify-between items-center">
+      <Link to="/" className="text-lg font-semibold">
+        <span className="text-sky-700 font-bold">Hawaii Manta Tracker</span>
+      </Link>
+      <div className="space-x-4">
+        {role === "admin" && <Link to="/admin">Admin</Link>}
+        {session ? (
+          <Link to="/signout" className="text-red-600">
+            Sign Out
+          </Link>
+        ) : (
+          <Link to="/signin">Sign In</Link>
+        )}
       </div>
-      {user && session ? (
-        <form action="/signout" method="post">
-          <Button type="submit" size="sm" variant="secondary">Sign Out</Button>
-        </form>
-      ) : null}
     </nav>
   );
 }
