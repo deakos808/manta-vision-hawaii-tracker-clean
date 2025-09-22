@@ -12,7 +12,7 @@ import NotFoundPage from "@/pages/public/NotFoundPage";
 import SignInPage from "@/pages/auth/SignInPage";
 import DashboardPage from "@/pages/admin/DashboardPage";
 import ImportPage from "@/pages/admin/ImportPage";
-import AddSightingPage from "@/pages/admin/AddSightingPage";
+import AdminAddSightingPage from "@/pages/admin/AddSightingPage";
 
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminRolesPage from "@/pages/admin/AdminRolesPage";
