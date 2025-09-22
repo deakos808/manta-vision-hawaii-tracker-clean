@@ -83,7 +83,7 @@ function App() {
           </RequireAuth>
         }
       />
-                      <Route
+                              <Route
           path="/sightings/add"
           element={
             <RequireAuth>
@@ -95,6 +95,9 @@ function App() {
             <RequireAuth>
               <SightingQuickForm />
             </RequireAuth>
+          }
+        />
+</RequireAuth>
           }
         />
 </RequireAuth>
