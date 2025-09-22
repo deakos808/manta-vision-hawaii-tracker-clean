@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import MapboxMap from '@/components/maps/MapboxMap';
 import { v4 as uuidv4 } from 'uuid';
 import { Checkbox } from '@/components/ui/checkbox';
 import PhotoUploadForm from '@/components/photos/PhotoUploadForm';
@@ -104,8 +103,11 @@ export default function AddSightingPage() {
             </div>
           </div>
 
-          <MapboxMap lat={lat} lon={lon} onPinDrop={handlePinDrop} />
-        </Card>
+          
+<div className="border rounded p-3 text-sm text-muted-foreground">
+  Map preview temporarily disabled (WebGL not available). You can still enter coordinates manually above.
+</div>
+</Card>
 
         <Card className="p-4 space-y-4">
           <Label>Photographer Name</Label>
