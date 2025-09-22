@@ -48,7 +48,8 @@ import Catalog from "@/pages/browse_data/Catalog";
 import Sightings from "@/pages/browse_data/Sightings";
 
 function App() {
-  return (
+  console.info("[AppRoutes] render OK");
+return (
     <Routes>
         {/* DEBUG heartbeat route */}
         <Route path="/__alive" element={<div style={{padding:20,fontFamily:'ui-sans-serif'}}>
@@ -56,28 +57,16 @@ function App() {
           <code>/sightings/add</code> | <code>/sightings/add2</code><br/>
           <a href="/sightings/add">Go to /sightings/add</a> · <a href="/sightings/add2">Go to /sightings/add2</a>
         </div>} />
-        {/* Forced-in Add Sighting routes (non-admin + map-free quick form) */}
-        <Route
-          path="/sightings/add"
-          element={
-            <RequireAuth>
-              <AddSightingPage />
-            </RequireAuth>
+        {/* Forced-in Add Sighting routes (non-admin + map-free quick form) */}</RequireAuth>
           }
-        />
-        <Route
-          path="/sightings/add2"
-          element={
-            <RequireAuth>
-              <SightingQuickForm />
-            </RequireAuth>
+        /></RequireAuth>
           }
         />
 
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<SignInPage />} />
-        <Route path="/signout" element={<SignOutPage />} />
+        <Route path="/signout" element={<SignOutPage />} />} />} />
 } />} />
 } />
 
@@ -333,7 +322,25 @@ function App() {
         }
       />
 
-      {/* 404 Fallback */}
+      {/* Add Sighting routes (clean, protected) */
+      <Route
+        path="/sightings/add"
+        element={
+          <RequireAuth>
+            <AddSightingPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/sightings/add2"
+        element={
+          <RequireAuth>
+            <SightingQuickForm />
+          </RequireAuth>
+        }
+      />
+
+      /* 404 Fallback */}
       <Route path="*" element={<NotFoundPage />} />      <Route path="/set-password" element={<SetPasswordPage />} />
 
     </Routes>
