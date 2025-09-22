@@ -13,6 +13,19 @@ function useQuery() {
 }
 
 export default function SignInPage() {
+  async function handleForgot() {
+    try {
+      const emailInput = (document.querySelector("input[type=email]") as HTMLInputElement) || (document.querySelector("input[name=email]") as HTMLInputElement);
+      const email = emailInput?.value?.trim().toLowerCase();
+      if (!email) { alert("Enter your email, then click Forgot password"); return; }
+      const redirectTo = window.location.origin + "/set-password";
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) { console.error(error.message); alert("Could not send reset email. If email isn’t configured yet, ask an admin to generate a reset link."); return; }
+      alert("If that address exists, a reset link has been sent.");
+    } catch (e) { console.error(e); }
+  }
+  useEffect(() => { const b = document.getElementById("forgot-btn"); if (b) b.addEventListener("click", handleForgot); return () => { if (b) b.removeEventListener("click", handleForgot); }; }, []);
+
   const q = useQuery();
   const navigate = useNavigate();
   const urlEmail = (q.get("email") || "").trim().toLowerCase();
@@ -80,9 +93,7 @@ export default function SignInPage() {
             onChange={e => setPassword(e.target.value)}
           />
           <Button type="submit" disabled={busy} className="w-full">{busy ? "Signing in…" : "Sign In"}</Button>
-          <Button type="button" variant="secondary" onClick={handleResend} className="w-full">
-            Resend Confirmation Email
-          </Button>
+          <> </>
         </form>
       </div>
     </Layout>
