@@ -49,6 +49,7 @@ import Sightings from "@/pages/browse_data/Sightings";
 function App() {
   return (
     <Routes>
+    <Route path="/sightings/add2" element={<SightingQuickForm />} />
     <Route path="/sightings/new" element={<AddSightingPage />} />
 
       {/* Public Routes */}
