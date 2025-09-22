@@ -3,9 +3,7 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import SignOutPage from "@/pages/auth/SignOutPage";
 import RequireAuth from "@/components/auth/RequireAuth";
-import SignOutPage from "@/pages/auth/SignOutPage";
 
-import RequireAuth from "@/components/auth/RequireAuth";
 
 import LandingPage from "@/pages/public/LandingPage";
 import NotFoundPage from "@/pages/public/NotFoundPage";
@@ -87,14 +85,14 @@ function App() {
           </RequireAuth>
         }
       />
-      <Route
-        path="/sightings/add"
-        element={
-          <RequireAuth>
-            <AddSightingPage />
-          </RequireAuth>
-        }
-      />
+              <Route
+          path="/sightings/add"
+          element={
+            <RequireAuth>
+              <AddSightingPage />
+            </RequireAuth>
+          }
+        />
 
       {/* Admin Dashboard Hub */}
       <Route
