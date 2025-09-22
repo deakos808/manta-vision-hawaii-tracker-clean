@@ -49,6 +49,7 @@ import Sightings from "@/pages/browse_data/Sightings";
 
 function App() {
   console.info("[AppRoutes] render OK");
+console.info("[AppRoutes] render OK");
 return (
     <Routes>
         {/* DEBUG heartbeat route */}
@@ -322,7 +323,13 @@ return (
         }
       />
 
-      {/* Add Sighting routes (clean, protected) */
+      {/* Add Sighting routes (clean, protected) */</RequireAuth>
+        }
+      /></RequireAuth>
+        }
+      />
+
+      /* Add Sighting routes */
       <Route
         path="/sightings/add"
         element={
