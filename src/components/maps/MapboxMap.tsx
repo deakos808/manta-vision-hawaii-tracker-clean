@@ -1,5 +1,6 @@
 import React from "react";
 type Props = { lat?: string|number; lon?: string|number; onPinDrop?: (lat:string, lon:string)=>void; };
+console.info("[StubMapbox] loaded");
 export default function MapboxMap({ lat, lon }: Props) {
   return (
     <div className="border rounded p-3 text-sm text-muted-foreground">
