@@ -10,7 +10,14 @@ interface MapboxMapProps {
   onPinDrop: (lat: string, lon: string) => void;
 }
 
+function hasWebGL(){try{const c=document.createElement("canvas");return !!(window.WebGLRenderingContext&&(c.getContext("webgl")||c.getContext("experimental-webgl")));}catch(e){return false;}}
+    
 export default function MapboxMap({ lat, lon, onPinDrop }: MapboxMapProps) {
+  if (typeof window === "undefined" || !hasWebGL()) {
+    return <div className="border rounded p-3 text-sm text-muted-foreground">
+      Map preview unavailable on this device. You can still enter coordinates manually.
+    </div>;
+  }
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);

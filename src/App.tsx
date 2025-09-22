@@ -49,6 +49,8 @@ import Sightings from "@/pages/browse_data/Sightings";
 function App() {
   return (
     <Routes>
+    <Route path="/sightings/new" element={<AddSightingPage />} />
+
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/signin" element={<SignInPage />      <Route path="/signout" element={<SignOutPage />} />
