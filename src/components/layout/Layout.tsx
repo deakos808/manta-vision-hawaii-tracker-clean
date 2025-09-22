@@ -37,7 +37,7 @@ export default function Layout({ children }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-white text-black">
       <Header />
-      <main className="flex-grow px-4 py-6">{children}</main>
+      <main className="flex-grow px-4 py-6"><div style={{backgroundColor:"#ff0",padding:"4px",fontWeight:"bold"}}>BUILD: manta-vision-hawaii-tracker-clean</div><div style={{background:"yellow",padding:"4px",fontWeight:"bold"}}>BUILD: manta-vision-hawaii-tracker-clean</div>{children}</main>
 
       <footer className="text-sm text-gray-600 text-center p-4 border-t">
         <div>
