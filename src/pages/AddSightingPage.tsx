@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import Layout from '@/components/layout/Layout';
+import Layout from "@/components/layout/Layout";
+import TempMantaModal from "@/components/photos/TempMantaModal";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,7 @@ interface MantaEntry {
   size: string;
 }
 
-export default function AddSightingPage() {
+export default function AddSightingPage() { const [sightingId] = useState<string>(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2))); const [mantaModalOpen, setMantaModalOpen] = useState(false);
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [stopTime, setStopTime] = useState('');
@@ -145,11 +146,12 @@ export default function AddSightingPage() {
               <PhotoUploadForm tempMantaId={m.id} />
             </div>
           ))}
-          <Button className="mt-2" onClick={handleAddManta}>+ Add Another Manta</Button>
+          <div className="flex gap-2 mt-2"><Button onClick={handleAddManta}>+ Add Another Manta (inline)</Button><Button variant="secondary" type="button" onClick={() => setMantaModalOpen(true)}>+ Add Manta (modal)</Button></div>
         </Card>
 
         <Button className="mt-6" disabled>Submit Sighting (Step 3)</Button>
       </div>
+    <TempMantaModal open={mantaModalOpen} onOpenChange={setMantaModalOpen} sightingId={sightingId} />
     </Layout>
   );
 }
