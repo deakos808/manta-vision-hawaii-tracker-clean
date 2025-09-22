@@ -1,3 +1,6 @@
+import SightingQuickForm from "@/pages/SightingQuickForm";
+import AddSightingPage from "@/pages/AddSightingPage";
+console.info("[AppRoutes] loaded");
 // File: src/App.tsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -47,11 +50,35 @@ import Sightings from "@/pages/browse_data/Sightings";
 function App() {
   return (
     <Routes>
+        {/* DEBUG heartbeat route */}
+        <Route path="/__alive" element={<div style={{padding:20,fontFamily:'ui-sans-serif'}}>
+          <strong>Routes OK</strong><br/>
+          <code>/sightings/add</code> | <code>/sightings/add2</code><br/>
+          <a href="/sightings/add">Go to /sightings/add</a> · <a href="/sightings/add2">Go to /sightings/add2</a>
+        </div>} />
+        {/* Forced-in Add Sighting routes (non-admin + map-free quick form) */}
+        <Route
+          path="/sightings/add"
+          element={
+            <RequireAuth>
+              <AddSightingPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/sightings/add2"
+          element={
+            <RequireAuth>
+              <SightingQuickForm />
+            </RequireAuth>
+          }
+        />
 
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
-              <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signin" element={<SignInPage />} />
         <Route path="/signout" element={<SignOutPage />} />
+} />} />
 } />
 
       <Route path="/login" element={<Navigate to="/signin" replace />} />
@@ -85,21 +112,9 @@ function App() {
         }
       /></RequireAuth>
           }
-        />
-        <Route
-          path="/sightings/add"
-          element={
-            <RequireAuth>
-              <AddSightingPage />
-            </RequireAuth>
+        /></RequireAuth>
           }
-        />
-        <Route
-          path="/sightings/add2"
-          element={
-            <RequireAuth>
-              <SightingQuickForm />
-            </RequireAuth>
+        /></RequireAuth>
           }
         />
 </RequireAuth>
