@@ -50,7 +50,8 @@ function App() {
 
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/signin" element={<SignInPage />      <Route path="/signout" element={<SignOutPage />} />
+              <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signout" element={<SignOutPage />} />
 } />
 
       <Route path="/login" element={<Navigate to="/signin" replace />} />
@@ -82,13 +83,17 @@ function App() {
             <ImportPage />
           </RequireAuth>
         }
-      />
-                              <Route
+      /></RequireAuth>
+          }
+        />
+        <Route
           path="/sightings/add"
           element={
             <RequireAuth>
               <AddSightingPage />
-            
+            </RequireAuth>
+          }
+        />
         <Route
           path="/sightings/add2"
           element={
