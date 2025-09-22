@@ -47,8 +47,6 @@ import Sightings from "@/pages/browse_data/Sightings";
 function App() {
   return (
     <Routes>
-    <Route path="/sightings/add2" element={<SightingQuickForm />} />
-    <Route path="/sightings/new" element={<AddSightingPage />} />
 
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
@@ -85,12 +83,21 @@ function App() {
           </RequireAuth>
         }
       />
-              <Route
+                      <Route
           path="/sightings/add"
           element={
             <RequireAuth>
               <AddSightingPage />
+            
+        <Route
+          path="/sightings/add2"
+          element={
+            <RequireAuth>
+              <SightingQuickForm />
             </RequireAuth>
+          }
+        />
+</RequireAuth>
           }
         />
 
