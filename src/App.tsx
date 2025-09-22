@@ -1,6 +1,9 @@
 // File: src/App.tsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import SignOutPage from "@/pages/auth/SignOutPage";
+import RequireAuth from "@/components/auth/RequireAuth";
+import SignOutPage from "@/pages/auth/SignOutPage";
 
 import RequireAuth from "@/components/auth/RequireAuth";
 
@@ -48,7 +51,8 @@ function App() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/signin" element={<SignInPage />} />
+      <Route path="/signin" element={<SignInPage />      <Route path="/signout" element={<SignOutPage />} />
+} />
 
       <Route path="/login" element={<Navigate to="/signin" replace />} />
 
@@ -92,11 +96,7 @@ function App() {
       {/* Admin Dashboard Hub */}
       <Route
         path="/admin"
-        element={
-          <RequireAuth adminOnly>
-            <AdminDashboardPage />
-          </RequireAuth>
-        }
+        element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>}
       />
 
       {/* Admin Sections */}

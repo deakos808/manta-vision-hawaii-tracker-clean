@@ -51,7 +51,29 @@ interface Profile {
 
 const EDGE_BASE_URL = import.meta.env.VITE_SUPABASE_EDGE_URL;
 
-export default function AdminRolesPage() {
+$1
+  async function generateResetLink(email: string) {
+    try {
+      const { data: s } = await supabase.auth.getSession();
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const secret = import.meta.env.VITE_BOOTSTRAP_SECRET as string;
+      const res = await fetch(`/bootstrap-admin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anon}`,
+          "apikey": anon,
+          "x-bootstrap-secret": secret
+        },
+        body: JSON.stringify({ email, role: "user" })
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.action_link) { console.error(json); alert(json?.error || "Could not generate link"); return; }
+      await navigator.clipboard.writeText(json.action_link);
+      alert("Reset link copied to clipboard. Share it with the user.");
+    } catch(e) { console.error(e); alert("Unexpected error generating link"); }
+  }
+
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -251,7 +273,7 @@ export default function AdminRolesPage() {
       <Dialog open={!!passwordModalUserId} onOpenChange={() => setPasswordModalUserId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Password</DialogTitle>
+            <DialogTitle>Generate Reset Link</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -315,7 +337,7 @@ export default function AdminRolesPage() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    onClick={() => setPasswordModalUserId(u.id)}
+                    onClick={() => generateResetLink(u.email)}
                   >
                     <KeyRound size={16} />
                   </Button>
