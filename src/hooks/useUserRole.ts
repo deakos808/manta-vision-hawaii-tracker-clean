@@ -1,45 +1,46 @@
 import { useEffect, useState } from "react";
-import { useSession } from "@supabase/auth-helpers-react";
 import { supabase } from "@/lib/supabase";
 
-type Role = "admin" | "user" | "unknown";
+export type AppRole = "admin" | "user" | "unknown";
 
-export function useUserRole() {
-  const session = useSession();
-  const [role, setRole] = useState<Role>("unknown");
+export function useUserRole(): { role: AppRole } {
+  const [role, setRole] = useState<AppRole>("unknown");
 
   useEffect(() => {
-    let alive = true;
+    let cancelled = false;
 
-    async function fetchRole() {
-      const uid = session?.user?.id;
-      if (!uid) {
-        if (alive) setRole("unknown");
-        return;
-      }
-      const { data, error } = await supabase
+    const set = (r: AppRole) => { if (!cancelled) setRole(r); };
+
+    async function loadInitial() {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user?.id;
+      if (!id) return set("unknown");
+      const { data: prof } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", uid)
+        .eq("id", id)
         .maybeSingle();
-
-      if (error) {
-        console.warn("[useUserRole] profiles lookup error:", error.message);
-      }
-      const r = (data?.role as string) || "user";
-      if (alive) {
-        setRole(r === "admin" ? "admin" : "user");
-        console.log("[useUserRole] live role updated:", r);
-      }
+      set(prof?.role === "admin" ? "admin" : "user");
     }
 
-    fetchRole();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => fetchRole());
+    loadInitial();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      const id = session?.user?.id;
+      if (!id) return set("unknown");
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", id)
+        .maybeSingle()
+        .then(({ data: prof }) => set(prof?.role === "admin" ? "admin" : "user"));
+    });
+
     return () => {
-      alive = false;
+      cancelled = true;
       sub?.subscription?.unsubscribe();
     };
-  }, [session?.user?.id]);
+  }, []);
 
   return { role };
 }

@@ -6,11 +6,12 @@ export default function SignOutPage() {
   const navigate = useNavigate();
   useEffect(() => {
     (async () => {
-      try { await supabase.auth.signOut(); } finally {
-        navigate("/", { replace: true });
-        setTimeout(() => { if (location.pathname !== "/") location.assign("/"); }, 250);
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        navigate("/signin", { replace: true });
       }
     })();
   }, [navigate]);
-  return <div style={{padding:24}}>Signing out…</div>;
+  return null;
 }
