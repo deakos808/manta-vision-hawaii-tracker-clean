@@ -15,8 +15,8 @@ import DashboardPage from "@/pages/admin/DashboardPage";
 import ImportPage from "@/pages/admin/ImportPage";
 
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
-// import AdminRolesPage from "@/pages/admin/AdminRolesPage";
-const AdminRolesPageDevStub = () => (<div style={{padding:20}}>Admin Roles temporarily disabled in dev</div>);
+import AdminRolesPage from "@/pages/admin/AdminRolesPage";
+const AdminRolesPage = () => (<div style={{padding:20}}>Admin Roles temporarily disabled in dev</div>);
 import AdminReviewNewSightingsPage from "@/pages/admin/AdminReviewNewSightingsPage";
 import ReviewSightingDetailsPage from "@/pages/admin/ReviewSightingDetailsPage";
 
@@ -146,7 +146,7 @@ function App() {
       />
       <Route
         path="/admin/roles"
-        element={<RequireAuth adminOnly><AdminRolesPageDevStub /></RequireAuth>}
+        element={<RequireAuth adminOnly><AdminRolesPage /></RequireAuth>}
       />
       <Route
         path="/admin/users-invite"
