@@ -3,7 +3,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 
 export default function Footer() {
   const session = useSession();
-  const role = useUserRole();
+  const { role } = useUserRole();
 
   console.log("[Footer] session =", session?.user?.email);
   console.log("[Footer] role =", role);

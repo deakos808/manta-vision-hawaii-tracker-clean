@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 export default function Navigation() {
   const session = useSession();
-  const role = useUserRole();
+  const { role } = useUserRole();
 
   console.log("[Navigation] session =", session?.user?.email);
   console.log("[Navigation] role =", role);
