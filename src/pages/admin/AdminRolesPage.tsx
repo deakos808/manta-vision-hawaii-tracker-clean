@@ -1,386 +1,96 @@
-// FULL OVERWRITE FROM VERIFIED WORKING VERSION
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import Layout from '@/components/layout/Layout';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog';
-import {
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  Loader2,
-  KeyRound,
-  ChevronLeft,
-  ShieldCheck,
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import Layout from "@/components/layout/Layout";
+import { supabase } from "@/lib/supabase";
+type Role = "admin" | "user" | null;
+type Profile = { id: string; email: string | null; role: Role; created_at?: string };
 
-interface Profile {
-  id: string;
-  email: string;
-  role: string;
-  is_active: boolean;
-  created_at: string;
-  email_confirmed_at?: string | null;
-}
+export default function AdminRolesPage() {
+  const [rows, setRows] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "", role: "user" as "admin" | "user" });
 
-const EDGE_BASE_URL = import.meta.env.VITE_SUPABASE_EDGE_URL;
+  async function load() {
+    setLoading(true);
+    const { data, error } = await supabase.from("profiles").select("id,email,role,created_at").order("email", { ascending: true });
+    if (!error && data) setRows(data as Profile[]);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
 
-$1
-  async function generateResetLink(email: string) {
-    try {
-      const { data: s } = await supabase.auth.getSession();
-      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      const secret = import.meta.env.VITE_BOOTSTRAP_SECRET as string;
-      const res = await fetch(`/bootstrap-admin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${anon}`,
-          "apikey": anon,
-          "x-bootstrap-secret": secret
-        },
-        body: JSON.stringify({ email, role: "user" })
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.action_link) { console.error(json); alert(json?.error || "Could not generate link"); return; }
-      await navigator.clipboard.writeText(json.action_link);
-      alert("Reset link copied to clipboard. Share it with the user.");
-    } catch(e) { console.error(e); alert("Unexpected error generating link"); }
+  async function setRole(id: string, role: "admin" | "user") {
+    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    if (!error) await load();
   }
 
-  const navigate = useNavigate();
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'user' | 'admin'>('user');
-  const [isCreating, setIsCreating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [adminId, setAdminId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [passwordModalUserId, setPasswordModalUserId] = useState<string | null>(null);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  async function sendReset(email: string | null) {
+    if (!email) return;
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/set-password` });
+    alert(`Password reset link sent to ${email}`);
+  }
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data.session;
-      setAccessToken(session?.access_token || null);
-      if (session?.user?.id) setAdminId(session.user.id);
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email || !form.password) return;
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { emailRedirectTo: `${window.location.origin}/set-password`, data: {} }
     });
-  }, []);
-
-  useEffect(() => {
-    if (accessToken) fetchUsers();
-  }, [accessToken, showArchived]);
-
-  async function fetchUsers() {
-    setIsLoading(true);
-    try {
-      const [{ data: profiles }, authResRaw] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        fetch(`${EDGE_BASE_URL}/list-users`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      ]);
-      const authJson = await authResRaw.json();
-      if (!profiles || authJson.error) throw new Error(authJson.error || 'Fetch error');
-      const enriched = (profiles as Profile[]).map((profile) => {
-        const match = authJson.find((u: any) => u.id === profile.id);
-        return { ...profile, email_confirmed_at: match?.created_at || null };
-      });
-      setUsers(enriched.filter((u) => (showArchived ? true : u.is_active)));
-    } catch (e) {
-      toast.error('Failed loading users');
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleConfirmUser(userId: string) {
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/confirm-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to confirm user');
-      toast.success('Email confirmed');
-      fetchUsers();
-    } catch (e) {
-      toast.error('Failed to confirm email');
-      console.error(e);
-    }
-  }
-
-  async function handlePasswordUpdate() {
-    if (!passwordModalUserId || !accessToken || newPasswordValue.length < 8) return;
-    setIsUpdatingPassword(true);
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/update-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          user_id: passwordModalUserId,
-          new_password: newPasswordValue,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Password update failed');
-      toast.success('Password updated');
-      setPasswordModalUserId(null);
-      setNewPasswordValue('');
-    } catch (e) {
-      toast.error('Password update failed');
-      console.error(e);
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  }
-
-  async function handleAddUser() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (!adminId || !accessToken) {
-      toast.error('Session expired, please sign in again');
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/create-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          email: newEmail,
-          password: newPassword,
-          role: newRole,
-          admin_id: adminId,
-        }),
-      });
-      const text = await res.text();
-      console.log('[create-user response]', text);
-      const json = JSON.parse(text);
-      if (!res.ok) throw new Error(json.error || 'Create failed');
-
-      toast.success(`${newEmail} was added as ${newRole}`);
-      setTimeout(() => {
-        setIsDialogOpen(false);
-        setNewEmail('');
-        setNewPassword('');
-        setNewRole('user');
-        fetchUsers();
-      }, 500);
-    } catch (e: any) {
-      toast.error(e.message || 'Unexpected error');
-      console.error(e);
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
-  async function handleDelete(userId: string) {
-    if (!adminId || !accessToken) {
-      toast.error('Session expired');
-      return;
-    }
-
-    setIsDeleting(userId);
-
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/delete-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ user_id: userId, admin_id: adminId }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Delete failed');
-
-      toast.success('User deleted');
-      fetchUsers();
-    } catch (e) {
-      toast.error((e as Error).message || 'Unexpected error');
-      console.error(e);
-    } finally {
-      setIsDeleting(null);
+    if (error) { alert(error.message); return; }
+    const userId = data.user?.id;
+    if (userId) {
+      await supabase.from("profiles").upsert({ id: userId, email: form.email, role: form.role }, { onConflict: "id" });
+      await load();
+      setForm({ email: "", password: "", role: "user" });
+      alert("User created. If email confirmation is required, they must confirm before signing in.");
     }
   }
 
   return (
     <Layout>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/admin/users-invite")}>Invite User</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Admin Dashboard
-          </Button>
-          <Button onClick={() => setShowArchived(!showArchived)}>
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">Admin · User Roles</h1>
+
+        <form onSubmit={createUser} className="mb-8 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="block text-sm mb-1">Email</label>
+            <input className="border rounded px-3 py-2 w-full" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Temp Password</label>
+            <input className="border rounded px-3 py-2 w-full" type="text" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Role</label>
+            <select className="border rounded px-3 py-2 w-full" value={form.role} onChange={e=>setForm({...form,role:e.target.value as "admin"|"user"})}>
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <button className="bg-blue-600 text-white rounded px-4 py-2 h-[38px]" type="submit">Create User</button>
+        </form>
+
+        <div className="border rounded">
+          <div className="px-4 py-2 font-semibold border-b bg-gray-50">Existing Users</div>
+          <div className="divide-y">
+            {loading && <div className="px-4 py-3">Loading…</div>}
+            {!loading && rows.map(p => (
+              <div key={p.id} className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{p.email ?? "—"}</div>
+                  <div className="text-xs text-gray-500">id: {p.id.slice(0,8)}… · role: <b>{p.role ?? "none"}</b></div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="border rounded px-3 py-1" onClick={()=>setRole(p.id, "user")}>Make user</button>
+                  <button className="border rounded px-3 py-1" onClick={()=>setRole(p.id, "admin")}>Make admin</button>
+                  <button className="border rounded px-3 py-1" onClick={()=>sendReset(p.email)}>Send reset link</button>
+                </div>
+              </div>
+            ))}
+            {!loading && rows.length===0 && <div className="px-4 py-3">No users</div>}
+          </div>
         </div>
       </div>
-
-      <Dialog open={!!passwordModalUserId} onOpenChange={() => setPasswordModalUserId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generate Reset Link</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              type="password"
-              placeholder="New password"
-              value={newPasswordValue}
-              onChange={(e) => setNewPasswordValue(e.target.value)}
-            />
-            <Button onClick={handlePasswordUpdate} disabled={isUpdatingPassword} className="w-full">
-              {isUpdatingPassword ? <Loader2 className="animate-spin" /> : 'Save Password'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {isLoading ? (
-        <div className="text-center py-10">
-          <Loader2 className="mx-auto animate-spin" />
-          <p className="mt-2 text-gray-500">Loading users...</p>
-        </div>
-      ) : (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="p-2 text-left">Email</th>
-              <th className="p-2 text-left">Role</th>
-              <th className="p-2 text-center">Status</th>
-              <th className="p-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="p-2">{u.email}</td>
-                <td className="p-2">
-                  <Select
-                    value={u.role}
-                    onValueChange={async (val) => {
-                      await supabase.from('profiles').update({ role: val }).eq('id', u.id);
-                      await fetchUsers();
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="p-2 text-center">
-                  {u.is_active ? (
-                    <CheckCircle className="text-green-600 mx-auto" title="Active" />
-                  ) : (
-                    <AlertTriangle className="text-red-600 mx-auto" title="Archived" />
-                  )}
-                </td>
-                <td className="p-2 text-center flex items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => generateResetLink(u.email)}
-                  >
-                    <KeyRound size={16} />
-                  </Button>
-
-                  {u.email_confirmed_at ? null : (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleConfirmUser(u.id)}
-                    >
-                      <ShieldCheck size={16} />
-                    </Button>
-                  )}
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button disabled={isDeleting === u.id}>
-                        {isDeleting === u.id ? (
-                          <Loader2 className="mx-auto animate-spin" />
-                        ) : (
-                          <Trash2 className="text-red-500" />
-                        )}
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent aria-describedby="delete-user-desc">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete {u.email}?</AlertDialogTitle>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(u.id)}>
-                          Confirm
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </Layout>
   );
 }
