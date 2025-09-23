@@ -47,7 +47,7 @@ export default function Layout({ children }: Props) {
         </div>
         <div>
           Code version&nbsp;(HST):&nbsp;
-          <strong>{toHST(DEPLOYED_AT)}</strong>&nbsp;—&nbsp;{GIT_HASH}<br /><span style={{fontSize:"0.85em"}}>BUILD: manta-vision-hawaii-tracker-clean</span>
+          <strong>{toHST(DEPLOYED_AT)}</strong>&nbsp;—&nbsp;{GIT_HASH}<br /><span style="font-size:0.85em">BUILD: manta-vision-hawaii-tracker-clean</span>
         </div>
       </footer>
     </div>
