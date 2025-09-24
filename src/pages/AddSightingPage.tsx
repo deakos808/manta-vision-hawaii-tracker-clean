@@ -9,7 +9,7 @@ import MantaPhotosModal from "@/components/photos/MantaPhotosModal";
 
 import MantasSummaryList from "@/components/sightings/MantasSummaryList";
 function MantasSummaryRender(){ return (<>
-<div className="mt-6"><MantasSummaryList /></div>
+
 <MantasSummaryRender />
 </>); }
 
