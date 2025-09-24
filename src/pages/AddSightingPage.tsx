@@ -1,159 +1,186 @@
-import { useEffect, useState } from 'react';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
-import TempMantaModal from "@/components/photos/TempMantaModal";
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import PhotoUploadForm from '@/components/photos/PhotoUploadForm';
-import { v4 as uuidv4 } from 'uuid';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface MantaEntry {
-  id: string;
-  name: string;
-  gender: string;
-  size: string;
-}
+export default function AddSightingPage() {
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [stopTime, setStopTime] = useState("");
+  const [island, setIsland] = useState("");
+  const [location, setLocation] = useState("");
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
+  const [notes, setNotes] = useState("");
+  const [photographer, setPhotographer] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [totalMantas, setTotalMantas] = useState<string>("");
 
-export default function AddSightingPage() { const [sightingId] = useState<string>(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2))); const [mantaModalOpen, setMantaModalOpen] = useState(false);
-  const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [stopTime, setStopTime] = useState('');
-  const [island, setIsland] = useState('');
-  const [population, setPopulation] = useState('');
-  const [location, setLocation] = useState('');
-  const [lat, setLat] = useState('');
-  const [lon, setLon] = useState('');
-  const [notes, setNotes] = useState('');
-  const [photographer, setPhotographer] = useState('');
-  const [photographerEmail, setPhotographerEmail] = useState('');
-  const [photographerPhone, setPhotographerPhone] = useState('');
-  const [totalMantasSeen, setTotalMantasSeen] = useState<number | ''>('');
-  const [noPhotosTaken, setNoPhotosTaken] = useState(false);
-  const [mantas, setMantas] = useState<MantaEntry[]>([]);
-
-  useEffect(() => {
-    const islandToPopulation = (island: string) => {
-      if (["Maui", "Kahoʻolawe", "Lānaʻi", "Molokaʻi"].includes(island)) return "Maui Nui";
-      if (["Kauaʻi", "Niʻihau"].includes(island)) return "Kauaʻi";
-      return island;
-    };
-    setPopulation(islandToPopulation(island));
-  }, [island]);
-
-  const handleAddManta = () => {
-    setMantas((prev) => [...prev, {
-      id: uuidv4(),
-      name: '',
-      gender: '',
-      size: '',
-    }]);
-  };
-
-  const handlePinDrop = (newLat: string, newLon: string) => {
-    setLat(newLat);
-    setLon(newLon);
-  };
+  const [mapOpen, setMapOpen] = useState(false);
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <h1 className="text-xl font-bold">Add New Sighting</h1>
-
-        <Card className="p-4 space-y-4">
-          <Label>Date *</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Start Time</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-            </div>
-            <div>
-              <Label>Stop Time</Label>
-              <Input type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
-            </div>
-          </div>
-
-          <Label>Island *</Label>
-          <select value={island} onChange={(e) => setIsland(e.target.value)} className="w-full border rounded p-2">
-            <option value="">Select island</option>
-            {["Hawaiʻi", "Maui", "Oʻahu", "Kauaʻi", "Molokaʻi", "Lānaʻi", "Niʻihau"].map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-
-          <Label>Population</Label>
-          <Input value={population} readOnly />
-
-          <Label>Location / Site *</Label>
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Latitude</Label>
-              <Input value={lat} readOnly />
-            </div>
-            <div>
-              <Label>Longitude</Label>
-              <Input value={lon} readOnly />
-            </div>
-          </div>
-
-          
-<div className="border rounded p-3 text-sm text-muted-foreground">
-  Map preview temporarily disabled (WebGL not available). You can still enter coordinates manually above.
-</div>
-</Card>
-
-        <Card className="p-4 space-y-4">
-          <Label>Photographer Name *</Label>
-          <Input value={photographer} onChange={(e) => setPhotographer(e.target.value)} />
-
-          <Label>Email *</Label>
-          <Input type="email" value={photographerEmail} onChange={(e) => setPhotographerEmail(e.target.value)} />
-
-          <Label>Phone</Label>
-          <Input type="tel" value={photographerPhone} onChange={(e) => setPhotographerPhone(e.target.value)} />
-
-          <Label>Notes</Label>
-          <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
-
-          <Label>Total Mantas Seen</Label>
-          <Input
-            type="number"
-            value={totalMantasSeen}
-            onChange={(e) => setTotalMantasSeen(e.target.value === '' ? '' : Number(e.target.value))}
-          />
-        </Card>
-
-        <div className="flex items-center space-x-2">
-          <Checkbox id="noPhotos" checked={noPhotosTaken} onCheckedChange={(v) => setNoPhotosTaken(!!v)} />
-          <Label htmlFor="noPhotos" className="text-red-600 font-medium">No photos taken for this sighting</Label>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="mb-2 text-sm text-gray-600">
+          <Link to="/dashboard" className="text-sky-700 hover:underline">Dashboard</Link>
+          <span className="mx-2 text-gray-400">/</span>
+          <span className="text-gray-600">Add New Sighting</span>
         </div>
 
-        <Card className="p-4">
-          <h2 className="text-lg font-bold mb-2">+ Add Manta Individuals ({mantas.length})</h2>
-          {mantas.map((m, i) => (
-            <div key={m.id} className="border-b pb-4 mb-4 space-y-2">
-              <Label>Name</Label>
-              <Input
-                value={m.name}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setMantas((prev) => prev.map((x, idx) => idx === i ? { ...x, name: val } : x));
-                }}
-              />
-              <PhotoUploadForm tempMantaId={m.id} />
-            </div>
-          ))}
-          <div className="flex gap-2 mt-2"><Button onClick={handleAddManta}>+ Add Another Manta (inline)</Button><Button variant="secondary" type="button" onClick={() => setMantaModalOpen(true)}>+ Add Manta (modal)</Button></div>
-        </Card>
+        <div className="rounded-lg bg-white border p-4 mb-6">
+          <h1 className="text-2xl font-semibold">Add New Sighting</h1>
+        </div>
 
-        <Button className="mt-6" disabled>Submit Sighting (Step 3)</Button>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Card 1: Sighting Details */}
+          <div className="rounded-lg bg-white border p-4">
+            <h2 className="font-medium mb-3">Sighting Details</h2>
+            <div className="space-y-3">
+              <div className="max-w-sm">
+                <Label className="mb-1 block">Date *</Label>
+                <Input type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <div>
+                  <Label className="mb-1 block">Start Time</Label>
+                  <Input type="time" value={startTime} onChange={(e)=>setStartTime(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Stop Time</Label>
+                  <Input type="time" value={stopTime} onChange={(e)=>setStopTime(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="max-w-sm">
+                <Label className="mb-1 block">Island *</Label>
+                <select
+                  value={island}
+                  onChange={(e)=>setIsland(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">Select island</option>
+                  {["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi","Niʻihau"].map(x=>(
+                    <option key={x} value={x}>{x}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="max-w-xl">
+                <Label className="mb-1 block">Location *</Label>
+                <Input value={location} onChange={(e)=>setLocation(e.target.value)} placeholder="e.g., site / bay / reef" />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={()=>setMapOpen(true)}
+                  className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50"
+                >
+                  Add Lat/Lon
+                </button>
+                <button
+                  type="button"
+                  onClick={()=>setMapOpen(true)}
+                  className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50"
+                >
+                  Use Map for Location
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Location & Submitter */}
+          <div className="rounded-lg bg-white border p-4">
+            <h2 className="font-medium mb-3">Location & Submitter</h2>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <div>
+                  <Label className="mb-1 block">Latitude</Label>
+                  <Input value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="e.g., 19.8968" />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Longitude</Label>
+                  <Input value={lon} onChange={(e)=>setLon(e.target.value)} placeholder="e.g., -155.5828" />
+                </div>
+              </div>
+
+              <div className="max-w-xl">
+                <Label className="mb-1 block">Notes</Label>
+                <textarea
+                  value={notes}
+                  onChange={(e)=>setNotes(e.target.value)}
+                  rows={4}
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Optional notes…"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 max-w-xl">
+                <div>
+                  <Label className="mb-1 block">Photographer Name</Label>
+                  <Input value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Email *</Label>
+                  <Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Phone</Label>
+                  <Input value={phone} onChange={(e)=>setPhone(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Total Mantas Seen</Label>
+                  <Input value={totalMantas} onChange={(e)=>setTotalMantas(e.target.value)} placeholder="0" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <button className="bg-sky-600 text-white px-4 py-2 rounded disabled:opacity-60" disabled>
+            Submit (coming soon)
+          </button>
+        </div>
+
+        {/* Lat/Lon Modal (map placeholder; manual entry works now) */}
+        {mapOpen && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg border w-full max-w-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-medium">Pick Location</h3>
+                <button onClick={()=>setMapOpen(false)} className="px-2 py-1 border rounded">Close</button>
+              </div>
+              <div className="mb-3 text-sm text-gray-600">
+                Map integration coming next—enter coordinates now, or we’ll drop a pin automatically when the map is enabled.
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 max-w-md mb-4">
+                <div>
+                  <Label className="mb-1 block">Latitude</Label>
+                  <Input value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="e.g., 19.8968" />
+                </div>
+                <div>
+                  <Label className="mb-1 block">Longitude</Label>
+                  <Input value={lon} onChange={(e)=>setLon(e.target.value)} placeholder="e.g., -155.5828" />
+                </div>
+              </div>
+
+              <div className="border rounded h-64 flex items-center justify-center text-sm text-gray-500">
+                Map Placeholder (centered on Hawaiʻi)
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={()=>setMapOpen(false)} className="px-3 py-2 rounded border">Cancel</button>
+                <button onClick={()=>setMapOpen(false)} className="px-3 py-2 rounded bg-sky-600 text-white">Use These Coordinates</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    <TempMantaModal open={mantaModalOpen} onOpenChange={setMantaModalOpen} sightingId={sightingId} />
     </Layout>
   );
 }
