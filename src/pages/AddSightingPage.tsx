@@ -7,11 +7,6 @@ import MapLite from "@/components/maps/MapLite";
 import MantaPhotosModal from "@/components/photos/MantaPhotosModal";
 
 
-import MantasSummaryList from "@/components/sightings/MantasSummaryList";
-function MantasSummaryRender(){ return (<>
-
-<MantasSummaryRender />
-</>); }
 
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
