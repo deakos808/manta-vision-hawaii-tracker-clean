@@ -1,51 +1,21 @@
-import { ReactNode, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useSession } from '@supabase/auth-helpers-react';
+import { useUserRole } from '@/hooks/useUserRole';
 
-async function fetchRole(): Promise<"admin"|"user"|"unknown"> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const uid = sessionData.session?.user?.id;
-  if (!uid) return "unknown";
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", uid)
-    .maybeSingle();
-  if (error || !data?.role) return "user";
-  return (data.role as "admin"|"user") ?? "user";
-}
+export default function RequireAuth(props: { children: React.ReactNode; adminOnly?: boolean }) {
+  const { children, adminOnly = false } = props;
+  const session = useSession();
+  const { role } = useUserRole();
+  const location = useLocation();
 
-export default function RequireAuth({
-  children,
-  adminOnly = false,
-}: {
-  children: ReactNode;
-  adminOnly?: boolean;
-}) {
-  const navigate = useNavigate();
-  const [ok, setOk] = useState(false);
+  if (!session?.user) {
+    return <Navigate to="/signin" state={{ redirectTo: location.pathname }} replace />;
+  }
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        setOk(false);
-        navigate("/signin", { replace: true });
-        return;
-      }
-      if (!adminOnly) {
-        setOk(true);
-        return;
-      }
-      const role = await fetchRole();
-      if (role !== "admin") {
-        setOk(false);
-        navigate("/dashboard", { replace: true });
-        return;
-      }
-      setOk(true);
-    })();
-  }, [adminOnly, navigate]);
+  if (adminOnly && role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
-  return ok ? <>{children}</> : null;
+  return <>{children}</>;
 }

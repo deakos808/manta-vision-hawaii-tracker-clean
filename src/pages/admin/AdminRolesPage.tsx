@@ -1,96 +1,153 @@
 import React, { useEffect, useState } from "react";
-import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabase";
-type Role = "admin" | "user" | null;
-type Profile = { id: string; email: string | null; role: Role; created_at?: string };
+import { Link } from "react-router-dom";
+
+type RoleRow = {
+  id: string;           // auth.users.id (FK)
+  email: string;
+  role: "admin" | "user" | string;
+  is_active: boolean;
+  created_at: string | null;
+};
+
+function toHST(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-US", { timeZone: "Pacific/Honolulu" });
+}
 
 export default function AdminRolesPage() {
-  const [rows, setRows] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", role: "user" as "admin" | "user" });
+  const [rows, setRows] = useState<RoleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selfId, setSelfId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
-    const { data, error } = await supabase.from("profiles").select("id,email,role,created_at").order("email", { ascending: true });
-    if (!error && data) setRows(data as Profile[]);
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
-
-  async function setRole(id: string, role: "admin" | "user") {
-    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
-    if (!error) await load();
-  }
-
-  async function sendReset(email: string | null) {
-    if (!email) return;
-    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/set-password` });
-    alert(`Password reset link sent to ${email}`);
-  }
-
-  async function createUser(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.email || !form.password) return;
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { emailRedirectTo: `${window.location.origin}/set-password`, data: {} }
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setSelfId(data.user?.id);
     });
-    if (error) { alert(error.message); return; }
-    const userId = data.user?.id;
-    if (userId) {
-      await supabase.from("profiles").upsert({ id: userId, email: form.email, role: form.role }, { onConflict: "id" });
-      await load();
-      setForm({ email: "", password: "", role: "user" });
-      alert("User created. If email confirmation is required, they must confirm before signing in.");
+    (async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,email,role,is_active,created_at")
+        .order("created_at", { ascending: true });
+      if (error) {
+        console.error("[AdminRoles] load error", error);
+        setError(error.message);
+      } else {
+        setRows((data as any) ?? []);
+      }
+      setLoading(false);
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  async function setRole(id: string, role: RoleRow["role"]) {
+    setBusyId(id);
+    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, role } : r)));
+  }
+
+  async function setActive(id: string, is_active: boolean) {
+    setBusyId(id);
+    const { error } = await supabase.from("profiles").update({ is_active }).eq("id", id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, is_active } : r)));
+  }
+
+  async function deleteRow(row: RoleRow) {
+    if (row.id === selfId) {
+      alert("You cannot delete your own admin record.");
+      return;
     }
+    if (!confirm(`Delete role record for ${row.email}? This removes it from the roles table only.`)) return;
+    setBusyId(row.id);
+    const { error } = await supabase.from("profiles").delete().eq("id", row.id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
   }
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Admin · User Roles</h1>
-
-        <form onSubmit={createUser} className="mb-8 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-sm mb-1">Email</label>
-            <input className="border rounded px-3 py-2 w-full" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Temp Password</label>
-            <input className="border rounded px-3 py-2 w-full" type="text" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Role</label>
-            <select className="border rounded px-3 py-2 w-full" value={form.role} onChange={e=>setForm({...form,role:e.target.value as "admin"|"user"})}>
-              <option value="user">user</option>
-              <option value="admin">admin</option>
-            </select>
-          </div>
-          <button className="bg-blue-600 text-white rounded px-4 py-2 h-[38px]" type="submit">Create User</button>
-        </form>
-
-        <div className="border rounded">
-          <div className="px-4 py-2 font-semibold border-b bg-gray-50">Existing Users</div>
-          <div className="divide-y">
-            {loading && <div className="px-4 py-3">Loading…</div>}
-            {!loading && rows.map(p => (
-              <div key={p.id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{p.email ?? "—"}</div>
-                  <div className="text-xs text-gray-500">id: {p.id.slice(0,8)}… · role: <b>{p.role ?? "none"}</b></div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="border rounded px-3 py-1" onClick={()=>setRole(p.id, "user")}>Make user</button>
-                  <button className="border rounded px-3 py-1" onClick={()=>setRole(p.id, "admin")}>Make admin</button>
-                  <button className="border rounded px-3 py-1" onClick={()=>sendReset(p.email)}>Send reset link</button>
-                </div>
-              </div>
-            ))}
-            {!loading && rows.length===0 && <div className="px-4 py-3">No users</div>}
-          </div>
-        </div>
+    <div className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Admin Roles</h1>
+        <Link to="/admin/users-invite" className="text-sky-700 hover:underline">
+          Invite Users
+        </Link>
       </div>
-    </Layout>
+
+      {loading && <div className="text-gray-600">Loading…</div>}
+      {error && <div className="text-red-600 mb-3">{error}</div>}
+
+      {!loading && rows.length === 0 && (
+        <div className="text-gray-600">No users found.</div>
+      )}
+
+      {!loading && rows.length > 0 && (
+        <div className="overflow-x-auto border rounded">
+          <table className="min-w-full border-collapse">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-sm text-gray-600">
+                <th className="p-3 border-b">Email</th>
+                <th className="p-3 border-b">Role</th>
+                <th className="p-3 border-b">Active</th>
+                <th className="p-3 border-b">Created</th>
+                <th className="p-3 border-b">User ID</th>
+                <th className="p-3 border-b text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="text-sm">
+                  <td className="p-3 border-b align-middle">{r.email}</td>
+                  <td className="p-3 border-b align-middle">
+                    <select
+                      className="border rounded px-2 py-1"
+                      value={r.role}
+                      disabled={busyId === r.id}
+                      onChange={(e) => setRole(r.id, e.target.value as RoleRow["role"])}
+                    >
+                      <option value="user">user</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </td>
+                  <td className="p-3 border-b align-middle">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={!!r.is_active}
+                      disabled={busyId === r.id}
+                      onChange={(e) => setActive(r.id, e.target.checked)}
+                    />
+                  </td>
+                  <td className="p-3 border-b align-middle">{toHST(r.created_at)}</td>
+                  <td className="p-3 border-b align-middle">{r.id}</td>
+                  <td className="p-3 border-b align-middle">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        className="px-3 py-1 rounded border border-red-600 text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        disabled={busyId === r.id}
+                        onClick={() => deleteRow(r)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
