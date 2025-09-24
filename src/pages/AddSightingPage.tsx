@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MapLite from "@/components/maps/MapLite";
 
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
@@ -20,21 +21,24 @@ export default function AddSightingPage() {
 
   const [mapOpen, setMapOpen] = useState(false);
 
+  const latNum = parseFloat(lat);
+  const lonNum = parseFloat(lon);
+  const hasCoords = !Number.isNaN(latNum) && !Number.isNaN(lonNum);
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="mb-2 text-sm text-gray-600">
-          <Link to="/dashboard" className="text-sky-700 hover:underline">Dashboard</Link>
-          <span className="mx-2 text-gray-400">/</span>
-          <span className="text-gray-600">Add New Sighting</span>
+        <div className="rounded-lg bg-gradient-to-r from-sky-700 to-sky-600 text-white px-5 py-6 mb-4">
+          <h1 className="text-3xl font-bold">Add New Sighting</h1>
         </div>
 
-        <div className="rounded-lg bg-white border p-4 mb-6">
-          <h1 className="text-2xl font-semibold">Add New Sighting</h1>
+        <div className="mb-4 text-sm">
+          <Link to="/dashboard" className="text-sky-700 hover:underline">Dashboard</Link>
+          <span className="mx-2 text-gray-400">/</span>
+          <span className="text-gray-700">Add New Sighting</span>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Card 1: Sighting Details */}
           <div className="rounded-lg bg-white border p-4">
             <h2 className="font-medium mb-3">Sighting Details</h2>
             <div className="space-y-3">
@@ -74,25 +78,12 @@ export default function AddSightingPage() {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={()=>setMapOpen(true)}
-                  className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50"
-                >
-                  Add Lat/Lon
-                </button>
-                <button
-                  type="button"
-                  onClick={()=>setMapOpen(true)}
-                  className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50"
-                >
-                  Use Map for Location
-                </button>
+                <button type="button" onClick={()=>setMapOpen(true)} className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50">Add Lat/Lon</button>
+                <button type="button" onClick={()=>setMapOpen(true)} className="px-3 py-2 rounded border text-sky-700 hover:bg-sky-50">Use Map for Location</button>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Location & Submitter */}
           <div className="rounded-lg bg-white border p-4">
             <h2 className="font-medium mb-3">Location & Submitter</h2>
             <div className="space-y-3">
@@ -109,13 +100,7 @@ export default function AddSightingPage() {
 
               <div className="max-w-xl">
                 <Label className="mb-1 block">Notes</Label>
-                <textarea
-                  value={notes}
-                  onChange={(e)=>setNotes(e.target.value)}
-                  rows={4}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Optional notes…"
-                />
+                <textarea value={notes} onChange={(e)=>setNotes(e.target.value)} rows={4} className="w-full border rounded px-3 py-2" placeholder="Optional notes…" />
               </div>
 
               <div className="grid grid-cols-2 gap-3 max-w-xl">
@@ -146,16 +131,12 @@ export default function AddSightingPage() {
           </button>
         </div>
 
-        {/* Lat/Lon Modal (map placeholder; manual entry works now) */}
         {mapOpen && (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg border w-full max-w-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-medium">Pick Location</h3>
                 <button onClick={()=>setMapOpen(false)} className="px-2 py-1 border rounded">Close</button>
-              </div>
-              <div className="mb-3 text-sm text-gray-600">
-                Map integration coming next—enter coordinates now, or we’ll drop a pin automatically when the map is enabled.
               </div>
 
               <div className="grid grid-cols-2 gap-3 max-w-md mb-4">
@@ -169,9 +150,11 @@ export default function AddSightingPage() {
                 </div>
               </div>
 
-              <div className="border rounded h-64 flex items-center justify-center text-sm text-gray-500">
-                Map Placeholder (centered on Hawaiʻi)
-              </div>
+              <MapLite
+                lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
+                lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
+                onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
+              />
 
               <div className="mt-4 flex justify-end gap-2">
                 <button onClick={()=>setMapOpen(false)} className="px-3 py-2 rounded border">Cancel</button>
