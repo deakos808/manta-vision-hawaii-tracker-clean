@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import MapLite from "@/components/maps/MapLite";
 import MantaPhotosModal from "@/components/photos/MantaPhotosModal";
 
+
+import MantasSummaryList from "@/components/sightings/MantasSummaryList";
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -29,7 +31,7 @@ export default function AddSightingPage() {
   const hasCoords = !Number.isNaN(latNum) && !Number.isNaN(lonNum);
 
   return (
-    <Layout>
+<Layout>
       <div className="max-w-6xl mx-auto px-4 py-6">
         <section className="rounded-lg bg-sky-700 text-white px-6 py-7 mb-4">
       <h1 className="text-3xl font-bold text-center">Add New Sighting</h1>
@@ -157,7 +159,10 @@ export default function AddSightingPage() {
               <MapLite
                 lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
                 lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
-                onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
+                onPick={(latV, lonV) => { setLat(latV.toFixed(6)
+<div className="mt-6"><MantasSummaryList /></div>
+);
+ setLon(lonV.toFixed(6)); }}
               />
 
               <div className="mt-4 flex justify-end gap-2">
