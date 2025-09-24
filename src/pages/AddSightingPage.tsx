@@ -20,6 +20,8 @@ export default function AddSightingPage() {
   const [phone, setPhone] = useState("");
   const [totalMantas, setTotalMantas] = useState<string>("");
 
+  const [mantaModalOpen, setMantaModalOpen] = useState(false);
+  const [mantas, setMantas] = useState<{ id:string; name:string; photos:any[] }[]>([]);
   const [mapOpen, setMapOpen] = useState(false);
 
   const latNum = parseFloat(lat);
@@ -29,9 +31,9 @@ export default function AddSightingPage() {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="rounded-lg bg-gradient-to-r from-sky-700 to-sky-600 text-white px-5 py-6 mb-4">
-          <h1 className="text-3xl font-bold">Add New Sighting</h1>
-        </div>
+        <section className="rounded-lg bg-sky-700 text-white px-6 py-7 mb-4">
+      <h1 className="text-3xl font-bold text-center">Add New Sighting</h1>
+    </section>
 
         <div className="mb-4 text-sm">
           <Link to="/dashboard" className="text-sky-700 hover:underline">Dashboard</Link>
