@@ -8,6 +8,11 @@ import MantaPhotosModal from "@/components/photos/MantaPhotosModal";
 
 
 import MantasSummaryList from "@/components/sightings/MantasSummaryList";
+function MantasSummaryRender(){ return (<>
+<div className="mt-6"><MantasSummaryList /></div>
+<MantasSummaryRender />
+</>); }
+
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -159,9 +164,7 @@ export default function AddSightingPage() {
               <MapLite
                 lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
                 lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
-                onPick={(latV, lonV) => { setLat(latV.toFixed(6)
-<div className="mt-6"><MantasSummaryList /></div>
-);
+                onPick={(latV, lonV) => { setLat(latV.toFixed(6));
  setLon(lonV.toFixed(6)); }}
               />
 
