@@ -21,7 +21,7 @@ export default function SignInPage() {
       setErrorMsg(error.message || 'Invalid login credentials');
       return;
     }
-    navigate(redirectTo, { replace: true });
+    navigate("/dashboard",{ replace:true });
   }
 
   async function handleReset(e: React.MouseEvent) {
