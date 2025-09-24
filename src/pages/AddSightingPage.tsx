@@ -4,6 +4,7 @@ import Layout from "@/components/layout/Layout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import MapLite from "@/components/maps/MapLite";
+import MantaPhotosModal from "@/components/photos/MantaPhotosModal";
 
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
@@ -125,11 +126,12 @@ export default function AddSightingPage() {
           </div>
         </div>
 
-        <div className="mt-6">
-          <button className="bg-sky-600 text-white px-4 py-2 rounded disabled:opacity-60" disabled>
-            Submit (coming soon)
-          </button>
-        </div>
+        <div className="mt-6 flex items-center gap-3">
+  <button className="px-3 py-2 rounded border" type="button" onClick={()=>setMantaModalOpen(true)}>Add Manta Photos</button>
+  <button className="bg-sky-600 text-white px-4 py-2 rounded disabled:opacity-60" disabled>
+    Submit (coming soon)
+  </button>
+</div>
 
         {mapOpen && (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
