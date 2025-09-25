@@ -30,7 +30,7 @@ export default function AddSightingPage() {
   const lonNum = parseFloat(lon);
   const hasCoords = !Number.isNaN(latNum) && !Number.isNaN(lonNum);
 
-  return (
+  return (<>
 <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6">
         <section className="rounded-lg bg-sky-700 text-white px-6 py-7 mb-4">
@@ -45,7 +45,7 @@ export default function AddSightingPage() {
 
         <div className="grid grid-cols-1 gap-6">
           <div className="rounded-lg bg-white border p-4">
-            <h2 className="font-medium mb-3">Section 1: Sighting Details</h2>
+            <h2 className="font-medium mb-3">Sighting Details</h2>
             <div className="space-y-3">
               <div className="max-w-sm">
                 <Label className="mb-1 block">Date *</Label>
@@ -90,7 +90,7 @@ export default function AddSightingPage() {
           </div>
 
           <div className="rounded-lg bg-white border p-4">
-            <h2 className="font-medium mb-3">Section 2: Location & Submitter</h2>
+            <h2 className="font-medium mb-3">Location & Submitter</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 max-w-md">
                 <div>
@@ -159,7 +159,9 @@ export default function AddSightingPage() {
               <MapLite
                 lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
                 lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
-                onPick={(latV, lonV) => { setLat(latV.toFixed(6));
+                onPick={(latV, lonV) => { setLat(latV.toFixed(6)
+<div data-anchor-submit-bottom className="mt-10 flex justify-center"><Button variant="default">Submit (coming soon)</Button></div>
+</>);
  setLon(lonV.toFixed(6)); }}
               />
 
