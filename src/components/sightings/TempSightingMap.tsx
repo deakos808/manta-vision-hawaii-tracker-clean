@@ -70,7 +70,7 @@ zoom: 6
     if (!Number.isNaN(la) && !Number.isNaN(lo)) onPick(la, lo);
   }
 
-  useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },[open]);
+  useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); return ()=>{ clearTimeout(t1); clearTimeout(t2); }; },[open]);
 useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); },[]);
 return (<div className="space-y-3">
       <div ref={divRef} className="h-64 w-full rounded-md border" />
