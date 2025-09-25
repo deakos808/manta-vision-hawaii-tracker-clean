@@ -41,25 +41,41 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }, [open, initialTempName]);
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    if (busy) return;
-    const files = Array.from(e.dataTransfer.files || []);
-    handleFiles(files);
-  }
+  e.preventDefault();
+  e.stopPropagation();
+  if (busy) return;
+  const files = Array.from(e.dataTransfer?.files || []);
+  console.log("[PhotosModal] drop", files.length);
+  handleFiles(files);
+}
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    handleFiles(files);
-    e.currentTarget.value = "";
-  }
+  const files = Array.from(e.target.files || []);
+  console.log("[PhotosModal] browse selected", files.length);
+  handleFiles(files);
+  e.currentTarget.value = "";
+}
 
   async function handleFiles(files: File[]) {
-    setBusy(true);
-    const uploaded: Uploaded[] = [];
-    for (const f of files) {
-      if (!allow.includes(f.type)) continue;
-      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-      const id = uuid();
-      const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
+  console.log("[PhotosModal] handleFiles", files.map(f=>f.name));
+  setBusy(true);
+  const uploaded: Uploaded[] = [];
+  for (const f of files) {
+    if (!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type); continue; }
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+    const id = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
+    try {
+      const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
+      if (error) { console.warn("[PhotosModal] upload error", error.message); continue; }
+      const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
+      uploaded.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
+    } catch (e:any) {
+      console.error("[PhotosModal] upload exception", e?.message || e);
+    }
+  }
+  setPhotos((prev) => [...prev, ...uploaded]);
+  setBusy(false);
+}/${tempMantaId}/${id}.${ext}`;
 
       const { error } = await supabase.storage
         .from("temp-images")
@@ -116,11 +132,11 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
+    <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-          <button type="button" onClick={onClose} className="px-2 py-1 border rounded">Close</button>
+          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -133,7 +149,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
               onChange={(e) => setTempName(e.target.value)}
             />
             <div
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e)=>{ e.preventDefault(); e.stopPropagation(); }} onDragEnter={(e)=>{e.preventDefault();}} onDragLeave={(e)=>{e.preventDefault();}}
               onDrop={onDrop}
               className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
             >
@@ -141,20 +157,24 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
               <div className="my-2">or</div>
               <button
                 type="button"
-                onClick={() => inputRef.current?.click()}
+                onClick={()=>{ console.log("[PhotosModal] browse click"); inputRef.current?.click(); }}
                 className="px-3 py-1 border rounded"
                 disabled={busy}
               >
                 Browse…
               </button>
               <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={onBrowse}
-              />
+  ref={inputRef}
+  type="file"
+  multiple
+  accept="image/*"
+  className="hidden"
+  onChange={onBrowse}
+/>
+<div className="mt-2">
+  <input data-fallback-file type="file" multiple accept="image/*" onChange={onBrowse} />
+  <div className="text-[11px] text-gray-500">If “Browse…” doesn’t open, use this picker.</div>
+</div>
               <div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
             </div>
           </div>
@@ -210,7 +230,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
+          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
           <button type="button" onClick={submitManta} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
             Save Manta
           </button>
