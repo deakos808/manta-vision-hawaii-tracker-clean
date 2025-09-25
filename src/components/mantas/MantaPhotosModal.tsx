@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState } from "react";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +19,7 @@ type Props = {
   onClose: () => void;
   sightingId: string;
   onAddManta: (manta: { id: string; name: string; photos: Uploaded[] }) => void;
+  initialTempName?: string;
 };
 
 function uuid() {
@@ -25,7 +27,7 @@ function uuid() {
   return Math.random().toString(36).slice(2);
 }
 
-export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta }: Props) {
+export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName }: Props) {
   const [tempName, setTempName] = useState("");
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
@@ -33,6 +35,10 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
 
   const tempMantaId = useMemo(() => uuid(), []);
   const allow = ["image/jpeg", "image/png", "image/webp"];
+
+  useEffect(() => {
+    if (open) setTempName((initialTempName || "").trim());
+  }, [open, initialTempName]);
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -45,6 +51,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
     handleFiles(files);
     e.currentTarget.value = "";
   }
+
   async function handleFiles(files: File[]) {
     setBusy(true);
     const uploaded: Uploaded[] = [];
@@ -113,7 +120,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-          <button onClick={onClose} className="px-2 py-1 border rounded">Close</button>
+          <button type="button" onClick={onClose} className="px-2 py-1 border rounded">Close</button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -203,8 +210,8 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
-          <button onClick={submitManta} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
+          <button type="button" onClick={onClose} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
+          <button type="button" onClick={submitManta} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
             Save Manta
           </button>
         </div>
