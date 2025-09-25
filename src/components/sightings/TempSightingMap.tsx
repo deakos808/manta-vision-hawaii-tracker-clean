@@ -16,7 +16,7 @@ export default function TempSightingMap({ lat, lon, onPick, open }: Props) {
 
   useEffect(() => {
     const hasWebGL = (() => { try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl")); } catch { return false; }})();
-    if (!hasWebGL) return;
+    if (!hasWebGL){ console.log("[MapLite] WebGL unavailable"); return; } else { console.log("[MapLite] WebGL OK, initializing"); }
     let isMounted = true;
     (async () => {
       try {
@@ -71,6 +71,8 @@ zoom: 6
   }
 
   useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); const t3=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },600); return ()=>{ clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; },[open]);
+useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); }, [open]);
+useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); const t3=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },600); return ()=>{ clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; },[open]);
 useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); },[]);
 return (<div className="space-y-3">
       <div ref={divRef} className="h-64 w-full rounded-md border" />
