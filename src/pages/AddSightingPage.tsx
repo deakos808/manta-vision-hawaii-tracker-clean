@@ -12,6 +12,7 @@ import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import AddMantasModal from "@/components/mantas/AddMantasModal";
+import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -30,6 +31,7 @@ export default function AddSightingPage() {
   const [notes, setNotes] = useState("");
   const [mantaModalOpen, setMantaModalOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const clientRef = useMemo(()=> (typeof crypto!=="undefined" && "randomUUID" in crypto ? "sighting-"+crypto.randomUUID() : "sighting-"+Math.random().toString(36).slice(2)), []);
   const [attempted, setAttempted] = useState(false);
 
   const { islands, locations, loadingIslands, loadingLocations } = useSightingLookups(island);
