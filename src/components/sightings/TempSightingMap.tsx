@@ -73,7 +73,10 @@ zoom: 6
   useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); const t3=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },600); return ()=>{ clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; },[open]);
 useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); }, [open]);
 useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); const t3=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },600); return ()=>{ clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; },[open]);
+useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); }, [open]);
+useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } const t1=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },50); const t2=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },300); const t3=setTimeout(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },600); return ()=>{ clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; },[open]);
 useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); },[]);
+console.log("[MapLite] render open=", open, "lat=", lat, "lon=", lon);
 return (<div className="space-y-3">
       <div ref={divRef} className="h-64 w-full rounded-md border" />
       <div className="grid grid-cols-2 gap-3">
