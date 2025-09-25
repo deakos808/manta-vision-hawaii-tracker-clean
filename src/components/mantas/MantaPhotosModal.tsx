@@ -57,17 +57,17 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files || []);
-    console.log("[PhotosModal] drop", files.length);
-    handleFiles(files);
-  }
+  e.preventDefault();
+  const files = Array.from(e.dataTransfer.files || []);
+  console.log("[PhotosModal] drop:", files.map(f=>f.name));
+  handleFiles(files);
+}
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    console.log("[PhotosModal] browse selected", files.length);
-    handleFiles(files);
-    e.currentTarget.value = "";
-  }
+  const files = Array.from(e.target.files || []);
+  console.log("[PhotosModal] browse selected:", files.map(f=>f.name));
+  handleFiles(files);
+  e.currentTarget.value = "";
+}
   function setView(id: string, view: View) {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, view } : p));
   }
@@ -100,8 +100,19 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
               <div>Drag & drop photos here</div>
               <div className="my-2">or</div>
               <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
-              <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={onBrowse} />
-              <div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
+              <input
+  ref={inputRef}
+  type="file"
+  multiple
+  accept="image/*"
+  className="hidden"
+  onChange={onBrowse}
+/>
+<div className="mt-3 w-full text-left">
+  <label className="text-xs block mb-1">Or use this chooser</label>
+  <input data-visible-file type="file" multiple accept="image/*" onChange={onBrowse} />
+</div>
+<div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
             </div>
           </div>
 
