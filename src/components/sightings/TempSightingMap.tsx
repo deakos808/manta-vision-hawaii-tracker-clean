@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { Input } from "@/components/ui/input";
 
 type Props = { lat?: number; lon?: number; onPick: (lat: number, lon: number) => void; };
@@ -14,11 +15,8 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
   useEffect(() => { if (lon != null) setLonV(String(lon)); }, [lon]);
 
   useEffect(() => {
-    const hasWebGL = (() => {
-      try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl")); } catch { return false; }
-    })();
+    const hasWebGL = (() => { try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl")); } catch { return false; }})();
     if (!hasWebGL) return;
-
     let isMounted = true;
     (async () => {
       try {
@@ -28,17 +26,14 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           container: divRef.current,
           style: "https://demotiles.maplibre.org/style.json",
           center: [lon ?? -155.5828, lat ?? 19.8968],
-          zoom: 7,
+          zoom: 6
         });
         mapRef.current = m;
 
         function setMarker(lonN:number, latN:number){
           if (!mapRef.current) return;
-          if (!markerRef.current) {
-            markerRef.current = new maplibregl.Marker().setLngLat([lonN, latN]).addTo(mapRef.current);
-          } else {
-            markerRef.current.setLngLat([lonN, latN]);
-          }
+          if (!markerRef.current) markerRef.current = new maplibregl.Marker().addTo(mapRef.current);
+          markerRef.current.setLngLat([lonN, latN]);
         }
 
         m.on("load", () => {
@@ -53,9 +48,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           onPick(latN, lonN);
           setMarker(lonN, latN);
         });
-      } catch {
-        /* silent fallback */
-      }
+      } catch {}
     })();
     return () => { isMounted = false; try { mapRef.current && mapRef.current.remove(); } catch {} };
   }, []);

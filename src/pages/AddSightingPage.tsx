@@ -194,8 +194,8 @@ export default function AddSightingPage() {
             onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
           />
           <div className="mt-4 flex justify-end gap-2">
-            <Button variant="secondary" onClick={()=>setMapOpen(false)}>Close</Button>
-            <Button variant="default" onClick={()=>setMapOpen(false)}>Use These Coordinates</Button>
+            <Button variant="secondary" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Close</Button>
+            <Button variant="default" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Use These Coordinates</Button>
           </div>
         </DialogContent>
       </Dialog>
