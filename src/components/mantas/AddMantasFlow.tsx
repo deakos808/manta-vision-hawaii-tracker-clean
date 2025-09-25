@@ -87,7 +87,7 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">{photos.length} photos added</div>
-              <Button variant="default" type="button" onClick={()=>setPhotosOpen(true)}>Add Photos</Button>
+              <Button variant="default" type="button" onClick={()=>{ console.log("[AddMantasFlow] open photos"); setPhotosOpen(true); }}>Add Photos</Button>
             </div>
           </div>
 
