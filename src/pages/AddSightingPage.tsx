@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import AddMantasModal from "@/components/mantas/AddMantasModal";
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -191,7 +192,7 @@ export default function AddSightingPage() {
         </Card>
 
         <div className="flex items-center justify-between">
-          <Button variant="default" type="button" onClick={()=>setMantaModalOpen(true)}>Add Manta Photos</Button>
+          <Button variant="default" type="button" onClick={()=>setMantaModalOpen(true)}>Add Mantas</Button>
           <div className="flex-1"></div>
         </div>
 
@@ -207,13 +208,15 @@ export default function AddSightingPage() {
             lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
             lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
             onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
-           open={mapOpen} />
+           open={mapOpen}  open={mapOpen} />
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Close</Button>
             <Button variant="default" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Use These Coordinates</Button>
           </div>
         </DialogContent>
       </Dialog>
+    
+      <AddMantasModal open={mantaModalOpen} onOpenChange={setMantaModalOpen} />
     </Layout>
   );
 }

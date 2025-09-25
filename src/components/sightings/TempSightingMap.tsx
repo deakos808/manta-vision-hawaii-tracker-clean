@@ -24,9 +24,20 @@ export default function TempSightingMap({ lat, lon, onPick, open }: Props) {
         if (!isMounted || !divRef.current) return;
         const m = new maplibregl.Map({
           container: divRef.current,
-          style: "https://demotiles.maplibre.org/style.json",
-          center: [lon ?? -155.5828, lat ?? 19.8968],
-          zoom: 6
+          style: {
+  version: 8,
+  sources: {
+    osm: {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors"
+    }
+  },
+  layers: [{ id: "osm", type: "raster", source: "osm" }]
+},
+center: [lon ?? -155.5828, lat ?? 19.8968],
+zoom: 6
         });
         mapRef.current = m;
 
