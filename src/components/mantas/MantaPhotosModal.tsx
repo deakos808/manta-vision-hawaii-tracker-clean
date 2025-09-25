@@ -63,7 +63,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
     if (!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type); continue; }
     const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
     const id = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-    const path = `${sightingId${sightingId}/${tempMantaId}/${id}.${ext}`;
+    const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
     try {
       const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
       if (error) { console.warn("[PhotosModal] upload error", error.message); continue; }
