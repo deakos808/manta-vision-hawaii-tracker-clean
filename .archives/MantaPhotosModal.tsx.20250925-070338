@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 
 type View = "ventral" | "dorsal" | "other";
@@ -40,10 +41,12 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
+    e.stopPropagation();
     if (busy) return;
-    const files = Array.from(e.dataTransfer.files || []);
+    const files = Array.from(e.dataTransfer?.files || []);
     handleFiles(files);
   }
+
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     handleFiles(files);
@@ -93,6 +96,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
       )
     );
   }
+
   function setBestDorsal(id: string) {
     setPhotos((prev) =>
       prev.map((p) =>
@@ -113,12 +117,12 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" bg-black/40 flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); onClose(); }} className="px-2 py-1 border rounded">Close</button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -131,7 +135,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
               onChange={(e) => setTempName(e.target.value)}
             />
             <div
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onDrop={onDrop}
               className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
             >
@@ -153,6 +157,10 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
                 className="hidden"
                 onChange={onBrowse}
               />
+              <div className="mt-2">
+                <input data-fallback-file type="file" multiple accept="image/*" onChange={onBrowse} />
+                <div className="text-[11px] text-gray-500">If “Browse…” doesn’t open, use this picker.</div>
+              </div>
               <div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
             </div>
           </div>
@@ -208,12 +216,13 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); submitManta();}} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); onClose(); }} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); submitManta(); }} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
             Save Manta
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
