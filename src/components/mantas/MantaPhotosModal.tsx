@@ -26,6 +26,7 @@ function uuid() {
 }
 
 export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName }: Props) {
+  const [dbg, setDbg] = useState({ over: 0, drop: 0, browse: 0 });
   const [dbg, setDbg] = useState({over:0, drop:0, browse:0});
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
