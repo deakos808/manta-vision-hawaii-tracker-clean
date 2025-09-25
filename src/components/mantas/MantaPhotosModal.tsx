@@ -29,7 +29,9 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   const [tempName, setTempName] = useState("");
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  
+  const [lastMsg, setLastMsg] = useState<string>("probe: mounted");
+const inputRef = useRef<HTMLInputElement | null>(null);
 
   const tempMantaId = useMemo(() => uuid(), []);
 
@@ -39,14 +41,31 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
-    setBusy(true);
-    const allow = ["image/jpeg", "image/png", "image/webp"];
-    const uploaded: Uploaded[] = [];
-    for (const f of files) {
-      if (!allow.includes(f.type)) continue;
-      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-      const id = uuid();
-      const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
+  if (!files.length) return;
+  setBusy(true);
+  setLastMsg("uploading " + files.length + "...");
+  const allow = ["image/jpeg","image/png","image/webp"];
+  const uploaded: Uploaded[] = [];
+  for (const f of files) {
+    if (!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type); continue; }
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+    const id = uuid();
+    const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
+    console.log("[PhotosModal] upload ->", path);
+    const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
+    if (error) { console.warn("[PhotosModal] upload error", error.message); setLastMsg("upload error: " + error.message); continue; }
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
+    uploaded.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
+  }
+  if (uploaded.length) {
+    setPhotos(prev => [...prev, ...uploaded]);
+    console.log("[PhotosModal] uploaded ok:", uploaded.length);
+    setLastMsg("uploaded " + uploaded.length);
+  } else {
+    if (files.length) console.log("[PhotosModal] no files uploaded");
+  }
+  setBusy(false);
+}/${tempMantaId}/${id}.${ext}`;
       const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
       if (error) { console.warn("[PhotosModal] upload error", error.message); continue; }
       const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
@@ -60,11 +79,13 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   e.preventDefault();
   const files = Array.from(e.dataTransfer.files || []);
   console.log("[PhotosModal] drop:", files.map(f=>f.name));
+  setLastMsg("drop " + files.length + " file(s)");
   handleFiles(files);
 }
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
   const files = Array.from(e.target.files || []);
   console.log("[PhotosModal] browse selected:", files.map(f=>f.name));
+  setLastMsg("browse " + files.length + " file(s)");
   handleFiles(files);
   e.currentTarget.value = "";
 }
@@ -88,9 +109,10 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
     <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
-        </div>
+  <h3 className="text-lg font-medium">Add Manta & Photos</h3>
+  <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
+</div>
+<div className="text-[11px] text-muted-foreground mb-2">last event: {lastMsg}</div>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
