@@ -1,2 +1,2 @@
-export const DEPLOYED_AT = '2025-09-25T05:21:31.029Z';
-export const GIT_HASH = '3432367';
+export const DEPLOYED_AT = '2025-09-25T05:27:30.131Z';
+export const GIT_HASH = '27813e9';
