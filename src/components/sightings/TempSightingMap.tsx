@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Input } from "@/components/ui/input";
 
-type Props = { lat?: number; lon?: number; onPick: (lat: number, lon: number) => void; };
+type Props = { lat?: number; lon?: number; onPick: (lat: number, lon: number) => void; open?: boolean; };
 
-export default function TempSightingMap({ lat, lon, onPick }: Props) {
+export default function TempSightingMap({ lat, lon, onPick, open }: Props) {
   const [latV, setLatV] = useState<string>(lat != null ? String(lat) : "");
   const [lonV, setLonV] = useState<string>(lon != null ? String(lon) : "");
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -59,8 +59,9 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
     if (!Number.isNaN(la) && !Number.isNaN(lo)) onPick(la, lo);
   }
 
-  return (
-    <div className="space-y-3">
+  useEffect(()=>{ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } },[open]);
+useEffect(()=>{ function r(){ if(mapRef.current){ try{ mapRef.current.resize(); }catch{} } } window.addEventListener("resize", r); return ()=>window.removeEventListener("resize", r); },[]);
+return (<div className="space-y-3">
       <div ref={divRef} className="h-64 w-full rounded-md border" />
       <div className="grid grid-cols-2 gap-3">
         <div>

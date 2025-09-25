@@ -140,16 +140,30 @@ export default function AddSightingPage() {
               </div>
               <div>
                 <Label>Location</Label>
-                <Select value={location} onValueChange={setLocation} disabled={!island}>
-                  <SelectTrigger className={cls("", err.location)}>
-                    <SelectValue placeholder={island ? (loadingLocations ? "Loading..." : "Select location") : "Select island first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc)=>(<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+{!customLoc ? (
+  <>
+    <Select value={location} onValueChange={setLocation} disabled={!island}>
+      <SelectTrigger className={cls("", err.location)}>
+        <SelectValue placeholder={island ? (loadingLocations ? "Loading..." : "Select location") : "Select island first"} />
+      </SelectTrigger>
+      <SelectContent>
+        {locations.map((loc)=>(<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
+      </SelectContent>
+    </Select>
+    <div className="mt-1 text-xs">
+      <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(true); setLocation(""); }}>Not listed? Add new</button>
+    </div>
+  </>
+) : (
+  <>
+    <Input placeholder="Type a new location name" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
+    <div className="mt-1 text-xs">
+      <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(false); }}>Use dropdown instead</button>
+    </div>
+  </>
+)}
+</div>
+</div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="lat">Latitude</Label>
@@ -192,7 +206,7 @@ export default function AddSightingPage() {
             lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
             lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
             onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
-          />
+           open={mapOpen} />
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Close</Button>
             <Button variant="default" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Use These Coordinates</Button>
