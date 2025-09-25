@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
+import { useSightingLookups } from "@/hooks/useSightingLookups";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TempSightingMap from "@/components/sightings/TempSightingMap";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
@@ -24,7 +27,10 @@ export default function AddSightingPage() {
 
   const [notes, setNotes] = useState("");
   const [mantaModalOpen, setMantaModalOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [attempted, setAttempted] = useState(false);
+
+  const { islands, locations, loadingIslands, loadingLocations } = useSightingLookups(island);
 
   const locOk = useMemo(() => {
     const havePlace = island.trim() && location.trim();
@@ -122,12 +128,26 @@ export default function AddSightingPage() {
           <CardContent className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="island">Island</Label>
-                <Input id="island" placeholder="e.g., Maui" value={island} onChange={(e)=>setIsland(e.target.value)} className={cls("", err.island)} />
+                <Label>Island</Label>
+                <Select value={island} onValueChange={(v)=>{ setIsland(v); setLocation(""); }}>
+                  <SelectTrigger className={cls("", err.island)}>
+                    <SelectValue placeholder={loadingIslands ? "Loading..." : "Select island"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {islands.map((i)=>(<SelectItem key={i} value={i}>{i}</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label htmlFor="location">Location</Label>
-                <Input id="location" placeholder="e.g., site / bay / reef" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
+                <Label>Location</Label>
+                <Select value={location} onValueChange={setLocation} disabled={!island}>
+                  <SelectTrigger className={cls("", err.location)}>
+                    <SelectValue placeholder={island ? (loadingLocations ? "Loading..." : "Select location") : "Select island first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc)=>(<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -141,8 +161,7 @@ export default function AddSightingPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" type="button" onClick={()=>{ if(lat && lon){ setLat(parseFloat(lat).toFixed(6)); setLon(parseFloat(lon).toFixed(6)); } }}>Add Lat/Lon</Button>
-              <Button variant="outline" type="button">Use Map for Location</Button>
+              <Button variant="outline" type="button" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
             </div>
           </CardContent>
         </Card>
@@ -162,9 +181,24 @@ export default function AddSightingPage() {
         </div>
 
         <div className="mt-10 flex justify-center">
-          <Button variant="default" type="button" onClick={handleSubmit} disabled={!isValid}>Submit</Button>
+          <Button variant="default" type="button" onClick={()=>{ setAttempted(true); handleSubmit(); }} disabled={!isValid}>Submit</Button>
         </div>
       </div>
+
+      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Pick Location</DialogTitle></DialogHeader>
+          <TempSightingMap
+            lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
+            lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
+            onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="secondary" onClick={()=>setMapOpen(false)}>Close</Button>
+            <Button variant="default" onClick={()=>setMapOpen(false)}>Use These Coordinates</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
