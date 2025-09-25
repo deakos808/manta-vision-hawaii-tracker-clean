@@ -4,6 +4,7 @@ import Header from '@/components/layout/Header';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUser } from '@supabase/auth-helpers-react';
 
+import SubmitDock from "@/components/sightings/SubmitDock";
 /*
   The generated constants live in <repo-root>/generated/version.ts
   ‣ This path is OUTSIDE src/, so nodemon ignores it and no restart loop occurs.
@@ -35,6 +36,7 @@ export default function Layout({ children }: Props) {
   const user    = useUser();
 
   return (<>
+<>
 <div className="flex flex-col min-h-screen bg-white text-black">
       <Header />
       <main className="flex-grow px-4 py-6">{children}</main>
@@ -50,5 +52,7 @@ export default function Layout({ children }: Props) {
           <strong>{toHST(DEPLOYED_AT)}</strong>&nbsp;—&nbsp;{GIT_HASH}<br /><small className="text-xs text-gray-500">BUILD: manta-vision-hawaii-tracker-clean</small>
         </div>
       </footer>
-    </div></>);
+    </div></>
+<SubmitDock />
+</>);
 }
