@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +10,14 @@ import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 type View = "ventral" | "dorsal" | "other";
 type Uploaded = { id: string; name: string; url: string; path: string; view: View; isBestVentral?: boolean; isBestDorsal?: boolean; };
 
+type MantaDraft = { id?: string; name?: string; age_class?: string; gender?: string; size?: string; photos?: Uploaded[] };
+
 type Props = {
   open: boolean;
   onOpenChange: (v:boolean)=>void;
   sightingId: string;
   onAddManta: (manta: { id: string; name: string; age_class?: string; gender?: string; size?: string; photos: Uploaded[] }) => void;
+  initialManta?: MantaDraft | null;
 };
 
 function uuid(){ if(typeof crypto!=="undefined" && "randomUUID" in crypto) return crypto.randomUUID(); return Math.random().toString(36).slice(2); }
@@ -21,8 +25,8 @@ function uuid(){ if(typeof crypto!=="undefined" && "randomUUID" in crypto) retur
 const GENDERS = ["Male","Female","Unknown"];
 const AGE_CLASSES = ["Adult","Juvenile","Yearling","Unknown"];
 
-export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddManta }: Props){
-  const [tempId] = useState(()=>uuid());
+export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddManta, initialManta }: Props){
+  const [tempId, setTempId] = useState(()=>uuid());
   const [name,setName]=useState("");
   const [age,setAge]=useState("");
   const [gender,setGender]=useState("");
@@ -32,8 +36,19 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
 
   const suggested = useMemo(()=> name.trim() || "A", [name]);
 
+  useEffect(()=>{
+    if(open){
+      setTempId(initialManta?.id || uuid());
+      setName(initialManta?.name || "");
+      setAge(initialManta?.age_class || "");
+      setGender(initialManta?.gender || "");
+      setSize(initialManta?.size || "");
+      setPhotos(initialManta?.photos || []);
+    }
+  },[open, initialManta?.id]);
+
   function handleAddPhotos(m:{id:string; name:string; photos:Uploaded[]}) {
-    if(!name && m.name) setName(m.name);
+    if(m.name) setName(m.name);
     setPhotos(m.photos||[]);
     setPhotosOpen(false);
   }
@@ -41,7 +56,6 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
   function saveManta(){
     const finalName=(name||"").trim() || suggested;
     onAddManta({ id: tempId, name: finalName, age_class: age || undefined, gender: gender || undefined, size: size || undefined, photos });
-    setName(""); setAge(""); setGender(""); setSize(""); setPhotos([]);
     onOpenChange(false);
   }
 
@@ -87,7 +101,7 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">{photos.length} photos added</div>
-              <Button variant="default" type="button" onClick={()=>{ console.log("[AddMantasFlow] open photos"); setPhotosOpen(true); }}>Add Photos</Button>
+              <Button variant="default" type="button" onClick={()=>{ setPhotosOpen(true); }}>Add Photos</Button>
             </div>
           </div>
 
@@ -98,7 +112,13 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
         </DialogContent>
       </Dialog>
 
-      <MantaPhotosModal open={photosOpen} onClose={()=>setPhotosOpen(false)} sightingId={sightingId} onAddManta={handleAddPhotos} />
+      <MantaPhotosModal
+        open={photosOpen}
+        onClose={()=>setPhotosOpen(false)}
+        sightingId={sightingId}
+        initialTempName={name || suggested}
+        onAddManta={handleAddPhotos}
+      />
     </>
   );
 }
