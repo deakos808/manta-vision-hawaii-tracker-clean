@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 
 type View = "ventral" | "dorsal" | "other";
@@ -16,6 +17,9 @@ type Props = {
 };
 
 function uuid(){ if(typeof crypto!=="undefined" && "randomUUID" in crypto) return crypto.randomUUID(); return Math.random().toString(36).slice(2); }
+
+const GENDERS = ["Male","Female","Unknown"];
+const AGE_CLASSES = ["Adult","Juvenile","Yearling","Unknown"];
 
 export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddManta }: Props){
   const [tempId] = useState(()=>uuid());
@@ -49,36 +53,51 @@ export default function AddMantasFlow({ open, onOpenChange, sightingId, onAddMan
             <DialogTitle>Add Manta Individual</DialogTitle>
             <DialogDescription>Give this manta a temporary name and add details. Upload photos and select best ventral/dorsal.</DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-4">
             <div>
               <Label>Temp Name</Label>
               <Input placeholder={`e.g., ${suggested}`} value={name} onChange={(e)=>setName(e.target.value)} />
             </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label>Age Class</Label>
-                <Input placeholder="e.g., juvenile" value={age} onChange={(e)=>setAge(e.target.value)} />
+                <Label>Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map(g => (<SelectItem key={g} value={g}>{g}</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>Gender</Label>
-                <Input placeholder="e.g., female" value={gender} onChange={(e)=>setGender(e.target.value)} />
+                <Label>Age Class</Label>
+                <Select value={age} onValueChange={setAge}>
+                  <SelectTrigger><SelectValue placeholder="Select age class" /></SelectTrigger>
+                  <SelectContent>
+                    {AGE_CLASSES.map(a => (<SelectItem key={a} value={a}>{a}</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Size</Label>
                 <Input placeholder="e.g., 3.2 m" value={size} onChange={(e)=>setSize(e.target.value)} />
               </div>
             </div>
+
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">{photos.length} photos added</div>
               <Button variant="default" type="button" onClick={()=>setPhotosOpen(true)}>Add Photos</Button>
             </div>
           </div>
+
           <DialogFooter className="gap-2">
             <Button variant="secondary" onClick={()=>onOpenChange(false)}>Close</Button>
             <Button variant="default" onClick={saveManta} disabled={photos.length===0}>Save Manta</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <MantaPhotosModal open={photosOpen} onClose={()=>setPhotosOpen(false)} sightingId={sightingId} onAddManta={handleAddPhotos} />
     </>
   );
