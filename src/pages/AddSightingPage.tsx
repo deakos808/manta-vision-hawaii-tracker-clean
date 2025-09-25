@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import AddMantasModal from "@/components/mantas/AddMantasModal";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
+import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
