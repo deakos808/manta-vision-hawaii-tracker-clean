@@ -109,7 +109,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">>
+    <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
@@ -208,7 +208,6 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
             Save Manta
           </button>
         </div>
-      </div>
       </div>
     </div>,
     document.body
