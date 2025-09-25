@@ -95,6 +95,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
+<div className="text-[11px] text-muted-foreground">last event: probe-mounted</div>
           <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
         </div>
 
