@@ -218,7 +218,6 @@ export default function AddSightingPage() {
         </DialogContent>
       </Dialog>
     
-      <AddMantasModal open={mantaModalOpen} onOpenChange={setMantaModalOpen} />
-    </Layout>
+      </Layout>
   );
 }
