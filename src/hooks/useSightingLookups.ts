@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export function useSightingLookups(selectedIsland: string) {
@@ -31,10 +31,14 @@ export function useSightingLookups(selectedIsland: string) {
     async function loadLocations() {
       if (!selectedIsland) { setLocations([]); return; }
       setLoadingLocations(true);
-      const { data, error } = await supabase.from("sightings").select("location,island").eq("island", selectedIsland);
+      const { data, error } = await supabase
+        .from("sightings")
+        .select("island,location,sitelocation,site_location")
+        .eq("island", selectedIsland);
       if (mounted) {
         if (!error && data) {
-          const uniq = Array.from(new Set((data.map(r => (r as any).location || "").filter(Boolean)))).sort();
+          const vals = data.map((r:any) => r.location || r.sitelocation || r.site_location || "").filter(Boolean);
+          const uniq = Array.from(new Set(vals)).sort();
           setLocations(uniq);
         } else {
           setLocations([]);
