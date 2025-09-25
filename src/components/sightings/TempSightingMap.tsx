@@ -8,6 +8,7 @@ export default function TempSightingMap({ lat, lon, onPick, open }: Props) {
   const [latV, setLatV] = useState<string>(lat != null ? String(lat) : "");
   const [lonV, setLonV] = useState<string>(lon != null ? String(lon) : "");
   const divRef = useRef<HTMLDivElement | null>(null);
+  const [noGl, setNoGl] = useState(false);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
 
@@ -16,7 +17,7 @@ export default function TempSightingMap({ lat, lon, onPick, open }: Props) {
 
   useEffect(() => {
     const hasWebGL = (() => { try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl")); } catch { return false; }})();
-    if (!hasWebGL){ console.log("[MapLite] WebGL unavailable"); return; } else { console.log("[MapLite] WebGL OK, initializing"); }
+    if (!hasWebGL){ console.log("[MapLite] WebGL unavailable"); setNoGl(true); return; } else { console.log("[MapLite] WebGL OK, initializing"); setNoGl(false); } else { console.log("[MapLite] WebGL OK, initializing"); }
     let isMounted = true;
     (async () => {
       try {
