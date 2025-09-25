@@ -43,9 +43,9 @@ export default function AddSightingPage() {
           <span className="text-gray-700">Add New Sighting</span>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="rounded-lg bg-white border p-4">
-            <h2 className="font-medium mb-3">Sighting Details</h2>
+            <h2 className="font-medium mb-3">Section 1: Sighting Details</h2>
             <div className="space-y-3">
               <div className="max-w-sm">
                 <Label className="mb-1 block">Date *</Label>
@@ -90,7 +90,7 @@ export default function AddSightingPage() {
           </div>
 
           <div className="rounded-lg bg-white border p-4">
-            <h2 className="font-medium mb-3">Location & Submitter</h2>
+            <h2 className="font-medium mb-3">Section 2: Location & Submitter</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 max-w-md">
                 <div>
