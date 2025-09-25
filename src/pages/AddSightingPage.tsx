@@ -22,6 +22,7 @@ export default function AddSightingPage() {
 
   const [island, setIsland] = useState("");
   const [location, setLocation] = useState("");
+  const [customLoc, setCustomLoc] = useState(false);
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
 
