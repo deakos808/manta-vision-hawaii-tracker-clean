@@ -153,11 +153,11 @@ export default function AddSightingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="lat">Latitude</Label>
-                <Input id="lat" placeholder="19.8968" value={lat} onChange={(e)=>setLat(e.target.value)} className={cls("", err.lat)} />
+                <Input id="lat" placeholder="e.g., 19.8968" value={lat} onChange={(e)=>setLat(e.target.value)} className={cls("", err.lat)} />
               </div>
               <div>
                 <Label htmlFor="lon">Longitude</Label>
-                <Input id="lon" placeholder="-155.5828" value={lon} onChange={(e)=>setLon(e.target.value)} className={cls("", err.lon)} />
+                <Input id="lon" placeholder="e.g., -155.5828" value={lon} onChange={(e)=>setLon(e.target.value)} className={cls("", err.lon)} />
               </div>
             </div>
             <div className="flex gap-3">
