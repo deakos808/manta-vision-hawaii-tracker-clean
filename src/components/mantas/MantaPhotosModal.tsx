@@ -118,11 +118,11 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
+    <div className="fixed inset-0 z-[9999]" bg-black/40 flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); onClose(); }} className="px-2 py-1 border rounded">Close</button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -216,8 +216,8 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); submitManta();}} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); onClose(); }} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
+          <button type="button" onClick={(e)=>{ e.stopPropagation(); submitManta(); }} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>
             Save Manta
           </button>
         </div>
