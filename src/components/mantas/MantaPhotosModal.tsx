@@ -75,7 +75,6 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }
   setPhotos((prev) => [...prev, ...uploaded]);
   setBusy(false);
-${sightingId}/${tempMantaId}/${id}.${ext}`;
 
       const { error } = await supabase.storage
         .from("temp-images")
