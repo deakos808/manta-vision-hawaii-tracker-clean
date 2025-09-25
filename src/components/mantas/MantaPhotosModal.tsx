@@ -26,6 +26,20 @@ function uuid() {
 }
 
 export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName }: Props) {
+  const [dbg, setDbg] = useState({over:0, drop:0, browse:0});
+  function onDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDbg(d=>({...d, over:d.over+1}));
+    if ((e as any).dataTransfer) (e as any).dataTransfer.dropEffect = "copy";
+    console.log("[PhotosModal] dragover");
+  }
+  function triggerHiddenBrowse() {
+    console.log("[PhotosModal] trigger hidden browse");
+    setDbg(d=>({...d, browse:d.browse+1}));
+    inputRef.current?.click();
+  }
+
   const [tempName, setTempName] = useState("");
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
@@ -40,12 +54,24 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
-    if (!files.length) return;
-    setBusy(true);
-    const allow = ["image/jpeg","image/png","image/webp"];
-    const added: Uploaded[] = [];
-    for (const f of files) {
-      if (!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type); continue; }
+  if (!files.length) { console.log("[PhotosModal] handleFiles: none"); return; }
+  setBusy(true);
+  const allow=["image/jpeg","image/png","image/webp"];
+  const added: Uploaded[] = [];
+  for (const f of files) {
+    if(!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type, f.name); continue; }
+    const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
+    const id=(typeof crypto!=="undefined" && "randomUUID" in crypto)?crypto.randomUUID():Math.random().toString(36).slice(2);
+    const path=`${sightingId}/${tempMantaId}/${id}.${ext}`;
+    console.log("[PhotosModal] upload ->", path);
+    const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
+    if(error){ console.warn("[PhotosModal] upload error", error.message); continue; }
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
+    added.push({ id, name:f.name, url:data?.publicUrl||"", path, view:"other" });
+  }
+  if(added.length){ setPhotos(prev=>[...prev,...added]); console.log("[PhotosModal] uploaded ok:", added.length); }
+  setBusy(false);
+}
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
       const id = uuid();
       const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
@@ -60,18 +86,18 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files || []);
-    console.log("[PhotosModal] drop:", files.map(f=>f.name));
-    handleFiles(files);
-  }
+  e.preventDefault();
+  e.stopPropagation();
+  console.log("[PhotosModal] drop:", Array.from(e.dataTransfer.files||[]).map(f=>f.name));
+  handleFiles(Array.from(e.dataTransfer.files || []));
+}
 
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    console.log("[PhotosModal] browse selected:", files.map(f=>f.name));
-    handleFiles(files);
-    e.currentTarget.value = "";
-  }
+  const files = Array.from(e.target.files || []);
+  console.log("[PhotosModal] browse selected:", files.map(f=>f.name));
+  handleFiles(files);
+  e.currentTarget.value = "";
+}
 
   function setView(id: string, view: View) {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, view } : p));
@@ -95,7 +121,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
       <div className="bg-white rounded-lg border w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
-<div className="text-[11px] text-muted-foreground">last event: probe-mounted</div>
+<div className="text-[11px] text-muted-foreground">last event: probe-mounted · dbg: <span data-dbg-over>{dbg.over}</span>/<span data-dbg-drop>{dbg.drop}</span>/<span data-dbg-browse>{dbg.browse}</span></div>
           <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
         </div>
 
@@ -103,15 +129,17 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
           <div>
             <label className="text-sm block mb-1">Temporary Name</label>
             <input className="w-full border rounded px-3 py-2" placeholder="e.g., A, B, C" value={tempName} onChange={(e)=>setTempName(e.target.value)} />
-            <div onDragOver={(e)=>e.preventDefault()} onDrop={onDrop} className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
+            <div onDragOver={(e)=>e.preventDefault()} onDrop={e=>{setDbg(d=>({...d, drop:d.drop+1})); onDrop(e);}} onDragOver={onDragOver} className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
               <div>Drag & drop photos here</div>
               <div className="my-2">or</div>
               <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
               <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={onBrowse} />
               <div className="mt-2">
-                <input data-visible-file type="file" multiple accept="image/*" onChange={onBrowse} />
-                <div className="text-[11px] text-gray-500">If “Browse…” doesn’t open, use this chooser.</div>
-              </div>
+  <input data-visible-file type="file" multiple accept="image/*" onChange={onBrowse} />
+  <div className="text-[11px] text-gray-500">If “Browse…” doesn’t open, use this chooser.</div>
+  <button data-debug-browse type="button" className="mt-1 border rounded px-2 py-1 text-xs" onClick={triggerHiddenBrowse}>Debug: Hidden Browse</button>
+  <div className="text-[11px] text-gray-500">Allowed: JPG/PNG/WebP · uploads to temp-images</div>
+</div>
               <div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
             </div>
           </div>
