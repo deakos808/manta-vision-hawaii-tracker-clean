@@ -159,10 +159,7 @@ export default function AddSightingPage() {
               <MapLite
                 lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
                 lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
-                onPick={(latV, lonV) => { setLat(latV.toFixed(6)
-<div data-anchor-submit-bottom className="mt-10 flex justify-center"><Button variant="default">Submit (coming soon)</Button></div>
-</>);
- setLon(lonV.toFixed(6)); }}
+                onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
               />
 
               <div className="mt-4 flex justify-end gap-2">
