@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "react-router-dom";
 
 export default function AddSightingPage() {
   const [date, setDate] = useState("");
@@ -14,7 +15,7 @@ export default function AddSightingPage() {
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [totalMantas, setTotalMantas] = useState(0);
+  const [totalMantas, setTotalMantas] = useState<number | "">("");
 
   const [island, setIsland] = useState("");
   const [location, setLocation] = useState("");
@@ -23,10 +24,53 @@ export default function AddSightingPage() {
 
   const [notes, setNotes] = useState("");
   const [mantaModalOpen, setMantaModalOpen] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+
+  const locOk = useMemo(() => {
+    const havePlace = island.trim() && location.trim();
+    const haveCoords = lat.trim() && lon.trim();
+    return !!(havePlace || haveCoords);
+  }, [island, location, lat, lon]);
+
+  const isValid = useMemo(() => {
+    const req = date.trim() && photographer.trim() && email.trim() && Number(totalMantas) > 0;
+    return !!(req && locOk);
+  }, [date, photographer, email, totalMantas, locOk]);
+
+  const err = {
+    date: attempted && !date.trim(),
+    photographer: attempted && !photographer.trim(),
+    email: attempted && !email.trim(),
+    total: attempted && !(Number(totalMantas) > 0),
+    island: attempted && !locOk && !island.trim(),
+    location: attempted && !locOk && !location.trim(),
+    lat: attempted && !locOk && !lat.trim(),
+    lon: attempted && !locOk && !lon.trim(),
+  };
+
+  function cls(base: string, bad?: boolean) {
+    return base + (bad ? " border-red-500 focus-visible:ring-red-500" : "");
+  }
+
+  function handleSubmit() {
+    setAttempted(true);
+    if (!isValid) return;
+    console.log("submit: coming soon");
+  }
 
   return (
-    <Layout title="Add New Sighting" breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Add New Sighting" }]}>
-      <div className="mx-auto max-w-3xl space-y-6">
+    <Layout>
+      <div className="bg-gradient-to-r from-blue-700 to-blue-600 py-8 text-white">
+        <h1 className="mx-auto max-w-3xl text-center text-2xl font-semibold">Add Manta Sighting</h1>
+      </div>
+
+      <div className="mx-auto mt-3 max-w-3xl px-4 text-sm text-muted-foreground">
+        <Link to="/dashboard" className="underline">Dashboard</Link>
+        <span className="mx-2">/</span>
+        <span className="text-foreground">Add Manta Sighting</span>
+      </div>
+
+      <div className="mx-auto mt-4 max-w-3xl space-y-6 px-4">
         <Card>
           <CardHeader>
             <CardTitle>Sighting Details</CardTitle>
@@ -34,8 +78,8 @@ export default function AddSightingPage() {
           <CardContent className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
+                <Label htmlFor="date">Date *</Label>
+                <Input id="date" type="date" value={date} onChange={(e)=>setDate(e.target.value)} className={cls("", err.date)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -50,12 +94,12 @@ export default function AddSightingPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="photographer">Photographer</Label>
-                <Input id="photographer" placeholder="Name" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
+                <Label htmlFor="photographer">Photographer *</Label>
+                <Input id="photographer" placeholder="Name" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className={cls("", err.photographer)} />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e)=>setEmail(e.target.value)} />
+                <Label htmlFor="email">Email *</Label>
+                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e)=>setEmail(e.target.value)} className={cls("", err.email)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -64,8 +108,8 @@ export default function AddSightingPage() {
                 <Input id="phone" placeholder="(808) 555-1234" value={phone} onChange={(e)=>setPhone(e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="total">Total Mantas Seen</Label>
-                <Input id="total" type="number" min={0} value={totalMantas} onChange={(e)=>setTotalMantas(parseInt(e.target.value || "0"))} />
+                <Label htmlFor="total">Total Mantas Seen *</Label>
+                <Input id="total" type="number" min={0} value={totalMantas} onChange={(e)=>setTotalMantas(e.target.value === "" ? "" : parseInt(e.target.value))} className={cls("", err.total)} />
               </div>
             </div>
           </CardContent>
@@ -79,26 +123,26 @@ export default function AddSightingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="island">Island</Label>
-                <Input id="island" placeholder="e.g., Maui" value={island} onChange={(e)=>setIsland(e.target.value)} />
+                <Input id="island" placeholder="e.g., Maui" value={island} onChange={(e)=>setIsland(e.target.value)} className={cls("", err.island)} />
               </div>
               <div>
                 <Label htmlFor="location">Location</Label>
-                <Input id="location" placeholder="e.g., site / bay / reef" value={location} onChange={(e)=>setLocation(e.target.value)} />
+                <Input id="location" placeholder="e.g., site / bay / reef" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="lat">Latitude</Label>
-                <Input id="lat" placeholder="19.8968" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                <Input id="lat" placeholder="19.8968" value={lat} onChange={(e)=>setLat(e.target.value)} className={cls("", err.lat)} />
               </div>
               <div>
                 <Label htmlFor="lon">Longitude</Label>
-                <Input id="lon" placeholder="-155.5828" value={lon} onChange={(e)=>setLon(e.target.value)} />
+                <Input id="lon" placeholder="-155.5828" value={lon} onChange={(e)=>setLon(e.target.value)} className={cls("", err.lon)} />
               </div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" type="button" onClick={()=>{ if(lat && lon){ setLat(parseFloat(lat).toFixed(6)); setLon(parseFloat(lon).toFixed(6)); } }}>Add Lat/Lon</Button>
-              <Button variant="outline" type="button" onClick={()=>{/* map modal hook placeholder */}}>Use Map for Location</Button>
+              <Button variant="outline" type="button">Use Map for Location</Button>
             </div>
           </CardContent>
         </Card>
@@ -118,7 +162,7 @@ export default function AddSightingPage() {
         </div>
 
         <div className="mt-10 flex justify-center">
-          <Button variant="default" type="button">Submit (coming soon)</Button>
+          <Button variant="default" type="button" onClick={handleSubmit} disabled={!isValid}>Submit</Button>
         </div>
       </div>
     </Layout>
