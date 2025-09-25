@@ -28,23 +28,26 @@ export function useSightingLookups(selectedIsland: string) {
 
   useEffect(() => {
     let mounted = true;
+    async function trySelect(col: string) {
+      const { data, error } = await supabase
+        .from("sightings")
+        .select(`island,${col}`)
+        .eq("island", selectedIsland);
+      if (error) return { ok:false, vals:[] as string[] };
+      const vals = (data || []).map((r:any)=> r[col] || "").filter(Boolean);
+      return { ok: vals.length>0, vals };
+    }
     async function loadLocations() {
       if (!selectedIsland) { setLocations([]); return; }
       setLoadingLocations(true);
-      const { data, error } = await supabase
-        .from("sightings")
-        .select("island,location,sitelocation,site_location")
-        .eq("island", selectedIsland);
-      if (mounted) {
-        if (!error && data) {
-          const vals = data.map((r:any) => r.location || r.sitelocation || r.site_location || "").filter(Boolean);
-          const uniq = Array.from(new Set(vals)).sort();
-          setLocations(uniq);
-        } else {
-          setLocations([]);
-        }
-        setLoadingLocations(false);
+      let out:string[]=[];
+      for (const col of ["location","sitelocation","site_location"]) {
+        const res = await trySelect(col);
+        if (res.ok) { out = res.vals; break; }
       }
+      const uniq = Array.from(new Set(out)).sort();
+      if (mounted) setLocations(uniq);
+      setLoadingLocations(false);
     }
     loadLocations();
     return () => { mounted = false; };
