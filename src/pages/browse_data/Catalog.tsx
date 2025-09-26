@@ -247,11 +247,7 @@ export default function Catalog() {
           open={true}
           onOpenChange={(o) => !o && setSelectedCatalogId(null)}
           pk_catalog_id={selectedCatalogId}
-          view={viewMode}
-          view={viewMode}
-          view={viewMode}
-          view={viewMode}
-          onSaved={() => load()}
+          view={viewMode} onSaved={() => load()}
         />
       )}
     </Layout>

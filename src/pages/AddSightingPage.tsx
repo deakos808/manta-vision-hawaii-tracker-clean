@@ -1,8 +1,4 @@
 import { useMemo, useState } from "react";
-
-function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } catch { return Math.random().toString(36).slice(2); } } 
-crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } 
-crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +10,10 @@ import { useSightingLookups } from "@/hooks/useSightingLookups";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+
 function MantasDock({mantas, formSightingId}:{mantas:any[]; formSightingId:string}){
   return (
     <div data-mantas-dock className="fixed bottom-24 right-6 z-[999]">
