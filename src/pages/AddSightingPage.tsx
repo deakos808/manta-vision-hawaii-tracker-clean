@@ -14,23 +14,25 @@ import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
-function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+function uuid(){ try { return (<>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+  <React.Fragment key="unified-modals">
+    <UnifiedMantaModal
+      data-unified-add-modal
+      open={addOpen}
+      onClose={()=>setAddOpen(false)}
+      sightingId={formSightingId}
+      onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
+    />
+    <UnifiedMantaModal
+      data-unified-edit-modal
+      open={!!editingManta}
+      onClose={()=>setEditingManta(null)}
+      sightingId={formSightingId}
+      existingManta={editingManta || undefined}
+      onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
+    />
+  </React.Fragment>
   <> {/* data-unified-wrap-fragment */}
-<UnifiedMantaModal
-    data-unified-add-modal
-    open={addOpen}
-    onClose={()=>setAddOpen(false)}
-    sightingId={formSightingId}
-    onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
-  />
-  <UnifiedMantaModal
-    data-unified-edit-modal
-    open={!!editingManta}
-    onClose={()=>setEditingManta(null)}
-    sightingId={formSightingId}
-    existingManta={editingManta || undefined}
-    onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
-  />
 </>
 
 export default function AddSightingPage(props:any){
