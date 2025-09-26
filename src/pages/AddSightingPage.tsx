@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 function uuid(){ try { return (<>
   <MantasDock mantas={mantas} formSightingId={formSightingId} />
+crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } formSightingId={formSightingId} />
 crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 export default function AddSightingPage() {
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
   const [mantas, setMantas] = useState<any[]>([]);
   const formSightingId = useMemo(()=>uuid(),[]);
   useEffect(()=>{
