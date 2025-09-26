@@ -14,31 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
-  {  {    ,
-    document.body
-  ) : null}
-  function MantasDock({mantas, formSightingId}:{mantas:any[]; formSightingId:string}){
-  return (
-    <div data-mantas-dock className="fixed bottom-24 right-6 z-[999]">
-      <div className="shadow-lg rounded-xl border bg-white/95 backdrop-blur px-4 py-3 min-w-[260px]">
-        <div className="text-sm font-semibold mb-1">Mantas for this sighting</div>
-        <div className="text-xs text-gray-600 mb-2">sighting: {formSightingId.slice(0,8)} · total: {mantas.length}</div>
-        {mantas.length===0 ? (
-          <div className="text-xs text-gray-500">None yet — click “Add Mantas”.</div>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {mantas.map((m:any,i:number)=>(
-              <li key={m.id} className="flex items-center justify-between gap-3">
-                <span className="truncate">{i+1}. {m.name}</span>
-                <span className="text-xs text-gray-600">{m.photos?.length||0} photos</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
@@ -64,20 +39,18 @@ export default function AddSightingPage(props:any){
     };
     window.addEventListener("manta-added", h);
     return () => window.removeEventListener("manta-added", h);
+  {editingManta ? <div className="fixed top-4 right-4 z-[300000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
+  <MantaPhotosModal
+    data-edit-modal
+    key={editingManta?.id || "none"}
+    open={!!editingManta}
+    onClose={()=>{ console.log("[AddSighting] edit close"); setEditingManta(null); }}
+    sightingId={formSightingId}
+    onAddManta={(m)=>{ console.log("[AddSighting] onUpdateManta()", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; }); setEditingManta(null); }}
+    initialTempName={editingManta?.name}
+    existingManta={editingManta || undefined}
+  />
   {editingManta ? <div data-editing-banner className="fixed top-4 right-4 z-[300000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
-  {editingManta ? createPortal(
-    <MantaPhotosModal
-      data-portal-edit-modal
-      key={editingManta?.id || "none"}
-      open={true}
-      onClose={()=>{ console.log("[AddSighting] edit close"); setEditingManta(null); }}
-      sightingId={formSightingId}
-      onAddManta={(m)=>{ console.log("[AddSighting] onUpdateManta()", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; }); setEditingManta(null); }}
-      initialTempName={editingManta?.name}
-      existingManta={editingManta || undefined}
-    />,
-    document.body
-  ) : null}
   }, []);
   useEffect(()=>{ console.log("[AddSighting] mantas count", mantas.length); }, [mantas]);
   const [date, setDate] = useState("");
