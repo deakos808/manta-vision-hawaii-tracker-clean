@@ -122,9 +122,11 @@ async function listStorage(prefix: string) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
-      <div className="bg-white rounded-lg border w-full max-w-3xl p-4 pointer-events-auto">
+      <div className="bg-white rounded-lg border w-full max-w-3xl p-4 pointer-events-auto relative">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">Add Manta & Photos</h3>
+{existingManta ? <div data-edit-badge className="ml-3 inline-block align-middle text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">EDIT MODE</div> : null}
+<div data-debug-ribbon className="absolute -top-3 -left-3 rotate-[-12deg] bg-fuchsia-600 text-white text-[10px] px-2 py-0.5 rounded shadow">{open ? 'open:true' : 'open:false'} · {existingManta ? 'editing' : 'new'}</div>
 <div className="text-[11px] text-muted-foreground">last event: probe-mounted · dbg: <span data-dbg-over>{dbg.over}</span>/<span data-dbg-drop>{dbg.drop}</span>/<span data-dbg-browse>{dbg.browse}</span></div>
           <button type="button" onClick={(e)=>{console.log("[PhotosModal] Close click"); e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
         </div>
