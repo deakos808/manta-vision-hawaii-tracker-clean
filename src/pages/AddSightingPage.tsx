@@ -14,18 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
-  {editingManta ? <div data-editing-banner className="fixed top-4 right-4 z-[200000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
-  {editingManta ? createPortal(
-    <MantaPhotosModal
-      data-portal-edit-modal
-      key={editingManta?.id || "none"}
-      open={true}
-      onClose={()=>{ console.log("[AddSighting] edit close"); setEditingManta(null); }}
-      sightingId={formSightingId}
-      onAddManta={(m)=>{ console.log("[AddSighting] onUpdateManta()", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; }); setEditingManta(null); }}
-      initialTempName={editingManta?.name}
-      existingManta={editingManta || undefined}
-    />,
+  {  {    ,
     document.body
   ) : null}
   function MantasDock({mantas, formSightingId}:{mantas:any[]; formSightingId:string}){
@@ -75,6 +64,7 @@ export default function AddSightingPage(props:any){
     };
     window.addEventListener("manta-added", h);
     return () => window.removeEventListener("manta-added", h);
+  {editingManta ? <div data-editing-banner className="fixed top-4 right-4 z-[300000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
   {editingManta ? createPortal(
     <MantaPhotosModal
       data-portal-edit-modal
