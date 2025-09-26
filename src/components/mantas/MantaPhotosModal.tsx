@@ -27,7 +27,7 @@ function uuid() {
 
 export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName }: Props) {
   const [dbg, setDbg] = useState({ over: 0, drop: 0, browse: 0 });
-  const [dbg, setDbg] = useState({over:0, drop:0, browse:0});
+
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
@@ -72,21 +72,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }
   if(added.length){ setPhotos(prev=>[...prev,...added]); console.log("[PhotosModal] uploaded ok:", added.length); }
   setBusy(false);
-}
-      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-      const id = uuid();
-      const path = `${sightingId}/${tempMantaId}/${id}.${ext}`;
-      console.log("[PhotosModal] upload ->", path);
-      const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
-      if (error) { console.warn("[PhotosModal] upload error", error.message); continue; }
-      const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
-      added.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
-    }
-    if (added.length) setPhotos(prev => [...prev, ...added]);
-    setBusy(false);
-  }
-
-  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+}function onDrop(e: React.DragEvent<HTMLDivElement>) {
   e.preventDefault();
   e.stopPropagation();
   console.log("[PhotosModal] drop:", Array.from(e.dataTransfer.files||[]).map(f=>f.name));
@@ -130,7 +116,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
           <div>
             <label className="text-sm block mb-1">Temporary Name</label>
             <input className="w-full border rounded px-3 py-2" placeholder="e.g., A, B, C" value={tempName} onChange={(e)=>setTempName(e.target.value)} />
-            <div onDragOver={(e)=>e.preventDefault()} onDrop={e=>{setDbg(d=>({...d, drop:d.drop+1})); onDrop(e);}} onDragOver={onDragOver} className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
+            <div onDrop={e=>{setDbg(d=>({...d, drop:d.drop+1})); onDrop(e);}} onDragOver={onDragOver} className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
               <div>Drag & drop photos here</div>
               <div className="my-2">or</div>
               <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
