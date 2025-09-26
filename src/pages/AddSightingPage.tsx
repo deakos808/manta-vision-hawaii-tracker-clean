@@ -14,26 +14,7 @@ import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
-function uuid(){ try { return (<>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
-  <React.Fragment key="unified-modals">
-    <UnifiedMantaModal
-      data-unified-add-modal
-      open={addOpen}
-      onClose={()=>setAddOpen(false)}
-      sightingId={formSightingId}
-      onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
-    />
-    <UnifiedMantaModal
-      data-unified-edit-modal
-      open={!!editingManta}
-      onClose={()=>setEditingManta(null)}
-      sightingId={formSightingId}
-      existingManta={editingManta || undefined}
-      onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
-    />
-  </React.Fragment>
-  <> {/* data-unified-wrap-fragment */}
-</>
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
@@ -116,8 +97,24 @@ export default function AddSightingPage(props:any){
     console.log("submit: coming soon");
   }
 
-  return (
-    <Layout>
+  return (<>Layout>
+  <React.Fragment key="unified-modals">
+    <UnifiedMantaModal
+      data-unified-add-modal
+      open={addOpen}
+      onClose={()=>setAddOpen(false)}
+      sightingId={formSightingId}
+      onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
+    />
+    <UnifiedMantaModal
+      data-unified-edit-modal
+      open={!!editingManta}
+      onClose={()=>setEditingManta(null)}
+      sightingId={formSightingId}
+      existingManta={editingManta || undefined}
+      onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
+    />
+  </React.Fragment>
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 py-8 text-white">
         <h1 className="mx-auto max-w-3xl text-center text-2xl font-semibold">Add Manta Sighting</h1>
       </div>
