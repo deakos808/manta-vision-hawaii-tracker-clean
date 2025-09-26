@@ -17,7 +17,8 @@ import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
 export default function AddSightingPage(props:any){
-  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []</>);
+
   const [mantas, setMantas] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<any|null>(null);
