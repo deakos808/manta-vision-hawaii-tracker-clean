@@ -113,10 +113,19 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
-      <div className="bg-white rounded-lg border w-full max-w-4xl p-4 pointer-events-auto">
+      <div className="bg-white rounded-lg border w-full max-w-4xl p-4 relative pointer-events-auto">
+        <button
+          data-close-x
+          aria-label="Close"
+          type="button"
+          className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50"
+          onClick={(e)=>{ e.stopPropagation(); onClose(); }}
+        >
+          &times;
+        </button>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-medium">{existingManta ? "Edit Manta" : "Add Manta"}</h3>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
+          
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
