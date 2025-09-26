@@ -40,6 +40,7 @@ function MantasDock({mantas, formSightingId}:{mantas:any[]; formSightingId:strin
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
   const [mantas, setMantas] = useState<any[]>([]);
+  const [editingManta, setEditingManta] = useState<any|null>(null);
   const formSightingId = useMemo(()=>uuid(),[]);
   useEffect(()=>{
     const h=(e:any)=>{
@@ -232,6 +233,32 @@ export default function AddSightingPage(props:any){
             <Textarea placeholder="Optional notes..." value={notes} onChange={(e)=>setNotes(e.target.value)} />
           </CardContent>
         </Card>
+<Card className="mt-6" data-mantas-summary>
+  <CardHeader>
+    <CardTitle>Mantas Added</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {mantas.length === 0 ? (
+      <div className="text-sm text-gray-600">No mantas added yet.</div>
+    ) : (
+      <ul className="divide-y rounded border">
+        {mantas.map((m:any, i:number)=>(
+          <li key={m.id} className="p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-medium truncate">{m.name || `Manta ${i+1}`}</div>
+              <div className="text-xs text-gray-500">{m.photos?.length || 0} photos</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] edit manta", m.id); setEditingManta(m); }}>Edit</button>
+              <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] remove manta", m.id); setMantas(prev=>prev.filter(x=>x.id!==m.id)); }}>Remove</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
+  </CardContent>
+</Card>
+
 
         <div className="flex items-center justify-between">
           <Button variant="default" type="button" onClick={()=>setMantaModalOpen(true)}>Add Mantas</Button>

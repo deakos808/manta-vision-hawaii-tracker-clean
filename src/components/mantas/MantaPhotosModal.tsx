@@ -18,6 +18,8 @@ type Props = {
   sightingId: string;
   onAddManta: (m: { id: string; name: string; photos: Uploaded[] }) => void;
   initialTempName?: string;
+
+  existingManta?: { id: string; name: string; photos: Uploaded[] };
 };
 
 function uuid() {
@@ -25,7 +27,7 @@ function uuid() {
   return Math.random().toString(36).slice(2);
 }
 
-export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName }: Props) {
+export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName, existingManta }: Props) {
   const [dbg, setDbg] = useState({ over: 0, drop: 0, browse: 0 });
 
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
@@ -45,7 +47,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const tempMantaId = useMemo(() => uuid(), []);
+  const tempMantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
   if (open) console.log("[PhotosModal] mounted for", sightingId, tempMantaId);
