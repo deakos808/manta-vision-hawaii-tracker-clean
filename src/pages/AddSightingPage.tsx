@@ -308,5 +308,6 @@ export default function AddSightingPage(props:any){
       />
       <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-3xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
     </Layout>
+</>
   );
 }
