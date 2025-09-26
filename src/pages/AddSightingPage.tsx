@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 
-function uuid(){ try { return (<>
-  <MantasDock mantas={mantas} formSightingId={formSightingId} />
-crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } formSightingId={formSightingId} />
-crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } formSightingId={formSightingId} />
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } catch { return Math.random().toString(36).slice(2); } } 
+crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } } 
 crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
