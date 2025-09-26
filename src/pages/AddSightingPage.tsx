@@ -14,7 +14,7 @@ import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
-function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+function uuid(){ try { return (<>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []</>);
@@ -308,7 +308,5 @@ export default function AddSightingPage(props:any){
         onAddManta={(m)=>setMantas(prev=>[...prev,m])}
       />
       <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-3xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
-    </Layout>
-</>
-  );
+    </Layout></>);
 }
