@@ -251,15 +251,25 @@ export default function AddSightingPage(props:any){
       <ul className="divide-y rounded border">
         {mantas.map((m:any, i:number)=>(
           <li key={m.id} className="p-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {(() => {
+                const ventralBest = m.photos?.find((p:any)=>p.view==="ventral" && p.isBestVentral) || m.photos?.find((p:any)=>p.view==="ventral");
+                const dorsalBest  = m.photos?.find((p:any)=>p.view==="dorsal" && p.isBestDorsal)   || m.photos?.find((p:any)=>p.view==="dorsal");
+                return (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {ventralBest ? <img src={ventralBest.url} alt="best ventral" className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                    {dorsalBest  ? <img src={dorsalBest.url} alt="best dorsal"  className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
+                  </div>
+                );
+              })()}
+              <div className="min-w-0">
               <div className="font-medium truncate">{m.name || `Manta ${i+1}`}</div>
               <div className="text-xs text-gray-500">{m.photos?.length || 0} photos</div>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] edit manta", m.id); setEditingManta(m); }}>Edit</button>
               <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] remove manta", m.id); setMantas(prev=>prev.filter(x=>x.id!==m.id)); }}>Remove</button>
-            </div>
-          </li>
+            </div></div></li>
         ))}
       </ul>
     )}
