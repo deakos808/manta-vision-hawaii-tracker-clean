@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 export default function AddSightingPage() {
+  const [mantas, setMantas] = useState<any[]>([]);
+  const formSightingId = useMemo(()=>uuid(),[]);
+  useEffect(()=>{
+    const h=(e: any)=>{ try{ const d=e.detail; if(!d||!d.manta) return; if(d.sightingId && d.sightingId!==formSightingId) return; console.log("[AddSighting] manta added via event", d); setMantas(prev=>[...prev, d.manta]); }catch(err){ console.warn("[AddSighting] event parse error", err);} };
+    window.addEventListener("manta-added", h);
+    return (  <>
+    <div data-mantas-dock className="fixed bottom-24 right-6 z-[999]">
+      <div className="shadow-lg rounded-xl border bg-white/95 backdrop-blur px-4 py-3 min-w-[260px]">
+        <div className="text-sm font-semibold mb-1">Mantas for this sighting</div>
+        <div className="text-xs text-gray-600 mb-2">sighting: {formSightingId.slice(0,8)} · total: {mantas.length}</div>
+        {mantas.length===0 ? (
+          <div className="text-xs text-gray-500">None yet — click “Add Mantas”.</div>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {mantas.map((m,i)=>(
+              <li key={m.id} className="flex items-center justify-between gap-3">
+                <span className="truncate">{i+1}. {m.name}</span>
+                <span className="text-xs text-gray-600">{m.photos?.length||0} photos</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  </>)=>window.removeEventListener("manta-added", h);
+  },[formSightingId]);
+
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [stopTime, setStopTime] = useState("");

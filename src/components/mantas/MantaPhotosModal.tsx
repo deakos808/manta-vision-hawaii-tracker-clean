@@ -48,9 +48,20 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   const tempMantaId = useMemo(() => uuid(), []);
 
   useEffect(() => {
-    if (open) console.log("[PhotosModal] mounted for", sightingId, tempMantaId);
-    if (open) setTempName((initialTempName || "").trim());
-  }, [open, sightingId, tempMantaId, initialTempName]);
+  if (open) console.log("[PhotosModal] mounted for", sightingId, tempMantaId);
+  if (open) setTempName((initialTempName || "").trim());
+}, [open, sightingId, tempMantaId, initialTempName]);
+
+async function listStorage(prefix: string) {
+  const segs = prefix.split("/").filter(Boolean);
+  const folder = segs.join("/");
+  const { data, error } = await supabase.storage.from("temp-images").list(folder, { limit: 100, offset: 0 });
+  if (error) {
+    console.warn("[PhotosModal] verify list error:", error.message, "for", folder);
+  } else {
+    console.log("[PhotosModal] verify list ok:", folder, "->", (data||[]).map(d=>d.name));
+  }
+}
 
   if (!open) return null;
 
@@ -97,11 +108,15 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
   }
 
   function submitManta() {
-    const name = (tempName || "").trim() || `Manta ${photos.length ? photos[0].id.slice(0,4) : ""}`;
-    onAddManta({ id: tempMantaId, name, photos });
-    setTempName(""); setPhotos([]);
-    onClose();
-  }
+  const name = (tempName || "").trim() || `Manta ${photos.length ? photos[0].id.slice(0,4) : ""}`;
+  const manta = { id: tempMantaId, name, photos };
+  console.log("[PhotosModal] submitManta ->", manta);
+  try { onAddManta(manta); } catch (e) { console.warn("[PhotosModal] onAddManta error", e); }
+  try { window.dispatchEvent(new CustomEvent("manta-added", { detail: { sightingId, manta } })); } catch {}
+  listStorage(`${sightingId}/${tempMantaId}`);
+  setTempName(""); setPhotos([]);
+  onClose();
+}
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
