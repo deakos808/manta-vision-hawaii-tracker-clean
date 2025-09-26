@@ -42,19 +42,26 @@ export default function AddSightingPage(props:any){
   const [mantas, setMantas] = useState<any[]>([]);
   const [editingManta, setEditingManta] = useState<any|null>(null);
   const formSightingId = useMemo(()=>uuid(),[]);
-  useEffect(()=>{
-    const h=(e:any)=>{
-      try{
-        const d=e.detail; if(!d||!d.manta) return;
-        if(d.sightingId && d.sightingId!==formSightingId) return;
-        console.log("[AddSighting] manta added via event", d);
-        setMantas(prev=>[...prev, d.manta]);
-      }catch(err){ console.warn("[AddSighting] event parse error", err); }
+  // manta-added listener
+  useEffect(()=> {
+    const h = (e:any) => {
+      try {
+        const d = e.detail;
+        if (!d || !d.manta) return;
+        console.log("[AddSighting] manta-added event", d);
+        setMantas(prev => {
+          const i = prev.findIndex(x => x.id === d.manta.id);
+          if (i >= 0) {
+            const copy = [...prev]; copy[i] = d.manta; return copy;
+          }
+          return [...prev, d.manta];
+        });
+      } catch(err) { console.warn("[AddSighting] event parse error", err); }
     };
     window.addEventListener("manta-added", h);
-    return ()=>window.removeEventListener("manta-added", h);
-  },[formSightingId]);
-
+    return () => window.removeEventListener("manta-added", h);
+  }, []);
+  useEffect(()=>{ console.log("[AddSighting] mantas count", mantas.length); }, [mantas]);
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [stopTime, setStopTime] = useState("");
