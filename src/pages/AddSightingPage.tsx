@@ -6,20 +6,50 @@ import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedM
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
+// Simple island→locations seed (replace with Supabase later)
+const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
+const DEFAULT_LOCATIONS: Record<string,string[]> = {
+  "Hawaiʻi": ["Keauhou Bay","Kailua Pier"],
+  "Maui": ["Māʻalaea Harbor","Honokōwai"],
+  "Oʻahu": ["Waiʻanae Harbor","Kahala"],
+  "Kauaʻi": ["Kapaʻa","Port Allen"],
+  "Molokaʻi": ["Kaunakakai"],
+  "Lānaʻi": ["Manele"]
+};
+
+function buildTimes(stepMin=5){
+  const out:string[]=[];
+  for(let h=0; h<24; h++){
+    for(let m=0; m<60; m+=stepMin){
+      const hh=String(h).padStart(2,"0");
+      const mm=String(m).padStart(2,"0");
+      out.push(`${hh}:${mm}`);
+    }
+  }
+  return out;
+}
+const TIME_OPTIONS = buildTimes(5);
+
 export default function AddSightingPage() {
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
-  // Basic form state (restore your rich sections)
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [observer, setObserver] = useState("");
+  // Form state per your spec
+  const [date, setDate] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [stopTime, setStopTime] = useState<string>("");
+
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
   const [island, setIsland] = useState("");
+  const [locations, setLocations] = useState<Record<string,string[]>>({...DEFAULT_LOCATIONS});
   const [locationName, setLocationName] = useState("");
+  const [addingLoc, setAddingLoc] = useState(false);
+  const [newLoc, setNewLoc] = useState("");
+
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
@@ -27,6 +57,28 @@ export default function AddSightingPage() {
   const formSightingId = useMemo(()=>uuid(), []);
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
+  // Dependent location reset on island change
+  useEffect(()=>{
+    const list = island ? (locations[island] || []) : [];
+    if(!list.includes(locationName)) setLocationName("");
+  }, [island]);
+
+  function addNewLocation(){
+    if(!island || !newLoc.trim()) return;
+    const clean = newLoc.trim();
+    setLocations(prev=>{
+      const copy={...prev};
+      const arr=new Set(copy[island] || []);
+      arr.add(clean);
+      copy[island]=Array.from(arr);
+      return copy;
+    });
+    setLocationName(clean);
+    setNewLoc("");
+    setAddingLoc(false);
+  }
+
+  // Modal save handlers
   const onAddSave = (m: MantaDraft) => {
     console.log("[AddSighting] unified add save", m);
     setMantas(prev=>[...prev, m]);
@@ -40,7 +92,6 @@ export default function AddSightingPage() {
 
   return (
     <>
-      {/* Unified modal (Add) */}
       <UnifiedMantaModal
         data-unified-add-modal
         open={addOpen}
@@ -48,7 +99,6 @@ export default function AddSightingPage() {
         sightingId={formSightingId}
         onSave={onAddSave}
       />
-      {/* Unified modal (Edit) */}
       <UnifiedMantaModal
         data-unified-edit-modal
         open={!!editingManta}
@@ -58,7 +108,6 @@ export default function AddSightingPage() {
         onSave={onEditSave}
       />
 
-      {/* Map picker modal */}
       {mapOpen && (
         <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
@@ -86,27 +135,41 @@ export default function AddSightingPage() {
       )}
 
       <Layout>
-        {/* Centered hero with breadcrumb */}
+        {/* Hero */}
         <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-10 text-white">
           <div className="max-w-5xl mx-auto px-4 text-center">
-            <div className="text-xs opacity-80 mb-2">/ Dashboard / Sightings / Add</div>
             <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
             <p className="text-sm opacity-90 mt-1">sighting: {formSightingId.slice(0,8)}</p>
-            <div className="mt-4">
-              <Button variant="secondary" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
-            </div>
+          </div>
+        </div>
+
+        {/* Breadcrumb under header, left-aligned (like catalog) */}
+        <div className="bg-white">
+          <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-slate-600">
+            <a href="/browse" className="underline text-sky-700">Return to Browse Data</a>
+            <span className="mx-2">/</span>
+            <span className="text-slate-400">Sightings</span>
+            <span className="mx-2">/</span>
+            <span className="font-medium">Add</span>
           </div>
         </div>
 
         {/* Content */}
-        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-          {/* Sighting Details */}
+        <div className="max-w-5xl mx-auto px-4 pb-10 space-y-6">
+
+          {/* Sighting Details: Date, Start, Stop */}
           <Card>
             <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
-              <input className="border rounded px-3 py-2" placeholder="Date (mm/dd/yyyy)" value={date} onChange={(e)=>setDate(e.target.value)} />
-              <input className="border rounded px-3 py-2" placeholder="Time (HH:MM)" value={time} onChange={(e)=>setTime(e.target.value)} />
-              <input className="border rounded px-3 py-2" placeholder="Observer" value={observer} onChange={(e)=>setObserver(e.target.value)} />
+              <input type="date" className="border rounded px-3 py-2" value={date} onChange={(e)=>setDate(e.target.value)} />
+              <select className="border rounded px-3 py-2" value={startTime} onChange={(e)=>setStartTime(e.target.value)}>
+                <option value="">Start Time</option>
+                {TIME_OPTIONS.map(t=><option key={"s-"+t} value={t}>{t}</option>)}
+              </select>
+              <select className="border rounded px-3 py-2" value={stopTime} onChange={(e)=>setStopTime(e.target.value)}>
+                <option value="">Stop Time</option>
+                {TIME_OPTIONS.map(t=><option key={"e-"+t} value={t}>{t}</option>)}
+              </select>
             </CardContent>
           </Card>
 
@@ -120,23 +183,35 @@ export default function AddSightingPage() {
             </CardContent>
           </Card>
 
-          {/* Location & Submitter */}
+          {/* Location */}
           <Card>
-            <CardHeader><CardTitle>Location &amp; Submitter</CardTitle></CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-3">
-              <div className="grid grid-cols-2 gap-2 col-span-2">
+            <CardHeader><CardTitle>Location</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid md:grid-cols-2 gap-3">
                 <select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
                   <option value="">Select island</option>
-                  <option value="Hawaiʻi">Hawaiʻi</option>
-                  <option value="Maui">Maui</option>
-                  <option value="Oʻahu">Oʻahu</option>
-                  <option value="Kauaʻi">Kauaʻi</option>
-                  <option value="Molokaʻi">Molokaʻi</option>
-                  <option value="Lānaʻi">Lānaʻi</option>
+                  {ISLANDS.map(i=> <option key={i} value={i}>{i}</option>)}
                 </select>
-                <input className="border rounded px-3 py-2" placeholder="Location" value={locationName} onChange={(e)=>setLocationName(e.target.value)} />
+
+                {/* Dependent Location dropdown */}
+                <div>
+                  <select className="border rounded px-3 py-2 w-full" value={locationName} onChange={(e)=>setLocationName(e.target.value)} disabled={!island}>
+                    <option value="">{island ? "Select location" : "Select island first"}</option>
+                    {(island ? (locations[island]||[]) : []).map(loc=> <option key={loc} value={loc}>{loc}</option>)}
+                  </select>
+                  <div className="text-xs mt-1">
+                    <button className="text-sky-700 underline disabled:text-slate-400" disabled={!island} onClick={(e)=>{e.preventDefault(); setAddingLoc(v=>!v);}}>Not listed? Add new</button>
+                  </div>
+                  {addingLoc && (
+                    <div className="mt-2 flex gap-2">
+                      <input className="border rounded px-3 py-2 flex-1" placeholder="New location name" value={newLoc} onChange={(e)=>setNewLoc(e.target.value)} />
+                      <Button onClick={addNewLocation} disabled={!newLoc.trim() || !island}>Add</Button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 col-span-2">
+
+              <div className="grid md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-600">Latitude</label>
                   <input className="border rounded px-3 py-2 w-full" placeholder="Latitude" value={lat} onChange={(e)=>setLat(e.target.value)} />
@@ -146,9 +221,9 @@ export default function AddSightingPage() {
                   <input className="border rounded px-3 py-2 w-full" placeholder="Longitude" value={lng} onChange={(e)=>setLng(e.target.value)} />
                 </div>
               </div>
-              <div className="col-span-2">
+
+              <div>
                 <Button variant="outline" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
-                <a className="ml-3 text-sm text-sky-700 underline cursor-pointer" onClick={(e)=>{e.preventDefault(); /* placeholder for add new */}}>Not listed? Add new</a>
               </div>
             </CardContent>
           </Card>
@@ -161,7 +236,7 @@ export default function AddSightingPage() {
             </CardContent>
           </Card>
 
-          {/* Mantas Added */}
+          {/* Mantas Added above Add button */}
           <Card data-mantas-summary>
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
@@ -195,6 +270,10 @@ export default function AddSightingPage() {
               )}
             </CardContent>
           </Card>
+
+          <div className="flex justify-start">
+            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>
+          </div>
 
           <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
         </div>
