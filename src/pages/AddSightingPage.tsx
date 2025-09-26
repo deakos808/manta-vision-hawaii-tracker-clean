@@ -1,306 +1,204 @@
-import { useMemo, useState, useEffect } from "react";
-import UnifiedMantaModal from "@/components/mantas/UnifiedMantaModal";
-import { createPortal } from "react-dom";
+import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Link } from "react-router-dom";
-import { useSightingLookups } from "@/hooks/useSightingLookups";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import TempSightingMap from "@/components/sightings/TempSightingMap";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
-import AddMantasFlow from "@/components/mantas/AddMantasFlow";
-function uuid(){ try { return (<>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 
-export default function AddSightingPage(props:any){
-  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
-  const [mantas, setMantas] = useState<any[]>([]);
+export default function AddSightingPage() {
+  const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [editingManta, setEditingManta] = useState<any|null>(null);
-  useEffect(()=>{ console.log("[AddSighting] editingManta change", editingManta); }, [editingManta]);
-  const formSightingId = useMemo(()=>uuid(),[]);
-  // manta-added listener
-  useEffect(()=> {
-    const h = (e:any) => {
-      try {
-        const d = e.detail;
-        if (!d || !d.manta) return;
-        console.log("[AddSighting] manta-added event", d);
-        setMantas(prev => {
-          const i = prev.findIndex(x => x.id === d.manta.id);
-          if (i >= 0) {
-            const copy = [...prev]; copy[i] = d.manta; return copy;
-          }
-          return [...prev, d.manta];
-        });
-      } catch(err) { console.warn("[AddSighting] event parse error", err); }
-    };
-    window.addEventListener("manta-added", h);
-    return () => window.removeEventListener("manta-added", h);
-  }, []);
-  useEffect(()=>{ console.log("[AddSighting] mantas count", mantas.length); }, [mantas]);
+  const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
+
+  // Basic form state (restore your rich sections)
   const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [stopTime, setStopTime] = useState("");
+  const [time, setTime] = useState("");
+  const [observer, setObserver] = useState("");
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [totalMantas, setTotalMantas] = useState<number | "">("");
-
   const [island, setIsland] = useState("");
-  const [location, setLocation] = useState("");
-  const [customLoc, setCustomLoc] = useState(false);
+  const [locationName, setLocationName] = useState("");
   const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
-
-  const [notes, setNotes] = useState("");
-  const [mantaModalOpen, setMantaModalOpen] = useState(false);
+  const [lng, setLng] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
-  const clientRef = useMemo(()=> (typeof crypto!=="undefined" && "randomUUID" in crypto ? "sighting-"+crypto.randomUUID() : "sighting-"+Math.random().toString(36).slice(2)), []);
-  const [attempted, setAttempted] = useState(false);
 
-  const { islands, locations, loadingIslands, loadingLocations } = useSightingLookups(island);
+  const formSightingId = useMemo(()=>uuid(), []);
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  const locOk = useMemo(() => {
-    const havePlace = island.trim() && location.trim();
-    const haveCoords = lat.trim() && lon.trim();
-    return !!(havePlace || haveCoords);
-  }, [island, location, lat, lon]);
-
-  const isValid = useMemo(() => {
-    const req = date.trim() && photographer.trim() && email.trim() && Number(totalMantas) > 0;
-    return !!(req && locOk);
-  }, [date, photographer, email, totalMantas, locOk]);
-
-  const err = {
-    date: attempted && !date.trim(),
-    photographer: attempted && !photographer.trim(),
-    email: attempted && !email.trim(),
-    total: attempted && !(Number(totalMantas) > 0),
-    island: attempted && !locOk && !island.trim(),
-    location: attempted && !locOk && !location.trim(),
-    lat: attempted && !locOk && !lat.trim(),
-    lon: attempted && !locOk && !lon.trim(),
+  const onAddSave = (m: MantaDraft) => {
+    console.log("[AddSighting] unified add save", m);
+    setMantas(prev=>[...prev, m]);
+    setAddOpen(false);
+  };
+  const onEditSave = (m: MantaDraft) => {
+    console.log("[AddSighting] unified edit save", m);
+    setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; });
+    setEditingManta(null);
   };
 
-  function cls(base: string, bad?: boolean) {
-    return base + (bad ? " border-red-500 focus-visible:ring-red-500" : "");
-  }
-
-  function handleSubmit() {
-    setAttempted(true);
-    if (!isValid) return;
-    console.log("submit: coming soon");
-  }
-
-  return (Layout>
-  <React.Fragment key="unified-modals">
-    <UnifiedMantaModal
-      data-unified-add-modal
-      open={addOpen}
-      onClose={()=>setAddOpen(false)}
-      sightingId={formSightingId}
-      onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
-    />
-    <UnifiedMantaModal
-      data-unified-edit-modal
-      open={!!editingManta}
-      onClose={()=>setEditingManta(null)}
-      sightingId={formSightingId}
-      existingManta={editingManta || undefined}
-      onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
-    />
-  </React.Fragment>
-      <div className="bg-gradient-to-r from-blue-700 to-blue-600 py-8 text-white">
-        <h1 className="mx-auto max-w-3xl text-center text-2xl font-semibold">Add Manta Sighting</h1>
-      </div>
-
-      <div className="mx-auto mt-3 max-w-3xl px-4 text-sm text-muted-foreground">
-        <Link to="/dashboard" className="underline">Dashboard</Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">Add Manta Sighting</span>
-      </div>
-
-      <div className="mx-auto mt-4 max-w-3xl space-y-6 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Sighting Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="date">Date *</Label>
-                <Input id="date" type="date" value={date} onChange={(e)=>setDate(e.target.value)} className={cls("", err.date)} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start">Start Time</Label>
-                  <Input id="start" type="time" value={startTime} onChange={(e)=>setStartTime(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="stop">Stop Time</Label>
-                  <Input id="stop" type="time" value={stopTime} onChange={(e)=>setStopTime(e.target.value)} />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="photographer">Photographer *</Label>
-                <Input id="photographer" placeholder="Name" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className={cls("", err.photographer)} />
-              </div>
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e)=>setEmail(e.target.value)} className={cls("", err.email)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" placeholder="(808) 555-1234" value={phone} onChange={(e)=>setPhone(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="total">Total Mantas Seen *</Label>
-                <Input id="total" type="number" min={0} value={totalMantas} onChange={(e)=>setTotalMantas(e.target.value === "" ? "" : parseInt(e.target.value))} className={cls("", err.total)} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Location & Submitter</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Island</Label>
-                <Select value={island} onValueChange={(v)=>{ setIsland(v); setLocation(""); }}>
-                  <SelectTrigger className={cls("", err.island)}>
-                    <SelectValue placeholder={loadingIslands ? "Loading..." : "Select island"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {islands.map((i)=>(<SelectItem key={i} value={i}>{i}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Location</Label>
-{!customLoc ? (
-  <Select value={location} onValueChange={setLocation} disabled={!island}>
-      <SelectTrigger className={cls("", err.location)}>
-        <SelectValue placeholder={island ? (loadingLocations ? "Loading..." : "Select location") : "Select island first"} />
-      </SelectTrigger>
-      <SelectContent>
-        {locations.map((loc)=>(<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
-      </SelectContent>
-    </Select>
-    <div className="mt-1 text-xs">
-      <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(true); setLocation(""); }}>Not listed? Add new</button>
-    </div>) : (
-  <Input placeholder="Type a new location name" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
-    <div className="mt-1 text-xs">
-      <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(false); }}>Use dropdown instead</button>
-    </div>)}
-</div>
-</div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="lat">Latitude</Label>
-                <Input id="lat" placeholder="e.g., 19.8968" value={lat} onChange={(e)=>setLat(e.target.value)} className={cls("", err.lat)} />
-              </div>
-              <div>
-                <Label htmlFor="lon">Longitude</Label>
-                <Input id="lon" placeholder="e.g., -155.5828" value={lon} onChange={(e)=>setLon(e.target.value)} className={cls("", err.lon)} />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" type="button" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea placeholder="Optional notes..." value={notes} onChange={(e)=>setNotes(e.target.value)} />
-          </CardContent>
-        </Card>
-<Card className="mt-6" data-mantas-summary>
-  <CardHeader>
-    <CardTitle>Mantas Added</CardTitle>
-  </CardHeader>
-  <CardContent>
-    {mantas.length === 0 ? (
-      <div className="text-sm text-gray-600">No mantas added yet.</div>
-    ) : (
-      <ul className="divide-y rounded border">
-        {mantas.map((m:any, i:number)=>(
-          <li key={m.id} className="p-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              {(() => {
-                const ventralBest = m.photos?.find((p:any)=>p.view==="ventral" && p.isBestVentral) || m.photos?.find((p:any)=>p.view==="ventral");
-                const dorsalBest  = m.photos?.find((p:any)=>p.view==="dorsal" && p.isBestDorsal)   || m.photos?.find((p:any)=>p.view==="dorsal");
-                return (
-                  <div className="flex items-center gap-2 shrink-0">
-                    {ventralBest ? <img src={ventralBest.url} alt="best ventral" className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
-                    {dorsalBest  ? <img src={dorsalBest.url} alt="best dorsal"  className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
-                  </div>
-                );
-              })()}
-              <div className="min-w-0">
-              <div className="font-medium truncate">{m.name || `Manta ${i+1}`}</div>
-              <div className="text-xs text-gray-500">{m.photos?.length || 0} photos</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] edit manta", m.id); setEditingManta(m); }}>Edit</button>
-              <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] remove manta", m.id); setMantas(prev=>prev.filter(x=>x.id!==m.id)); }}>Remove</button>
-            </div></div></li>
-        ))}
-      </ul>
-    )}
-  </CardContent>
-</Card>
-
-
-        <div className="flex items-center justify-between">
-          <Button variant="default" type="button" onClick={()=>setMantaModalOpen(true)}>Add Mantas</Button>
-          <div className="flex-1"></div>
-        </div>
-
-        <div className="mt-10 flex justify-center">
-          <Button variant="default" type="button" onClick={()=>{ setAttempted(true); handleSubmit(); }} disabled={!isValid}>Submit</Button>
-        </div>
-      </div>
-
-      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Pick Location</DialogTitle></DialogHeader>
-          <TempSightingMap
-            lat={!Number.isNaN(parseFloat(lat)) ? parseFloat(lat) : undefined}
-            lon={!Number.isNaN(parseFloat(lon)) ? parseFloat(lon) : undefined}
-            onPick={(latV, lonV) => { setLat(latV.toFixed(6)); setLon(lonV.toFixed(6)); }}
-           open={mapOpen}  open={mapOpen} />
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="secondary" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Close</Button>
-            <Button variant="default" onClick={()=>{ const la=parseFloat(lat||""); const lo=parseFloat(lon||""); if(!Number.isNaN(la)&&!Number.isNaN(lo)){ /* keep open */ } }}>Use These Coordinates</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    
-      
-      <AddMantasFlow
-        open={mantaModalOpen}
-        onOpenChange={setMantaModalOpen}
-        sightingId={clientRef}
-        onAddManta={(m)=>setMantas(prev=>[...prev,m])}
+  return (
+    <>
+      {/* Unified modal (Add) */}
+      <UnifiedMantaModal
+        data-unified-add-modal
+        open={addOpen}
+        onClose={()=>setAddOpen(false)}
+        sightingId={formSightingId}
+        onSave={onAddSave}
       />
-      <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-3xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
-    </Layout></>);
+      {/* Unified modal (Edit) */}
+      <UnifiedMantaModal
+        data-unified-edit-modal
+        open={!!editingManta}
+        onClose={()=>setEditingManta(null)}
+        sightingId={formSightingId}
+        existingManta={editingManta || undefined}
+        onSave={onEditSave}
+      />
+
+      {/* Map picker modal */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
+          <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
+            <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
+            <h3 className="text-lg font-medium mb-3">Pick Location</h3>
+            <div className="rounded border grid place-items-center h-56 mb-3 text-sm text-gray-600">
+              Map preview unavailable on this device. Enter coordinates below or use a map-enabled device.
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <label className="text-xs text-gray-600">Latitude</label>
+                <input className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600">Longitude</label>
+                <input className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=>setMapOpen(false)}>Close</Button>
+              <Button onClick={()=>setMapOpen(false)}>Use These Coordinates</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Layout>
+        {/* Centered hero with breadcrumb */}
+        <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-10 text-white">
+          <div className="max-w-5xl mx-auto px-4 text-center">
+            <div className="text-xs opacity-80 mb-2">/ Dashboard / Sightings / Add</div>
+            <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
+            <p className="text-sm opacity-90 mt-1">sighting: {formSightingId.slice(0,8)}</p>
+            <div className="mt-4">
+              <Button variant="secondary" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+          {/* Sighting Details */}
+          <Card>
+            <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-3 gap-3">
+              <input className="border rounded px-3 py-2" placeholder="Date (mm/dd/yyyy)" value={date} onChange={(e)=>setDate(e.target.value)} />
+              <input className="border rounded px-3 py-2" placeholder="Time (HH:MM)" value={time} onChange={(e)=>setTime(e.target.value)} />
+              <input className="border rounded px-3 py-2" placeholder="Observer" value={observer} onChange={(e)=>setObserver(e.target.value)} />
+            </CardContent>
+          </Card>
+
+          {/* Photographer / Contact */}
+          <Card>
+            <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-3 gap-3">
+              <input className="border rounded px-3 py-2" placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
+              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} />
+              <input className="border rounded px-3 py-2" placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} />
+            </CardContent>
+          </Card>
+
+          {/* Location & Submitter */}
+          <Card>
+            <CardHeader><CardTitle>Location &amp; Submitter</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 col-span-2">
+                <select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
+                  <option value="">Select island</option>
+                  <option value="Hawaiʻi">Hawaiʻi</option>
+                  <option value="Maui">Maui</option>
+                  <option value="Oʻahu">Oʻahu</option>
+                  <option value="Kauaʻi">Kauaʻi</option>
+                  <option value="Molokaʻi">Molokaʻi</option>
+                  <option value="Lānaʻi">Lānaʻi</option>
+                </select>
+                <input className="border rounded px-3 py-2" placeholder="Location" value={locationName} onChange={(e)=>setLocationName(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2 col-span-2">
+                <div>
+                  <label className="text-xs text-gray-600">Latitude</label>
+                  <input className="border rounded px-3 py-2 w-full" placeholder="Latitude" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600">Longitude</label>
+                  <input className="border rounded px-3 py-2 w-full" placeholder="Longitude" value={lng} onChange={(e)=>setLng(e.target.value)} />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Button variant="outline" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
+                <a className="ml-3 text-sm text-sky-700 underline cursor-pointer" onClick={(e)=>{e.preventDefault(); /* placeholder for add new */}}>Not listed? Add new</a>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notes */}
+          <Card>
+            <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+            <CardContent>
+              <textarea className="w-full border rounded p-2 min-h-[140px]" placeholder="Enter notes about this sighting..." />
+            </CardContent>
+          </Card>
+
+          {/* Mantas Added */}
+          <Card data-mantas-summary>
+            <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
+            <CardContent>
+              {mantas.length === 0 ? (
+                <div className="text-sm text-gray-600">No mantas added yet.</div>
+              ) : (
+                <ul className="divide-y rounded border">
+                  {mantas.map((m,i)=>{
+                    const ventralBest = m.photos?.find(p=>p.view==="ventral" && p.isBestVentral) || m.photos?.find(p=>p.view==="ventral");
+                    const dorsalBest  = m.photos?.find(p=>p.view==="dorsal"  && p.isBestDorsal)  || m.photos?.find(p=>p.view==="dorsal");
+                    return (
+                      <li key={m.id} className="p-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-2 shrink-0">
+                            {ventralBest ? <img src={ventralBest.url} alt="best ventral" className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                            {dorsalBest  ? <img src={dorsalBest?.url} alt="best dorsal"  className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{m.name || `Manta ${i+1}`}</div>
+                            <div className="text-xs text-gray-500">{m.photos?.length || 0} photos</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] edit manta", m.id); setEditingManta(m); }}>Edit</button>
+                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>{ console.log("[AddSighting] remove manta", m.id); setMantas(prev=>prev.filter(x=>x.id!==m.id)); }}>Remove</button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
+        </div>
+      </Layout>
+    </>
+  );
 }
