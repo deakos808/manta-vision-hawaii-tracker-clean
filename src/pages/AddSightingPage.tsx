@@ -14,7 +14,7 @@ import TempSightingMap from "@/components/sightings/TempSightingMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
-function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+function uuid(){ try { return (<>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
@@ -98,7 +98,7 @@ export default function AddSightingPage(props:any){
     console.log("submit: coming soon");
   }
 
-  return (<>Layout>
+  return (Layout>
   <React.Fragment key="unified-modals">
     <UnifiedMantaModal
       data-unified-add-modal
@@ -191,8 +191,7 @@ export default function AddSightingPage(props:any){
               <div>
                 <Label>Location</Label>
 {!customLoc ? (
-  <>
-    <Select value={location} onValueChange={setLocation} disabled={!island}>
+  <Select value={location} onValueChange={setLocation} disabled={!island}>
       <SelectTrigger className={cls("", err.location)}>
         <SelectValue placeholder={island ? (loadingLocations ? "Loading..." : "Select location") : "Select island first"} />
       </SelectTrigger>
@@ -202,16 +201,11 @@ export default function AddSightingPage(props:any){
     </Select>
     <div className="mt-1 text-xs">
       <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(true); setLocation(""); }}>Not listed? Add new</button>
-    </div>
-  </>
-) : (
-  <>
-    <Input placeholder="Type a new location name" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
+    </div>) : (
+  <Input placeholder="Type a new location name" value={location} onChange={(e)=>setLocation(e.target.value)} className={cls("", err.location)} />
     <div className="mt-1 text-xs">
       <button type="button" className="underline text-muted-foreground" onClick={()=>{ setCustomLoc(false); }}>Use dropdown instead</button>
-    </div>
-  </>
-)}
+    </div>)}
 </div>
 </div>
             <div className="grid grid-cols-2 gap-4">
