@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import UnifiedMantaModal from "@/components/mantas/UnifiedMantaModal";
 import { createPortal } from "react-dom";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +15,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+  <UnifiedMantaModal
+    data-unified-add-modal
+    open={addOpen}
+    onClose={()=>setAddOpen(false)}
+    sightingId={formSightingId}
+    onSave={(m)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev, m]); setAddOpen(false); }}
+  />
+  <UnifiedMantaModal
+    data-unified-edit-modal
+    open={!!editingManta}
+    onClose={()=>setEditingManta(null)}
+    sightingId={formSightingId}
+    existingManta={editingManta || undefined}
+    onSave={(m)=>{ console.log("[AddSighting] unified edit save", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; }); setEditingManta(null); }}
+  />
 
 export default function AddSightingPage(props:any){
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
   const [mantas, setMantas] = useState<any[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<any|null>(null);
   useEffect(()=>{ console.log("[AddSighting] editingManta change", editingManta); }, [editingManta]);
   const formSightingId = useMemo(()=>uuid(),[]);
@@ -39,18 +56,6 @@ export default function AddSightingPage(props:any){
     };
     window.addEventListener("manta-added", h);
     return () => window.removeEventListener("manta-added", h);
-  {editingManta ? <div className="fixed top-4 right-4 z-[300000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
-  <MantaPhotosModal
-    data-edit-modal
-    key={editingManta?.id || "none"}
-    open={!!editingManta}
-    onClose={()=>{ console.log("[AddSighting] edit close"); setEditingManta(null); }}
-    sightingId={formSightingId}
-    onAddManta={(m)=>{ console.log("[AddSighting] onUpdateManta()", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; }); setEditingManta(null); }}
-    initialTempName={editingManta?.name}
-    existingManta={editingManta || undefined}
-  />
-  {editingManta ? <div data-editing-banner className="fixed top-4 right-4 z-[300000] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded">editing: {editingManta?.id?.slice(0,8)}</div> : null}
   }, []);
   useEffect(()=>{ console.log("[AddSighting] mantas count", mantas.length); }, [mantas]);
   const [date, setDate] = useState("");
