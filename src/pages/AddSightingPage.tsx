@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import AddMantasFlow from "@/components/mantas/AddMantasFlow";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+  {editingManta && createPortal(
+    <MantaPhotosModal
+      data-portal-edit-modal
+      key={editingManta?.id || "none"}
+      open={true}
+      onClose={()=>{ console.log("[AddSighting] edit close"); setEditingManta(null); }}
+      sightingId={formSightingId}
+      onAddManta={(m)=>{ console.log("[AddSighting] onUpdateManta()", m); setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; }); setEditingManta(null); }}
+      initialTempName={editingManta?.name}
+      existingManta={editingManta || undefined}
+    />,
+    document.body
+  )}
 
 function MantasDock({mantas, formSightingId}:{mantas:any[]; formSightingId:string}){
   return (
