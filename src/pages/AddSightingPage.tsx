@@ -11,6 +11,45 @@ function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ fo
 const TIME_OPTIONS = buildTimes(5);
 const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
 
+const ISLAND_CENTROIDS: Record<string, {lat:number; lon:number}> = {
+  "hawaii":   { lat: 19.6,  lon: -155.5 },
+  "hawaiʻi":  { lat: 19.6,  lon: -155.5 },
+  "maui":     { lat: 20.8,  lon: -156.3 },
+  "oahu":     { lat: 21.48, lon: -157.98 },
+  "oʻahu":    { lat: 21.48, lon: -157.98 },
+  "kauai":    { lat: 22.05, lon: -159.50 },
+  "kauaʻi":   { lat: 22.05, lon: -159.50 },
+  "molokai":  { lat: 21.15, lon: -157.07 },
+  "molokaʻi": { lat: 21.15, lon: -157.07 },
+  "lanai":    { lat: 20.82, lon: -156.93 },
+  "lānaʻi":   { lat: 20.82, lon: -156.93 }
+};
+
+function normIslKey(s:string){ return s.toLowerCase().replace(/[’'ʻ]/g,'').trim(); }
+
+// Haversine km
+function haversineKm(a:{lat:number; lon:number}, b:{lat:number; lon:number}){
+  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
+  const lat1=a.lat*Math.PI/180, lat2=b.lat*Math.PI/180;
+  const sinDlat=Math.sin(dLat/2), sinDlon=Math.sin(dLon/2);
+  const h=sinDlat*sinDlat + Math.cos(lat1)*Math.cos(lat2)*sinDlon*sinDlon;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function bearingDeg(a:{lat:number; lon:number}, b:{lat:number; lon:number}){
+  const φ1=a.lat*Math.PI/180, φ2=b.lat*Math.PI/180, Δλ=(b.lon-a.lon)*Math.PI/180;
+  const y=Math.sin(Δλ)*Math.cos(φ2);
+  const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function moveMeters(lat:number, lon:number, meters:number, bearing:number){
+  const R=6371000, brng=bearing*Math.PI/180, φ1=lat*Math.PI/180, λ1=lon*Math.PI/180, δ=meters/R;
+  const sinφ2 = Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(brng);
+  const φ2 = Math.asin(sinφ2);
+  const y = Math.sin(brng)*Math.sin(δ)*Math.cos(Math.cos(φ1));
+  const x = Math.cos(δ)-Math.sin(φ1)*sinφ2;
+  const λ2 = λ1 + Math.atan2(Math.sin(brng)*Math.sin(δ)*Math.cos(φ1), x);
+  return { lat: φ2*180/Math.PI, lon: ((λ2*180/Math.PI+540)%360)-180 };
+}
 function islandVariants(name:string): string[] {
   const n = (name||"").trim();
   switch (n) {
@@ -110,26 +149,58 @@ const formSightingId = useMemo(()=>uuid(),[]);
   },[island]);
 
   // earliest-sighting default coords for a (island, location)
-  async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number} | null> {
-    try{
-      const variants = islandVariants(isl);
-      const { data, error } = await supabase
-        .from("sightings")
-        .select("latitude,longitude,sighting_date,pk_sighting_id")
-        .in("island", variants)
-        .eq("sitelocation", loc)
-        .not("latitude","is", null)
-        .not("longitude","is", null)
-        .order("sighting_date", { ascending: true })
-        .order("pk_sighting_id", { ascending: true })
-        .limit(1);
-      if(error || !data || !data.length) return null;
-      const r = data[0];
-      const la = Number(r.latitude), lo = Number(r.longitude);
-      if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
-      return { lat: la, lon: lo };
-    }catch(e){ console.warn("[AddSighting] fetchDefaultCoords failed", e); return null; }
-  }
+  async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number, source:string} | null> {
+  try{
+    const variants = islandVariants(isl);
+    // Pull several earliest rows; we will ignore centroid-like coords client-side
+    const { data, error } = await supabase
+      .from("sightings")
+      .select("latitude,longitude,sighting_date,pk_sighting_id")
+      .in("island", variants)
+      .eq("sitelocation", loc)
+      .not("latitude","is", null)
+      .not("longitude","is", null)
+      .order("sighting_date", { ascending: true })
+      .order("pk_sighting_id", { ascending: true })
+      .limit(50);
+    if(!error && data && data.length){
+      const key = normIslKey(isl);
+      const pivot = ISLAND_CENTROIDS[key] || ISLAND_CENTROIDS["maui"];
+      const pick = data.find((r:any)=>{
+        const la = Number(r.latitude), lo = Number(r.longitude);
+        if(!Number.isFinite(la)||!Number.isFinite(lo)) return false;
+        const d = haversineKm(pivot, {lat:la, lon:lo});
+        return d > 8; // ignore centroid-like coords
+      }) || data[0];
+      const la = Number(pick.latitude), lo = Number(pick.longitude);
+      if(Number.isFinite(la) && Number.isFinite(lo)) return { lat: la, lon: lo, source: "earliest sighting" };
+    }
+  }catch(e){ console.warn("[AddSighting] fetchDefaultCoords DB step failed", e); }
+
+  // Fallback: geocode with Mapbox (if token present), then nudge 100 m offshore
+  try{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (import.meta as any).env?.VITE_MAPBOX_TOKEN as string | undefined;
+    if(!token) return null;
+    const q = encodeURIComponent(`${loc}, ${isl}, Hawaii, USA`);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&limit=1&country=US`;
+    const res = await fetch(url);
+    if(res.ok){
+      const j = await res.json();
+      const f = j?.features?.[0];
+      if(f?.center?.length===2){
+        const lo = Number(f.center[0]), la = Number(f.center[1]);
+        const key = normIslKey(isl);
+        const pivot = ISLAND_CENTROIDS[key] || ISLAND_CENTROIDS["maui"];
+        const brg = bearingDeg(pivot, {lat:la, lon:lo});
+        const off = moveMeters(la, lo, 100, brg);
+        return { lat: off.lat, lon: off.lon, source: "mapbox 100m offshore" };
+      }
+    }
+  }catch(e){ console.warn("[AddSighting] mapbox fallback failed", e); }
+
+  return null;
+}
 
   // open map: if no lat/lon, try fetch canonical first, then open
   async function openMap(){
