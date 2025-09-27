@@ -4,14 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 import { supabase } from "@/lib/supabase";
-
 import TempSightingMap from "@/components/map/TempSightingMap";
-// ---- helpers ----
+
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
 const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
-
 
 function islandVariants(name:string): string[] {
   const n = (name||"").trim();
@@ -25,6 +23,7 @@ function islandVariants(name:string): string[] {
     default:        return [n];
   }
 }
+
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
@@ -54,10 +53,83 @@ export default function AddSightingPage() {
   const [mapOpen, setMapOpen] = useState(false);
 
   const formSightingId = useMemo(()=>uuid(),[]);
+
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+
+  // load locations for island (locations table → fallback distinct(sitelocation) from sightings)
+  useEffect(()=>{
+    let cancelled=false;
+    async function load(){
+      const isl = island?.trim();
+      if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
+
+      const variants = islandVariants(isl);
+
+      // try locations table
+      try{
+        const { data, error, status } = await supabase
+          .from("locations")
+          .select("id,name,island,latitude,longitude")
+          .in("island", variants)
+          .order("name", { ascending: true });
+        if(!cancelled && !error && status<400 && data && data.length){
+          // dedupe by name
+          const seen = new Set<string>(); const dedup:LocRec[]=[];
+          for(const r of data){
+            const k = (r.name||"").trim().toLowerCase();
+            if(!seen.has(k)){ seen.add(k); dedup.push({ id:String(r.id), name:String(r.name), island:r.island, latitude:r.latitude ?? null, longitude:r.longitude ?? null }); }
+          }
+          setLocList(dedup);
+          return;
+        }
+      }catch{ /* continue */ }
+
+      // fallback: sightings distinct sitelocation
+      try{
+        const { data: srows, error: serr } = await supabase
+          .from("sightings")
+          .select("sitelocation")
+          .in("island", variants)
+          .not("sitelocation","is",null);
+        if(!cancelled && !serr && srows){
+          const names = Array.from(new Set(
+            srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0)
+          )).sort((a,b)=>a.localeCompare(b));
+          setLocList(names.map((n:string)=>({ id:n, name:n, island:isl })));
+          return;
+        }
+      }catch{/* ignore */}
+
+      // minimal seed
+      setLocList(["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl})));
+    }
+    load();
+    return ()=>{ cancelled=true; };
+  },[island]);
+
+  // earliest-sighting default coords for a (island, location)
   async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number} | null> {
     try{
       const variants = islandVariants(isl);
-      const { data, error } = await supabase
+      const { data, error } 
+
+  async function openMap(){
+    const hasLat = Number.isFinite(parseFloat(lat));
+    const hasLng = Number.isFinite(parseFloat(lng));
+    // If coords already present, just open
+    if (hasLat && hasLng) { setMapOpen(true); return; }
+
+    // Otherwise, if we have island + a chosen display location, fetch canonical default, then open
+    const displayLoc = locationName || (locList.find(l=>l.id===locationId)?.name) || "";
+    if (island && displayLoc){
+      try{
+        const res = await fetchDefaultCoords(island, displayLoc);
+        if (res) { setLat(String(Number(res.lat).toFixed(5))); setLng(String(Number(res.lon).toFixed(5))); }
+      }catch{}
+    }
+    setMapOpen(true);
+  }
+= await supabase
         .from("sightings")
         .select("latitude,longitude,sighting_date,pk_sighting_id")
         .in("island", variants)
@@ -75,7 +147,6 @@ export default function AddSightingPage() {
     }catch(e){ console.warn("[AddSighting] fetchDefaultCoords failed", e); return null; }
   }
 
-
   // auto-fill coordinates if location has them (or earliest sighting canonical)
   useEffect(()=>{
     if(!locationId) return;
@@ -88,19 +159,19 @@ export default function AddSightingPage() {
       setLng(String(Number(lo).toFixed(5)));
     };
 
-    // Use coords from list if provided
     if (rec && rec.latitude != null && rec.longitude != null) {
       apply(Number(rec.latitude), Number(rec.longitude));
       return;
     }
 
-    // Otherwise fetch earliest coords from sightings for this island/location
     if (!island || !displayName) return;
     fetchDefaultCoords(island, displayName)
       .then((res)=>{ if(res){ apply(res.lat, res.lon); } })
       .catch(()=>{});
   },[locationId, locList, island]);
-setAddOpen(false); };
+
+  // modal save handlers
+  const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(p=>[...p,m]); setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
     setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
     setEditingManta(null);
@@ -108,22 +179,22 @@ setAddOpen(false); };
 
   return (
     <>
-      {/* Unified modal instances */}
+      {/* unified modals */}
       <UnifiedMantaModal open={addOpen} onClose={()=>setAddOpen(false)} sightingId={formSightingId} onSave={onAddSave} />
       <UnifiedMantaModal open={!!editingManta} onClose={()=>setEditingManta(null)} sightingId={formSightingId} existingManta={editingManta||undefined} onSave={onEditSave} />
 
-      {/* Simple Pick Location dialog (placeholder; swap to map later) */}
+      {/* Pick Location dialog */}
       {mapOpen && (
         <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
             <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
             <h3 className="text-lg font-medium mb-3">Pick Location</h3>
             <TempSightingMap
-  lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
-  lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
-  onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); }}
-/>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
+              lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
+              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); }}
+            />
+            <div className="grid grid-cols-2 gap-2 mb-3 mt-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
                 <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="e.g., 20.456" />
@@ -150,7 +221,7 @@ setAddOpen(false); };
           </div>
         </div>
 
-        {/* Breadcrumb under header (left-aligned) */}
+        {/* Breadcrumb under header */}
         <div className="bg-white">
           <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-slate-600">
             <a href="/browse" className="underline text-sky-700">Return to Browse Data</a>
@@ -163,7 +234,7 @@ setAddOpen(false); };
 
         {/* Content */}
         <div className="max-w-5xl mx-auto px-4 pb-10 space-y-6">
-          {/* Sighting Details: Date, Start, Stop */}
+          {/* Sighting Details */}
           <Card>
             <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
@@ -212,7 +283,25 @@ setAddOpen(false); };
                   {addingLoc && (
                     <div className="mt-2 flex gap-2">
                       <input className="border rounded px-3 py-2 flex-1" placeholder="New location name" value={newLoc} onChange={(e)=>setNewLoc(e.target.value)} />
-                      <Button onClick={addNewLocation} disabled={!newLoc.trim() || !island}>Add</Button>
+                      <Button onClick={async ()=>{
+                        if(!newLoc.trim() || !island) return;
+                        const clean=newLoc.trim();
+                        try{
+                          const { data, error } = await supabase.from("locations")
+                            .insert({ island, name: clean }).select("id,name,island").limit(1);
+                          if(!error && data && data[0]){
+                            const r=data[0]; setLocList(prev=>[...prev, {id:String(r.id), name:String(r.name), island:r.island}].sort((a,b)=>a.name.localeCompare(b.name)));
+                            setLocationId(String(r.id)); setLocationName(String(r.name));
+                          }else{
+                            setLocList(prev=>[...prev, {id:clean, name:clean, island}].sort((a,b)=>a.name.localeCompare(b.name)));
+                            setLocationId(clean); setLocationName(clean);
+                          }
+                        }catch{
+                          setLocList(prev=>[...prev, {id:clean, name:clean, island}].sort((a,b)=>a.name.localeCompare(b.name)));
+                          setLocationId(clean); setLocationName(clean);
+                        }
+                        setNewLoc(""); setAddingLoc(false);
+                      }}>Add</Button>
                     </div>
                   )}
                 </div>
@@ -230,7 +319,7 @@ setAddOpen(false); };
               </div>
 
               <div>
-                <Button variant="outline" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
+                <Button variant="outline" onClick={openMap}>Use Map for Location</Button>
               </div>
             </CardContent>
           </Card>
