@@ -20,22 +20,20 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
 
   const [usingLeaflet, setUsingLeaflet] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [hasPick, setHasPick] = useState<boolean>(Number.isFinite(lat) && Number.isFinite(lon));
 
-  // Helpers
   const center = (): [number, number] =>
     (typeof lon === "number" && typeof lat === "number") ? [lon, lat] : [-155.5, 20.5];
 
-  // Init engine
+  // Init engine: try MapLibre, else Leaflet
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       if (!divRef.current) return;
 
       // Try MapLibre first
       try {
         const maplibregl = (await import("maplibre-gl")).default;
-
         const map = new maplibregl.Map({
           container: divRef.current,
           style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -44,13 +42,10 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           attributionControl: true,
           failIfMajorPerformanceCaveat: false
         });
-
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
         if (typeof lon === "number" && typeof lat === "number") {
-          mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" })
-            .setLngLat([lon, lat])
-            .addTo(map);
+          mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lon, lat]).addTo(map);
         }
 
         map.on("click", (e:any) => {
@@ -60,6 +55,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           } else {
             mlMarker.current.setLngLat([lng, lat]);
           }
+          setHasPick(true);
           onPick?.(lat, lng);
         });
 
@@ -71,7 +67,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         setErrMsg(err?.message || "MapLibre init failed; falling back to Leaflet.");
       }
 
-      // Fallback to Leaflet (no WebGL)
+      // Leaflet fallback
       try {
         const L = await import("leaflet");
         Lref.current = L as unknown as typeof LeafletNS;
@@ -91,10 +87,14 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           maxZoom: 19
         }).addTo(map);
 
+        // crosshair until first pick
+        (map.getContainer() as HTMLElement).style.cursor = hasPick ? "grab" : "crosshair";
+
         if (typeof lon === "number" && typeof lat === "number") {
           lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(map);
           lfMarker.current.on("dragend", () => {
             const ll = (lfMarker.current as any).getLatLng();
+            setHasPick(true);
             onPick?.(ll.lat, ll.lng);
           });
         }
@@ -105,11 +105,13 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
             lfMarker.current = L.marker([lat, lng], { draggable: true }).addTo(map);
             lfMarker.current.on("dragend", () => {
               const ll = (lfMarker.current as any).getLatLng();
+              setHasPick(true);
               onPick?.(ll.lat, ll.lng);
             });
           } else {
             (lfMarker.current as any).setLatLng([lat, lng]);
           }
+          setHasPick(true);
           onPick?.(lat, lng);
         });
 
@@ -138,32 +140,44 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
   useEffect(() => {
     // MapLibre update
     if (mlMap.current && typeof lon === "number" && typeof lat === "number") {
-      if (!mlMarker.current) {
-        import("maplibre-gl").then(({ default: maplibregl }) => {
+      import("maplibre-gl").then(({ default: maplibregl }) => {
+        if (!mlMarker.current) {
           mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lon, lat]).addTo(mlMap.current!);
-        });
-      } else {
-        mlMarker.current.setLngLat([lon, lat]);
-      }
-      mlMap.current.flyTo({ center: [lon, lat], zoom: 8, essential: true });
+        } else {
+          mlMarker.current.setLngLat([lon, lat]);
+        }
+        mlMap.current!.easeTo({ center: [lon, lat], essential: true });
+      });
+      setHasPick(true);
     }
     // Leaflet update
     if (lfMap.current && typeof lon === "number" && typeof lat === "number") {
       const L = Lref.current!;
       if (!lfMarker.current) {
-        lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(lfMap.current);
+        lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(lfMap.current!);
+        lfMarker.current.on("dragend", () => {
+          const ll = (lfMarker.current as any).getLatLng();
+          setHasPick(true);
+          onPick?.(ll.lat, ll.lng);
+        });
       } else {
         (lfMarker.current as any).setLatLng([lat, lon]);
       }
-      lfMap.current.flyTo([lat, lon], 8);
+      lfMap.current!.panTo([lat, lon]);
+      setHasPick(true);
     }
-  }, [lat, lon]);
+  }, [lat, lon, onPick]);
 
   return (
-    <div className="w-full h-64 rounded border overflow-hidden">
+    <div className="relative w-full h-64 rounded border overflow-hidden">
       <div ref={divRef} className="w-full h-full" />
+      {!hasPick && (
+        <div className="pointer-events-none absolute top-2 left-2 bg-white/85 px-2 py-1 rounded border text-xs text-gray-700">
+          Click map to drop pin
+        </div>
+      )}
       {errMsg && (
-        <div className="absolute bottom-2 left-2 text-xs bg-white/80 px-2 py-1 rounded border text-gray-600">
+        <div className="pointer-events-none absolute bottom-2 left-2 text-xs bg-white/80 px-2 py-1 rounded border text-gray-600">
           {usingLeaflet ? "Leaflet fallback active" : errMsg}
         </div>
       )}
