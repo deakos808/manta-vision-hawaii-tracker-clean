@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 import { supabase } from "@/lib/supabase";
 
+import TempSightingMap from "@/components/map/TempSightingMap";
 // ---- helpers ----
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -128,9 +129,11 @@ export default function AddSightingPage() {
           <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
             <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
             <h3 className="text-lg font-medium mb-3">Pick Location</h3>
-            <div className="rounded border grid place-items-center h-56 mb-3 text-sm text-gray-600">
-              Map preview unavailable on this device. Enter coordinates below or use a map-enabled device.
-            </div>
+            <TempSightingMap
+  lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
+  lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
+  onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); }}
+/>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
