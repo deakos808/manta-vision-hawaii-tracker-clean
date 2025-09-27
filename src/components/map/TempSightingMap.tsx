@@ -2,19 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import maplibregl, { Map, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-type Props = {
-  lat?: number;
-  lon?: number;
-  onPick?: (lat: number, lon: number) => void;
-};
+type Props = { lat?: number; lon?: number; onPick?: (lat:number, lon:number)=>void; };
 
 function hasWebGL(): boolean {
   try {
     const c = document.createElement("canvas");
     return !!(window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl")));
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 export default function TempSightingMap({ lat, lon, onPick }: Props) {
@@ -29,23 +23,18 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
 
     try {
       const center = (typeof lon === "number" && typeof lat === "number") ? [lon, lat] : [-155.5, 20.5]; // Hawaiʻi
-
       mapObj.current = new maplibregl.Map({
         container: mapRef.current,
         style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
         center,
         zoom: (typeof lon === "number" && typeof lat === "number") ? 8 : 5,
-        attributionControl: true,
-        antialias: false,
-        failIfMajorPerformanceCaveat: false
+        attributionControl: true
       });
-
       mapObj.current.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
       if (typeof lon === "number" && typeof lat === "number") {
         markerRef.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lon, lat]).addTo(mapObj.current);
       }
-
       mapObj.current.on("click", (e) => {
         const { lng, lat } = e.lngLat;
         if (!markerRef.current) {
@@ -55,10 +44,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         }
         onPick?.(lat, lng);
       });
-    } catch (err) {
-      console.warn("[TempSightingMap] WebGL init failed:", err);
-      setFailed(true);
-    }
+    } catch { setFailed(true); }
 
     return () => { mapObj.current?.remove(); mapObj.current = null; };
   }, [failed]);
@@ -82,6 +68,5 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
       </div>
     );
   }
-
   return <div ref={mapRef} className="w-full h-64 rounded border" />;
 }
