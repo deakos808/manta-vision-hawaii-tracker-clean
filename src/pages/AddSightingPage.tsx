@@ -3,18 +3,21 @@ import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import { supabase } from "@/lib/supabase";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 
-// Simple island→locations seed (replace with Supabase later)
+type LocRec = { id: string; name: string; island?: string; latitude?: number | null; longitude?: number | null };
+
+// Fallback island/locations seed (used only if Supabase has no data or fails)
 const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
 const DEFAULT_LOCATIONS: Record<string,string[]> = {
-  "Hawaiʻi": ["Keauhou Bay","Kailua Pier"],
-  "Maui": ["Māʻalaea Harbor","Honokōwai"],
-  "Oʻahu": ["Waiʻanae Harbor","Kahala"],
-  "Kauaʻi": ["Kapaʻa","Port Allen"],
+  "Hawaiʻi": ["Keauhou Bay","Kailua Pier","Honaunau","Kawaihae Harbor"],
+  "Maui": ["Māʻalaea Harbor","Honokōwai","Lahaina Roads","Kīhei Boat Ramp"],
+  "Oʻahu": ["Waiʻanae Harbor","Kahala","Haleʻiwa","Makapuʻu"],
+  "Kauaʻi": ["Kapaʻa","Port Allen","Nāwiliwili Harbor"],
   "Molokaʻi": ["Kaunakakai"],
-  "Lānaʻi": ["Manele"]
+  "Lānaʻi": ["Manele","Hulopoʻe"]
 };
 
 function buildTimes(stepMin=5){
@@ -35,50 +38,136 @@ export default function AddSightingPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
-  // Form state per your spec
+  // Sighting details
   const [date, setDate] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [stopTime, setStopTime] = useState<string>("");
 
+  // Photographer & contact
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
+  // Location state
   const [island, setIsland] = useState("");
-  const [locations, setLocations] = useState<Record<string,string[]>>({...DEFAULT_LOCATIONS});
-  const [locationName, setLocationName] = useState("");
+  const [locList, setLocList] = useState<LocRec[]>([]);
+  const [locationId, setLocationId] = useState<string>("");
+  const [locationName, setLocationName] = useState<string>(""); // friendly display
   const [addingLoc, setAddingLoc] = useState(false);
   const [newLoc, setNewLoc] = useState("");
 
+  // Coordinates
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [mapOpen, setMapOpen] = useState(false);
 
+  const [mapOpen, setMapOpen] = useState(false);
   const formSightingId = useMemo(()=>uuid(), []);
+
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // Dependent location reset on island change
+  // Load locations for selected island from Supabase, fallback to defaults if needed
   useEffect(()=>{
-    const list = island ? (locations[island] || []) : [];
-    if(!list.includes(locationName)) setLocationName("");
+    let cancelled = false;
+    async function load() {
+      setLocList([]);
+      setLocationId("");
+      setLocationName("");
+
+      if(!island){
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("locations")
+          .select("id,name,island,latitude,longitude")
+          .eq("island", island)
+          .order("name", { ascending: true });
+
+        if(!cancelled && !error && data && data.length){
+          const list = data.map((r:any)=>({
+            id: String(r.id),
+            name: String(r.name),
+            island: r.island ?? island,
+            latitude: (r.latitude ?? null),
+            longitude: (r.longitude ?? null),
+          })) as LocRec[];
+          setLocList(list);
+          return;
+        }
+      } catch (err) {
+        console.warn("[AddSighting] locations fetch error (fallback to seed):", err);
+      }
+
+      // Fallback to seed
+      if(!cancelled){
+        const seed = (DEFAULT_LOCATIONS[island] || []).map(n=>({ id:n, name:n, island })) as LocRec[];
+        setLocList(seed);
+      }
+    }
+    load();
+    return ()=>{ cancelled = true; };
   }, [island]);
 
-  function addNewLocation(){
+  // If user picks a location that has coordinates stored, auto-fill lat/lng
+  useEffect(()=>{
+    if(!locationId) return;
+    const found = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+    if(found){
+      setLocationName(found.name);
+      if(found.latitude != null && found.longitude != null){
+        setLat(String(Number(found.latitude).toFixed(5)));
+        setLng(String(Number(found.longitude).toFixed(5)));
+      }
+    }
+  }, [locationId, locList]);
+
+  async function addNewLocation() {
     if(!island || !newLoc.trim()) return;
     const clean = newLoc.trim();
-    setLocations(prev=>{
-      const copy={...prev};
-      const arr=new Set(copy[island] || []);
-      arr.add(clean);
-      copy[island]=Array.from(arr);
-      return copy;
-    });
+
+    // Try to insert to Supabase so it's immediately real data
+    try {
+      const { data, error } = await supabase
+        .from("locations")
+        .insert({ island, name: clean })
+        .select("id,name,island,latitude,longitude")
+        .limit(1);
+
+      if(!error && data && data.length){
+        const rec = data[0];
+        const newRec: LocRec = {
+          id: String(rec.id),
+          name: String(rec.name),
+          island: rec.island ?? island,
+          latitude: rec.latitude ?? null,
+          longitude: rec.longitude ?? null,
+        };
+        setLocList(prev => {
+          const names = new Set(prev.map(p => p.name));
+          if(!names.has(newRec.name)) return [...prev, newRec].sort((a,b)=>a.name.localeCompare(b.name));
+          return prev;
+        });
+        setLocationId(String(newRec.id));
+        setLocationName(newRec.name);
+        setNewLoc("");
+        setAddingLoc(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("[AddSighting] supabase insert location failed; falling back to client add:", err);
+    }
+
+    // Client-only fallback to keep workflow unblocked
+    const fallback: LocRec = { id: clean, name: clean, island };
+    setLocList(prev => [...prev, fallback].sort((a,b)=>a.name.localeCompare(b.name)));
+    setLocationId(clean);
     setLocationName(clean);
     setNewLoc("");
     setAddingLoc(false);
   }
 
-  // Modal save handlers
+  // Unified modal save handlers
   const onAddSave = (m: MantaDraft) => {
     console.log("[AddSighting] unified add save", m);
     setMantas(prev=>[...prev, m]);
@@ -86,12 +175,17 @@ export default function AddSightingPage() {
   };
   const onEditSave = (m: MantaDraft) => {
     console.log("[AddSighting] unified edit save", m);
-    setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev, m]; });
+    setMantas(prev=>{
+      const i=prev.findIndex(x=>x.id===m.id);
+      if(i>=0){ const c=[...prev]; c[i]=m; return c; }
+      return [...prev, m];
+    });
     setEditingManta(null);
   };
 
   return (
     <>
+      {/* Add & Edit unified modals (unchanged behavior) */}
       <UnifiedMantaModal
         data-unified-add-modal
         open={addOpen}
@@ -108,6 +202,7 @@ export default function AddSightingPage() {
         onSave={onEditSave}
       />
 
+      {/* Map picker scaffold (we can swap in a real map later) */}
       {mapOpen && (
         <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
@@ -119,11 +214,11 @@ export default function AddSightingPage() {
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
-                <input className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="19.44400" />
               </div>
               <div>
                 <label className="text-xs text-gray-600">Longitude</label>
-                <input className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} placeholder="-156.44400" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -143,7 +238,7 @@ export default function AddSightingPage() {
           </div>
         </div>
 
-        {/* Breadcrumb under header, left-aligned (like catalog) */}
+        {/* Breadcrumb under header (left-aligned) */}
         <div className="bg-white">
           <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-slate-600">
             <a href="/browse" className="underline text-sky-700">Return to Browse Data</a>
@@ -195,12 +290,23 @@ export default function AddSightingPage() {
 
                 {/* Dependent Location dropdown */}
                 <div>
-                  <select className="border rounded px-3 py-2 w-full" value={locationName} onChange={(e)=>setLocationName(e.target.value)} disabled={!island}>
+                  <select
+                    className="border rounded px-3 py-2 w-full"
+                    value={locationId}
+                    onChange={(e)=>setLocationId(e.target.value)}
+                    disabled={!island}
+                  >
                     <option value="">{island ? "Select location" : "Select island first"}</option>
-                    {(island ? (locations[island]||[]) : []).map(loc=> <option key={loc} value={loc}>{loc}</option>)}
+                    {locList.map(loc=> <option key={loc.id} value={loc.id}>{loc.name}</option>)}
                   </select>
                   <div className="text-xs mt-1">
-                    <button className="text-sky-700 underline disabled:text-slate-400" disabled={!island} onClick={(e)=>{e.preventDefault(); setAddingLoc(v=>!v);}}>Not listed? Add new</button>
+                    <button
+                      className="text-sky-700 underline disabled:text-slate-400"
+                      disabled={!island}
+                      onClick={(e)=>{e.preventDefault(); setAddingLoc(v=>!v);}}
+                    >
+                      Not listed? Add new
+                    </button>
                   </div>
                   {addingLoc && (
                     <div className="mt-2 flex gap-2">
@@ -214,11 +320,27 @@ export default function AddSightingPage() {
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-600">Latitude</label>
-                  <input className="border rounded px-3 py-2 w-full" placeholder="Latitude" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                  <input
+                    type="number"
+                    step="0.00001"
+                    inputMode="decimal"
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder="19.44400"
+                    value={lat}
+                    onChange={(e)=>setLat(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600">Longitude</label>
-                  <input className="border rounded px-3 py-2 w-full" placeholder="Longitude" value={lng} onChange={(e)=>setLng(e.target.value)} />
+                  <input
+                    type="number"
+                    step="0.00001"
+                    inputMode="decimal"
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder="-156.44400"
+                    value={lng}
+                    onChange={(e)=>setLng(e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -240,6 +362,12 @@ export default function AddSightingPage() {
           <Card data-mantas-summary>
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
+      <div data-mantas-headers className="hidden md:grid grid-cols-12 text-[11px] uppercase tracking-wide text-gray-500 px-3 pb-1">
+        <div className="col-span-5">Name</div>
+        <div className="col-span-2">Gender</div>
+        <div className="col-span-3">Age Class</div>
+        <div className="col-span-2">Size (cm)</div>
+      </div>
               {mantas.length === 0 ? (
                 <div className="text-sm text-gray-600">No mantas added yet.</div>
               ) : (
@@ -256,7 +384,15 @@ export default function AddSightingPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-medium truncate">{m.name || `Manta ${i+1}`}</div>
-                            <div className="text-xs text-gray-500">{m.photos?.length || 0} photos</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {/* gender · age · size if available */}
+                              {[
+                                m.gender ? `Gender: ${m.gender}` : null,
+                                m.ageClass ? `Age: ${m.ageClass}` : null,
+                                m.size ? `Size: ${m.size}` : null
+                              ].filter(Boolean).join(" · ") || "—"}
+                            </div>
+                            <div className="text-[11px] text-gray-400">{m.photos?.length || 0} photos</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

@@ -17,7 +17,7 @@ export type MantaDraft = {
   name: string;
   gender?: string | null;
   ageClass?: string | null;
-  size?: string | null;
+  size?: string | null; // store as string; page can parseInt when saving to DB
   photos: Uploaded[];
 };
 
@@ -45,46 +45,45 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
 
   useEffect(() => {
     if (!open) return;
-    console.log("[UnifiedModal] open", { sightingId, mantaId, hasExisting: !!existingManta });
     setName((existingManta?.name || "").trim());
     setGender(existingManta?.gender ?? null);
     setAgeClass(existingManta?.ageClass ?? null);
     setSize(existingManta?.size ?? null);
     setPhotos(existingManta?.photos ?? []);
-  }, [open, existingManta, sightingId, mantaId]);
+  }, [open, existingManta]);
 
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
     if (!files?.length) return;
     setBusy(true);
-    const allow = ["image/jpeg", "image/png", "image/webp"];
+    const allow = ["image/jpeg","image/png","image/webp"];
     const added: Uploaded[] = [];
     for (const f of files) {
       if (!allow.includes(f.type)) { console.warn("[UnifiedModal] skip type", f.type, f.name); continue; }
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
       const id = uuid();
       const path = `${sightingId}/${mantaId}/${id}.${ext}`;
-      console.log("[UnifiedModal] upload ->", path);
-      const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
-      if (error) { console.warn("[UnifiedModal] upload error", error.message); continue; }
-      const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
-      added.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
+      try {
+        const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
+        if (error) { console.warn("[UnifiedModal] upload error", error.message); continue; }
+        const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
+        added.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
+      } catch (e:any) {
+        console.warn("[UnifiedModal] upload error", e?.message || e);
+      }
     }
     if (added.length) setPhotos(prev => [...prev, ...added]);
     setBusy(false);
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     const files = Array.from(e.dataTransfer.files || []);
-    console.log("[UnifiedModal] drop:", files.map(f => f.name));
     handleFiles(files);
   }
   function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    console.log("[UnifiedModal] browse selected:", files.map(f => f.name));
     handleFiles(files);
     e.currentTarget.value = "";
   }
@@ -106,16 +105,14 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
       gender, ageClass, size,
       photos
     };
-    console.log("[UnifiedModal] save ->", draft);
     onSave(draft);
     onClose();
   }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
-      <div className="bg-white rounded-lg border w-full max-w-4xl p-4 relative pointer-events-auto">
+      <div className="bg-white rounded-lg border w-full max-w-4xl p-4 pointer-events-auto relative">
         <button
-          data-close-x
           aria-label="Close"
           type="button"
           className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50"
@@ -123,92 +120,122 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
         >
           &times;
         </button>
-        <div className="flex items-center justify-between mb-3">
+
+        <div className="flex items-center justify-between mb-3 pr-10">
           <h3 className="text-lg font-medium">{existingManta ? "Edit Manta" : "Add Manta"}</h3>
-          
+          <div className="text-[11px] text-gray-500">sighting: {sightingId.slice(0,8)}</div>
+        </div>
+
+        <div className="grid md:grid-cols-12 gap-3 mb-4">
+          <div className="md:col-span-5 col-span-12">
+            <label className="text-sm block mb-1">Name</label>
+            <input
+              className="w-full border rounded px-3 py-2"
+              value={name}
+              onChange={(e)=> setName(e.target.value)}
+              placeholder="e.g., A, B, C"
+            />
+          </div>
+          <div className="md:col-span-2 col-span-12">
+            <label className="text-sm block mb-1">Gender</label>
+            <select className="w-full border rounded px-2 py-2" value={gender ?? ""} onChange={(e)=>setGender(e.target.value || null)}>
+              <option value="">—</option>
+              <option value="female">female</option>
+              <option value="male">male</option>
+              <option value="unknown">unknown</option>
+            </select>
+          </div>
+          <div className="md:col-span-3 col-span-12">
+            <label className="text-sm block mb-1">Age Class</label>
+            <select className="w-full border rounded px-2 py-2" value={ageClass ?? ""} onChange={(e)=>setAgeClass(e.target.value || null)}>
+              <option value="">—</option>
+              <option value="juvenile">juvenile</option>
+              <option value="subadult">subadult</option>
+              <option value="adult">adult</option>
+            </select>
+          </div>
+          <div className="md:col-span-2 col-span-12">
+            <label className="text-sm block mb-1">Size (cm)</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              step={1}
+              min={0}
+              placeholder="cm"
+              className="w-full border rounded px-3 py-2"
+              value={(size as any) ?? ""}
+              onChange={(e)=> setSize((e.target.value||"").replace(/[^0-9]/g,""))}
+            />
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm block mb-1">Temporary Name</label>
-              <input className="w-full border rounded px-3 py-2" value={name} onChange={(e)=>setName(e.target.value)} placeholder="e.g., A, B, C" />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-sm block mb-1">Gender</label>
-                <select className="w-full border rounded px-2 py-2" value={gender ?? ""} onChange={e=>setGender(e.target.value || null)}>
-                  <option value="">—</option>
-                  <option value="female">female</option>
-                  <option value="male">male</option>
-                  <option value="unknown">unknown</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm block mb-1">Age Class</label>
-                <select className="w-full border rounded px-2 py-2" value={ageClass ?? ""} onChange={e=>setAgeClass(e.target.value || null)}>
-                  <option value="">—</option>
-                  <option value="juvenile">juvenile</option>
-                  <option value="subadult">subadult</option>
-                  <option value="adult">adult</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm block mb-1">Size</label>
-                <select className="w-full border rounded px-2 py-2" value={size ?? ""} onChange={e=>setSize(e.target.value || null)}>
-                  <option value="">—</option>
-                  <option value="small">small</option>
-                  <option value="medium">medium</option>
-                  <option value="large">large</option>
-                </select>
-              </div>
-            </div>
-
-            <div onDrop={onDrop} onDragOver={(e)=>{e.preventDefault();}} className="mt-1 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
-              <div>Drag & drop photos here</div>
+          {/* Left: dropzone */}
+          <div>
+            <div
+              className="mt-1 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
+              onDrop={onDrop}
+              onDragOver={(e)=>{e.preventDefault();}}
+            >
+              <div>Drag &amp; drop photos here</div>
               <div className="my-2">or</div>
               <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
               <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={onBrowse} />
             </div>
           </div>
 
-            <div className="max-h-80 overflow-auto pr-1">
-              {photos.length === 0 ? (
-                <div className="text-sm text-gray-600">No photos added yet.</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {photos.map(p=>(
-                    <div key={p.id} className="border rounded p-2">
-                      <img src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
-                      <div className="text-xs break-all mb-2">{p.name}</div>
-                      <div className="text-xs mb-1">View</div>
-                      <select className="w-full border rounded px-2 py-1 text-sm mb-2" value={p.view} onChange={(e)=>setView(p.id, e.target.value as View)}>
-                        <option value="ventral">ventral</option>
-                        <option value="dorsal">dorsal</option>
-                        <option value="other">other</option>
-                      </select>
-                      {p.view === "ventral" && (
-                        <label className="text-xs flex items-center gap-2 mb-1">
-                          <input type="radio" name="best-ventral" checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} />
-                          Best ventral
-                        </label>
-                      )}
-                      {p.view === "dorsal" && (
-                        <label className="text-xs flex items-center gap-2 mb-1">
-                          <input type="radio" name="best-dorsal" checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} />
-                          Best dorsal
-                        </label>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Right: thumbnails */}
+          <div className="max-h-80 overflow-auto pr-1">
+            {photos.length === 0 ? (
+              <div className="text-sm text-gray-600">No photos added yet.</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {photos.map(p=>(
+                  <div key={p.id} className="border rounded p-2">
+                    <img src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
+                    <div className="text-xs break-all mb-2">{p.name}</div>
+                    <div className="text-xs mb-1">View</div>
+                    <select className="w-full border rounded px-2 py-1 text-sm mb-2" value={p.view} onChange={(e)=>setView(p.id, e.target.value as View)}>
+                      <option value="ventral">ventral</option>
+                      <option value="dorsal">dorsal</option>
+                      <option value="other">other</option>
+                    </select>
+                    {p.view === "ventral" && (
+                      <label className="text-xs flex items-center gap-2 mb-1">
+                        <input type="radio" name="best-ventral" checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} />
+                        Best ventral
+                      </label>
+                    )}
+                    {p.view === "dorsal" && (
+                      <label className="text-xs flex items-center gap-2 mb-1">
+                        <input type="radio" name="best-dorsal" checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} />
+                        Best dorsal
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={(e)=>{e.stopPropagation(); onClose();}} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
-          <button type="button" onClick={(e)=>{e.stopPropagation(); save();}} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>Save Manta</button>
+          <button
+            type="button"
+            onClick={(e)=>{ e.stopPropagation(); onClose(); }}
+            className="px-3 py-2 rounded border"
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={(e)=>{ e.stopPropagation(); save(); }}
+            className="px-3 py-2 rounded bg-sky-600 text-white"
+            disabled={busy || photos.length===0}
+          >
+            Save Manta
+          </button>
         </div>
       </div>
     </div>
