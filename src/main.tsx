@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css';
 // src/main.tsx
 import * as React from 'react'; // ✅ if you truly need it
 import ReactDOM from 'react-dom/client';
