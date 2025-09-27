@@ -28,6 +28,22 @@ const ISLAND_CENTROIDS = {
   "lānaʻi":  { lat:20.82, lon:-156.93 },
 };
 
+const ISLAND_BBOX = {
+  // [minLon, minLat, maxLon, maxLat]  (tight-ish boxes)
+  "hawaii":  [-156.1, 18.8, -154.7, 20.4],
+  "hawaiʻi": [-156.1, 18.8, -154.7, 20.4],
+  "maui":    [-156.9, 20.4, -155.9, 21.1],
+  "oahu":    [-158.3, 21.2, -157.6, 21.8],
+  "oʻahu":   [-158.3, 21.2, -157.6, 21.8],
+  "kauai":   [-159.9, 21.8, -159.2, 22.3],
+  "kauaʻi":  [-159.9, 21.8, -159.2, 22.3],
+  "molokai": [-157.4, 21.0, -156.6, 21.3],
+  "molokaʻi":[-157.4, 21.0, -156.6, 21.3],
+  "lanai":   [-157.2, 20.6, -156.6, 21.1],
+  "lānaʻi":  [-157.2, 20.6, -156.6, 21.1],
+  "niihau":  [-160.3, 21.8, -160.0, 22.1]
+};
+
 function strip(s){ return (s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[’'ʻ]/g,"").trim(); }
 function normIsl(s){ return strip(s).toLowerCase(); }
 function parseCSV(s){
@@ -55,8 +71,10 @@ function bearingDeg(a, b){
   const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
   return (Math.atan2(y,x)*180/Math.PI+360)%360;
 }
-async function geocode(q){
-  const url=`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=1&country=US`;
+async function geocode(q, bbox){
+  const bboxParam = bbox ? `&bbox=${bbox.join(',')}` : "";
+  // prefer POIs/places; still allow generic
+  const url=`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=5&types=poi,place,neighborhood,locality,region,country&country=US${bboxParam}`;
   const res=await fetch(url); if(!res.ok) return null;
   const j=await res.json(); const f=j.features?.[0]; if(!f?.center) return null;
   return { lon:f.center[0], lat:f.center[1], note:(f.place_name||"").replace(/,/g,"; ") };
@@ -67,7 +85,13 @@ async function geocode(q){
   const rows=parseCSV(fs.readFileSync(CSV_IN,"utf8"));
   const out=["island,region,sitelocation,lat_found,lon_found,lat_offshore,lon_offshore,geocoder_note"];
 
-  for(const r of rows){
+  
+// de-duplicate (island + sitelocation)
+const seen = new Set();
+for(const r of rows){
+  const key = (r.island||"").trim()+"|"+(r.sitelocation||"").trim().toLowerCase();
+  if(seen.has(key)) continue; seen.add(key);
+
     const islKey = normIsl(r.island);
     const syns = ISLAND_SYNONYMS[islKey] || [r.island];
     const candidates = [
@@ -76,8 +100,8 @@ async function geocode(q){
       `${strip(r.sitelocation)}, ${syns[0]}, Hawaii, USA`,
       `${strip(r.sitelocation)}, Hawaii, USA`
     ];
-    let hit=null;
-    for(const q of candidates){ hit=await geocode(q); if(hit) break; }
+    let hit=null; const bbox = ISLAND_BBOX[islKey];
+  for(const q of candidates){ hit=await geocode(q, bbox); if(hit) break; }
 
     if(!hit){ out.push(`${JSON.stringify(r.island)},${JSON.stringify(r.region)},${JSON.stringify(r.sitelocation)},,,,,no-geocode`); continue; }
 
