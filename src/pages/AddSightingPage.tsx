@@ -54,112 +54,53 @@ export default function AddSightingPage() {
   const [mapOpen, setMapOpen] = useState(false);
 
   const formSightingId = useMemo(()=>uuid(),[]);
-
-  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
-
-  // load locations for island
-  // load locations for island
-  // load locations for island
-  // load locations for island
-  useEffect(()=>{
-    let cancelled=false;
-    async function load(){
-      const isl = island?.trim();
-      if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
-
-      const variants = islandVariants(isl);
-
-      // 1) Try a dedicated "locations" table (if present)
-      try{
-        const { data, error, status } = await supabase
-          .from("locations")
-          .select("id,name,island,latitude,longitude")
-          .in("island", variants)
-          .order("name", { ascending: true });
-
-        if (!cancelled && !error && status < 400 && data && data.length){
-          const list = data.map((r:any)=>({
-            id: String(r.id),
-            name: String(r.name),
-            island: r.island ?? isl,
-            latitude: (r.latitude ?? null),
-            longitude: (r.longitude ?? null),
-          }));
-          // dedupe by name
-          const seen = new Set<string>(); const dedup:any[]=[];
-          for(const rec of list){ const k=rec.name.trim().toLowerCase(); if(!seen.has(k)){ seen.add(k); dedup.push(rec); } }
-          dedup.sort((a,b)=>a.name.localeCompare(b.name));
-          setLocList(dedup);
-          return;
-        }
-      }catch(e){ /* continue to fallback */ }
-
-      // 2) Fallback: distinct sitelocation from sightings for island variants
-      try{
-        const { data: srows, error: serr } = await supabase
-          .from("sightings")
-          .select("sitelocation,island")
-          .in("island", variants)
-          .not("sitelocation","is",null);
-
-        if(!cancelled && !serr && srows){
-          const names = Array.from(new Set(
-            srows
-              .map((r:any)=> (r.sitelocation ?? "").toString().trim())
-              .filter((n:string)=> n.length>0)
-          )).sort((a,b)=>a.localeCompare(b));
-
-          const list = names.map((n:string)=>({ id: n, name: n, island: isl }));
-          setLocList(list);
-          return;
-        }
-      }catch(e){ /* ignore */ }
-
-      // 3) Minimal seed to keep UI usable
-      const seed = ["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl}));
-      setLocList(seed);
-    }
-    load();
-    return ()=>{ cancelled=true; };
-  },[island]);// auto-fill coordinates if location has them
-  useEffect(()=>{
-    if(!locationId) return;
-    const rec = locList.find(l=> l.id===locationId) || locList.find(l=> l.name===locationId);
-    if(rec){
-      setLocationName(rec.name);
-      if(rec.latitude!=null && rec.longitude!=null){
-        setLat(String(Number(rec.latitude).toFixed(5)));
-        setLng(String(Number(rec.longitude).toFixed(5)));
-      }
-    }
-  },[locationId, locList]);
-
-  async function addNewLocation(){
-    if(!island || !newLoc.trim()) return;
-    const clean=newLoc.trim();
+  async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number} | null> {
     try{
+      const variants = islandVariants(isl);
       const { data, error } = await supabase
-        .from("locations")
-        .insert({ island, name: clean })
-        .select("*")
+        .from("sightings")
+        .select("latitude,longitude,sighting_date,pk_sighting_id")
+        .in("island", variants)
+        .eq("sitelocation", loc)
+        .not("latitude","is", null)
+        .not("longitude","is", null)
+        .order("sighting_date", { ascending: true })
+        .order("pk_sighting_id", { ascending: true })
         .limit(1);
-      if(!error && data && data.length){
-        const r=data[0];
-        const rec:LocRec={ id:String(r.id), name:String(r.name), island:r.island ?? island, latitude:r.latitude ?? null, longitude:r.longitude ?? null };
-        setLocList(prev=>[...prev, rec].sort((a,b)=>a.name.localeCompare(b.name)));
-        setLocationId(String(rec.id));
-        setLocationName(rec.name);
-        setNewLoc(""); setAddingLoc(false);
-        return;
-      }
-    }catch(e){ console.warn("[AddSighting] add location failed, local fallback:", e); }
-    const rec:LocRec={ id:clean, name:clean, island };
-    setLocList(prev=>[...prev, rec].sort((a,b)=>a.name.localeCompare(b.name)));
-    setLocationId(clean); setLocationName(clean);
-    setNewLoc(""); setAddingLoc(false);
+      if(error || !data || !data.length) return null;
+      const r = data[0];
+      const la = Number(r.latitude), lo = Number(r.longitude);
+      if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+      return { lat: la, lon: lo };
+    }catch(e){ console.warn("[AddSighting] fetchDefaultCoords failed", e); return null; }
   }
 
-  const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(p=>[...p,m]); setAddOpen(false); };
+
+  // auto-fill coordinates if location has them (or earliest sighting canonical)
+  useEffect(()=>{
+    if(!locationId) return;
+    const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+    const displayName = rec?.name ?? locationName ?? locationId;
+    if (rec && rec.name) setLocationName(rec.name);
+
+    const apply = (la:number, lo:number) => {
+      setLat(String(Number(la).toFixed(5)));
+      setLng(String(Number(lo).toFixed(5)));
+    };
+
+    // Use coords from list if provided
+    if (rec && rec.latitude != null && rec.longitude != null) {
+      apply(Number(rec.latitude), Number(rec.longitude));
+      return;
+    }
+
+    // Otherwise fetch earliest coords from sightings for this island/location
+    if (!island || !displayName) return;
+    fetchDefaultCoords(island, displayName)
+      .then((res)=>{ if(res){ apply(res.lat, res.lon); } })
+      .catch(()=>{});
+  },[locationId, locList, island]);
+setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
     setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
     setEditingManta(null);
