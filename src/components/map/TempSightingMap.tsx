@@ -38,7 +38,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           container: divRef.current,
           style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
           center: center(),
-          zoom: (typeof lon === "number" && typeof lat === "number") ? 8 : 5,
+          zoom: (typeof lon === "number" && typeof lat === "number") ? 9 : 5,
           attributionControl: true,
           failIfMajorPerformanceCaveat: false
         });
@@ -81,7 +81,7 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
         });
 
-        const map = L.map(divRef.current!).setView([center()[1], center()[0]], (typeof lon==="number"&&typeof lat==="number")?8:5);
+        const map = L.map(divRef.current!).setView([center()[1], center()[0]], (typeof lon==="number"&&typeof lat==="number")? 9 : 5);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "© OpenStreetMap contributors",
           maxZoom: 19
