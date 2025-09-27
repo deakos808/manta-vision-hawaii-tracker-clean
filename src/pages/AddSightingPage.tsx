@@ -52,7 +52,9 @@ export default function AddSightingPage() {
   const [lng, setLng] = useState<string>("");
   const [mapOpen, setMapOpen] = useState(false);
 
-  const formSightingId = useMemo(()=>uuid(),[]);
+  
+  const [coordSource, setCoordSource] = useState<string>("");
+const formSightingId = useMemo(()=>uuid(),[]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
@@ -111,25 +113,7 @@ export default function AddSightingPage() {
   async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number} | null> {
     try{
       const variants = islandVariants(isl);
-      const { data, error } 
-
-  async function openMap(){
-    const hasLat = Number.isFinite(parseFloat(lat));
-    const hasLng = Number.isFinite(parseFloat(lng));
-    // If coords already present, just open
-    if (hasLat && hasLng) { setMapOpen(true); return; }
-
-    // Otherwise, if we have island + a chosen display location, fetch canonical default, then open
-    const displayLoc = locationName || (locList.find(l=>l.id===locationId)?.name) || "";
-    if (island && displayLoc){
-      try{
-        const res = await fetchDefaultCoords(island, displayLoc);
-        if (res) { setLat(String(Number(res.lat).toFixed(5))); setLng(String(Number(res.lon).toFixed(5))); }
-      }catch{}
-    }
-    setMapOpen(true);
-  }
-= await supabase
+      const { data, error } = await supabase
         .from("sightings")
         .select("latitude,longitude,sighting_date,pk_sighting_id")
         .in("island", variants)
@@ -147,6 +131,22 @@ export default function AddSightingPage() {
     }catch(e){ console.warn("[AddSighting] fetchDefaultCoords failed", e); return null; }
   }
 
+  // open map: if no lat/lon, try fetch canonical first, then open
+  async function openMap(){
+    const hasLat = Number.isFinite(parseFloat(lat));
+    const hasLng = Number.isFinite(parseFloat(lng));
+    if (hasLat && hasLng) { setMapOpen(true); return; }
+
+    const displayLoc = locationName || (locList.find(l=>l.id===locationId)?.name) || "";
+    if (island && displayLoc){
+      try{
+        const res = await fetchDefaultCoords(island, displayLoc);
+        if (res) { setLat(String(Number(res.lat).toFixed(5))); setLng(String(Number(res.lon).toFixed(5))); }
+      }catch{}
+    }
+    setMapOpen(true);
+  }
+
   // auto-fill coordinates if location has them (or earliest sighting canonical)
   useEffect(()=>{
     if(!locationId) return;
@@ -154,19 +154,16 @@ export default function AddSightingPage() {
     const displayName = rec?.name ?? locationName ?? locationId;
     if (rec && rec.name) setLocationName(rec.name);
 
-    const apply = (la:number, lo:number) => {
-      setLat(String(Number(la).toFixed(5)));
-      setLng(String(Number(lo).toFixed(5)));
-    };
+    const apply = (la:number, lo:number, src?:string) => { setLat(String(Number(la).toFixed(5))); setLng(String(Number(lo).toFixed(5))); if(src) setCoordSource(src); };
 
     if (rec && rec.latitude != null && rec.longitude != null) {
-      apply(Number(rec.latitude), Number(rec.longitude));
+      apply(Number(rec.latitude), Number(rec.longitude), "locations table");
       return;
     }
 
     if (!island || !displayName) return;
     fetchDefaultCoords(island, displayName)
-      .then((res)=>{ if(res){ apply(res.lat, res.lon); } })
+      .then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } })
       .catch(()=>{});
   },[locationId, locList, island]);
 
@@ -192,7 +189,7 @@ export default function AddSightingPage() {
             <TempSightingMap
               lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
               lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
-              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); }}
+              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); setCoordSource("map pick"); }}
             />
             <div className="grid grid-cols-2 gap-2 mb-3 mt-3">
               <div>
@@ -313,6 +310,8 @@ export default function AddSightingPage() {
                   <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., 20.456" value={lat} onChange={(e)=>setLat(e.target.value)} />
                 </div>
                 <div>
+              <div data-coord-source className="text-[11px] text-gray-500">{coordSource ? `coords source: ${coordSource}` : ""}</div>
+
                   <label className="text-xs text-gray-600">Longitude</label>
                   <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., -156.456" value={lng} onChange={(e)=>setLng(e.target.value)} />
                 </div>
