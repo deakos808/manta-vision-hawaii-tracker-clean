@@ -12,6 +12,19 @@ function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ fo
 const TIME_OPTIONS = buildTimes(5);
 const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
 
+
+function islandVariants(name:string): string[] {
+  const n = (name||"").trim();
+  switch (n) {
+    case "Hawaiʻi": return ["Hawaiʻi","Hawaii","Hawai'i"];
+    case "Oʻahu":   return ["Oʻahu","Oahu","O'ahu","O’ahu"];
+    case "Kauaʻi":  return ["Kauaʻi","Kauai","Kaua'i"];
+    case "Molokaʻi":return ["Molokaʻi","Molokai","Moloka'i"];
+    case "Lānaʻi":  return ["Lānaʻi","Lanai","Lana'i"];
+    case "Maui":    return ["Maui"];
+    default:        return [n];
+  }
+}
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
@@ -45,35 +58,70 @@ export default function AddSightingPage() {
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
   // load locations for island
+  // load locations for island
+  // load locations for island
+  // load locations for island
   useEffect(()=>{
     let cancelled=false;
     async function load(){
-      if(!island){ setLocList([]); setLocationId(""); setLocationName(""); return; }
+      const isl = island?.trim();
+      if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
+
+      const variants = islandVariants(isl);
+
+      // 1) Try a dedicated "locations" table (if present)
       try{
-        const { data, error } = await supabase
+        const { data, error, status } = await supabase
           .from("locations")
-          .select("*")
-          .eq("island", island)
+          .select("id,name,island,latitude,longitude")
+          .in("island", variants)
           .order("name", { ascending: true });
-        if(!cancelled && !error && data){
+
+        if (!cancelled && !error && status < 400 && data && data.length){
           const list = data.map((r:any)=>({
-            id: String(r.id), name: String(r.name),
-            island: r.island ?? island,
-            latitude: (r.latitude ?? null), longitude: (r.longitude ?? null)
-          })) as LocRec[];
+            id: String(r.id),
+            name: String(r.name),
+            island: r.island ?? isl,
+            latitude: (r.latitude ?? null),
+            longitude: (r.longitude ?? null),
+          }));
+          // dedupe by name
+          const seen = new Set<string>(); const dedup:any[]=[];
+          for(const rec of list){ const k=rec.name.trim().toLowerCase(); if(!seen.has(k)){ seen.add(k); dedup.push(rec); } }
+          dedup.sort((a,b)=>a.name.localeCompare(b.name));
+          setLocList(dedup);
+          return;
+        }
+      }catch(e){ /* continue to fallback */ }
+
+      // 2) Fallback: distinct sitelocation from sightings for island variants
+      try{
+        const { data: srows, error: serr } = await supabase
+          .from("sightings")
+          .select("sitelocation,island")
+          .in("island", variants)
+          .not("sitelocation","is",null);
+
+        if(!cancelled && !serr && srows){
+          const names = Array.from(new Set(
+            srows
+              .map((r:any)=> (r.sitelocation ?? "").toString().trim())
+              .filter((n:string)=> n.length>0)
+          )).sort((a,b)=>a.localeCompare(b));
+
+          const list = names.map((n:string)=>({ id: n, name: n, island: isl }));
           setLocList(list);
           return;
         }
-      }catch(e){ console.warn("[AddSighting] locations error:", e); }
-      // fallback seeds if DB empty (keep UI usable)
-      const seed = ["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island})) as LocRec[];
+      }catch(e){ /* ignore */ }
+
+      // 3) Minimal seed to keep UI usable
+      const seed = ["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl}));
       setLocList(seed);
     }
     load();
     return ()=>{ cancelled=true; };
-  },[island]);
-
-  // auto-fill coordinates if location has them
+  },[island]);// auto-fill coordinates if location has them
   useEffect(()=>{
     if(!locationId) return;
     const rec = locList.find(l=> l.id===locationId) || locList.find(l=> l.name===locationId);
@@ -137,11 +185,11 @@ export default function AddSightingPage() {
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="19.44400" />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="e.g., 20.456" />
               </div>
               <div>
                 <label className="text-xs text-gray-600">Longitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} placeholder="-156.44400" />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} placeholder="e.g., -156.456" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -232,11 +280,11 @@ export default function AddSightingPage() {
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-600">Latitude</label>
-                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="19.44400" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., 20.456" value={lat} onChange={(e)=>setLat(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600">Longitude</label>
-                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="-156.44400" value={lng} onChange={(e)=>setLng(e.target.value)} />
+                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., -156.456" value={lng} onChange={(e)=>setLng(e.target.value)} />
                 </div>
               </div>
 
