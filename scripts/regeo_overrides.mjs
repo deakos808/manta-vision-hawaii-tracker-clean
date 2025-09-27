@@ -28,7 +28,42 @@ const ISLAND_CENTROIDS = {
   "lānaʻi":  { lat:20.82, lon:-156.93 },
 };
 
-const ISLAND_BBOX = {
+const ISLAND_BBOX
+
+const NAME_HINTS = {
+  // Maui (South)
+  "maui|ahihi kina'u reserve": "ʻĀhihi-Kīnaʻu Natural Area Reserve, Maui, Hawaii",
+  "maui|ahihi kinau reserve": "ʻĀhihi-Kīnaʻu Natural Area Reserve, Maui, Hawaii",
+  "maui|ahihi kina'u": "ʻĀhihi-Kīnaʻu Natural Area Reserve, Maui, Hawaii",
+  "maui|la perouse": "La Perouse Bay, Maui, Hawaii",
+  "maui|makena": "Mākena State Park, Maui, Hawaii",
+  // Maui (West)
+  "maui|honolua bay": "Honolua Bay Marine Life Conservation District, Maui, Hawaii",
+  "maui|ukumehame": "Ukumehame Beach Park, Maui, Hawaii",
+
+  // Oʻahu
+  "oahu|electric beach": "Kahe Point Beach Park, Oahu, Hawaii",
+  "oʻahu|electric beach": "Kahe Point Beach Park, Oahu, Hawaii",
+  "oahu|magic island": "Magic Island, Ala Moana Beach Park, Honolulu, Hawaii",
+  "oʻahu|magic island": "Magic Island, Ala Moana Beach Park, Honolulu, Hawaii",
+  "oahu|ewa beach": "ʻEwa Beach, Oahu, Hawaii",
+  "oahu|haleiwa": "Haleʻiwa Beach Park, Oahu, Hawaii",
+  "oʻahu|haleiwa": "Haleʻiwa Beach Park, Oahu, Hawaii",
+  "oahu|makaha": "Mākaha Beach Park, Oahu, Hawaii",
+  "oahu|pokai bay": "Pōkaʻi Bay Beach Park, Oahu, Hawaii",
+  "oahu|kewalo basin": "Kewalo Basin Harbor, Honolulu, Hawaii",
+  "oahu|pearl harbor": "Pearl Harbor National Memorial, Honolulu, Hawaii",
+  "oahu|kāneʻohe bay": "Kaneohe Sandbar, Kaneohe Bay, Oahu, Hawaii",
+  "oahu|kaneohe bay": "Kaneohe Sandbar, Kaneohe Bay, Oahu, Hawaii",
+  "oahu|makapu": "Makapuʻu Point, Oahu, Hawaii",
+
+  // Lānaʻi / Niʻihau
+  "lānaʻi|manele bay": "Manele Small Boat Harbor, Lanai, Hawaii",
+  "lanai|manele bay": "Manele Small Boat Harbor, Lanai, Hawaii",
+  "niihau|lehua": "Lehua Island, Hawaii",
+  "niʻihau|lehua": "Lehua Island, Hawaii"
+};
+ = {
   // [minLon, minLat, maxLon, maxLat]  (tight-ish boxes)
   "hawaii":  [-156.1, 18.8, -154.7, 20.4],
   "hawaiʻi": [-156.1, 18.8, -154.7, 20.4],
@@ -88,20 +123,33 @@ async function geocode(q, bbox){
   
 // de-duplicate (island + sitelocation)
 const seen = new Set();
+
+// de-duplicate (island + sitelocation)
+const seen = new Set();
 for(const r of rows){
+  const islKey = (r.island||"").normalize("NFKD").replace(/['’ʻ]/g,'').toLowerCase().trim();
+  const key = islKey+"|"+(r.sitelocation||"").normalize("NFKD").replace(/['’ʻ]/g,'').toLowerCase().trim();
+  if(seen.has(key)) continue; seen.add(key);
+
   const key = (r.island||"").trim()+"|"+(r.sitelocation||"").trim().toLowerCase();
   if(seen.has(key)) continue; seen.add(key);
 
     const islKey = normIsl(r.island);
-    const syns = ISLAND_SYNONYMS[islKey] || [r.island];
-    const candidates = [
+const syns = ISLAND_SYNONYMS[islKey] || [r.island];
+const hinted = NAME_HINTS[key] ? [NAME_HINTS[key]] : [];
+const candidates = [
+  ...hinted,
+
       `${r.sitelocation}, ${r.region}, ${r.island}, Hawaii, USA`,
       `${r.sitelocation}, ${r.island}, Hawaii, USA`,
       `${strip(r.sitelocation)}, ${syns[0]}, Hawaii, USA`,
       `${strip(r.sitelocation)}, Hawaii, USA`
     ];
     let hit=null; const bbox = ISLAND_BBOX[islKey];
-  for(const q of candidates){ hit=await geocode(q, bbox); if(hit) break; }
+  for(const q of candidates){
+    hit=await geocode(q, bbox);
+    if(hit){ break; }
+  }
 
     if(!hit){ out.push(`${JSON.stringify(r.island)},${JSON.stringify(r.region)},${JSON.stringify(r.sitelocation)},,,,,no-geocode`); continue; }
 
