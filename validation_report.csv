@@ -1,0 +1,5 @@
+island,region,sitelocation,lat0,lon0,lat1,lon1,km_from_base,km_to_island_centroid,flag
+"\"Maui\"","\"South Maui\"","\"Ahihi Kina'u Reserve\"",20.587200,-156.442200,20.586438,-156.442710,0.100,28.01,PASS
+"\"Maui\"","\"South Maui\"","\"La Perouse\"",20.588900,-156.430700,20.588122,-156.431182,0.100,27.23,PASS
+"\"Oʻahu\"","\"Leeward Oahu\"","\"Electric Beach\"",21.345300,-158.129000,21.344674,-158.129693,0.100,199.27,PASS
+"\"Oʻahu\"","\"Honolulu\"","\"Magic Island\"",21.283900,-157.846100,21.283141,-157.845582,0.100,169.16,PASS
