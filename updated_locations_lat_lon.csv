@@ -15,28 +15,28 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5474,8/9/20,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
 5477,8/10/20,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
 5473,8/8/20,Big Island,Kona,Mauna Kea Hotel,20.00548,-155.82605,original
-5419,12/12/10,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5420,9/2/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5421,9/3/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5423,6/22/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5459,10/23/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5472,8/7/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5475,8/9/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-5478,8/10/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.0511,original
-215,12/23/08,Kahoolawe,North Kahoolawe,Ahupu Bay,20.58100,-156.621,original
-5412,1/26/20,Kauai,East Kauai,Ahukini,null,null,missing
+5419,12/12/10,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5420,9/2/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5421,9/3/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5423,6/22/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5459,10/23/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5472,8/7/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5475,8/9/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5478,8/10/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+215,12/23/08,Kahoolawe,North Kahoolawe,Ahupu Bay,20.58100,-156.62100,original
+5412,1/26/20,Kauai,East Kauai,Ahukini,21.99266,-159.33085,modified
 5626,1/26/20,Kauai,Kauai Unknown,null,null,null,missing
-5601,2/1/17,Kauai,South Kauai,Alertons Beach,null,null,missing
-5628,9/30/20,Kauai,South Kauai,Fathom Rock,null,null,missing
-5605,8/5/20,Kauai,South Kauai,Koloa Landing,null,null,missing
-5603,12/28/20,Kauai,South Kauai,Koloa Landing,null,null,missing
+5601,2/1/17,Kauai,South Kauai,Alertons Beach,21.88395,-159.49987,modified
+5628,9/30/20,Kauai,South Kauai,Fathom Rock,21.88110,-159.49350,modified
+5605,8/5/20,Kauai,South Kauai,Koloa Landing,21.87580,-159.46636,modified
+5603,12/28/20,Kauai,South Kauai,Koloa Landing,21.87580,-159.46636,modified
 5555,11/30/20,Kauai,South Kauai,Poipu,21.87580,-159.45419,modified
 5556,1/9/21,Kauai,South Kauai,Poipu,21.87580,-159.45419,modified
-5669,2/5/21,Kauai,South Kauai,Sheraton Caverns,null,null,missing
-5554,1/9/21,Kauai,South Kauai,Stone House,null,null,missing
+5669,2/5/21,Kauai,South Kauai,Sheraton Caverns,21.87170,-159.46150,modified
+5554,1/9/21,Kauai,South Kauai,Stone House,21.87230,-159.46320,missing
 5550,1/13/19,Kauai,South Kauai,null,null,null,missing
-5676,1/19/22,Kauai,South Kauai,null,20.87125,159.46368,original
-213,12/19/08,Lanai,North Lanai,Shipwreck Beach,20.92300,-156.907,original
+5676,1/19/22,Kauai,South Kauai,null,20.87125,-159.46368,modified
+213,12/19/08,Lanai,North Lanai,Shipwreck Beach,20.92300,-156.90700,original
 5624,7/29/19,Lanai,North Lanai,Shipwreck Beach,20.92232,-156.90008,original
 5162,8/16/19,Lanai,South Lanai,Manele Bay,20.74191,-156.88528,modified
 5235,1/7/03,Maui,Molokini,Molokini,20.63022,-156.49598,original
@@ -62,7 +62,7 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5115,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.78974,-156.33692,original
 5357,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.78974,-156.33692,original
 5359,9/14/18,Maui,South Maui,Five Caves,20.65640,-156.44394,modified
-5625,11/21/21,Maui,South Maui,Kalepolepo Fish Pond,20.76370,_156.460108,modified
+5625,11/21/21,Maui,South Maui,Kalepolepo Fish Pond,20.76370,-156.46011,modified
 5043,2/12/18,Maui,South Maui,Kam1,20.72170,-156.44896,modifed
 5638,11/1/20,Maui,South Maui,Kam Beach,20.72170,-156.44896,modifed
 5159,4/19/20,Maui,South Maui,Keawakapu,20.70400,-156.44774,original
@@ -77,34 +77,34 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 620,1/3/16,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
 575,1/30/16,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
 5673,11/20/21,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
-5042,7/5/17,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5005,12/28/17,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5040,1/2/18,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5012,1/21/18,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5048,3/31/18,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5059,4/12/18,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5067,6/10/18,Maui,South Maui,Makena Landing,20.65289,-156.4424,modifed
-5171,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5172,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5177,4/8/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5403,4/16/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5181,4/24/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5539,7/27/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5540,7/30/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5546,8/15/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5547,8/29/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5548,10/3/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5633,10/17/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5639,11/3/20,Maui,South Maui,Makena Landing,20.65289,-156.4424,original
-5317,12/28/06,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5338,10/1/15,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5337,2/28/16,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5345,3/9/17,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5351,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5352,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5355,3/3/18,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5356,3/7/18,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
-5354,3/14/18,Maui,South Maui,Makena Reef,20.65289,-156.4424,modifed
+5042,7/5/17,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5005,12/28/17,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5040,1/2/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5012,1/21/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5048,3/31/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5059,4/12/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5067,6/10/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5171,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5172,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5177,4/8/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5403,4/16/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5181,4/24/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5539,7/27/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5540,7/30/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5546,8/15/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5547,8/29/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5548,10/3/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5633,10/17/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5639,11/3/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5317,12/28/06,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5338,10/1/15,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5337,2/28/16,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5345,3/9/17,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5351,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5352,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5355,3/3/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5356,3/7/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5354,3/14/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
 5183,3/9/20,Maui,South Maui,Malakai Point,20.65527,-156.44445,modified
 5348,8/2/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
 668,12/16/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
@@ -136,8 +136,8 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5137,2/4/19,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
 5645,1/29/21,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
 5671,9/20/21,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
-5329,7/17/13,Maui,South Maui,Tank and Landing Craft,20.6462,-156.45076,modified
-5000,1/6/18,Maui,South Maui,Turtle Arches,20.6537,-156.44596,modified
+5329,7/17/13,Maui,South Maui,Tank and Landing Craft,20.64620,-156.45076,modified
+5000,1/6/18,Maui,South Maui,Turtle Arches,20.65370,-156.44596,modified
 672,12/30/17,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
 674,12/31/17,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
 676,1/1/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
@@ -230,8 +230,8 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5032,2/14/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
 5033,2/17/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
 5627,8/16/20,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
-5818,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.4428,original
-5819,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.4428,original
+5818,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.44280,original
+5819,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.44280,original
 5575,4/24/21,Maui,South Maui,null,null,null,missing
 5112,5/20/12,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
 5114,7/12/13,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
@@ -350,7 +350,7 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 587,4/2/16,Maui,West Maui,Mala,20.88647,-156.68731,original
 5037,3/16/18,Maui,West Maui,Mala,20.88647,-156.68731,original
 5160,1/13/19,Maui,West Maui,Mala,20.88647,-156.68731,original
-5322,3/3/08,Maui,South Maui,Marty's Reef,20.6559,-156.44576,modified
+5322,3/3/08,Maui,South Maui,Marty's Reef,20.65590,-156.44576,modified
 5320,4/6/07,Maui,West Maui,Maui West Side,null,null,missing
 5182,4/18/20,Maui,West Maui,Maui West Side,null,null,missing
 2,2/14/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
@@ -1053,10 +1053,10 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5642,1/6/21,Maui,West Maui,null,null,null,missing
 5321,2/21/08,Maui,null,null,null,null,missing
 5350,12/9/17,Maui,null,null,null,null,missing
-237,4/21/09,Molokai,South Molokai,Kamalo,21.04000,-156.88,original
-238,5/6/09,Molokai,South Molokai,Kamalo,21.04000,-156.88,original
-242,5/28/09,Molokai,South Molokai,Kamalo,21.04000,-156.88,original
-247,7/10/09,Molokai,South Molokai,Kamalo,21.04000,-156.88,original
+237,4/21/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+238,5/6/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+242,5/28/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+247,7/10/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
 5558,null,Niihau,Lehua,Kaula Rock,21.65833,-160.54263,modified
 5602,1/2/18,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
 5604,6/17/20,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
@@ -1126,105 +1126,105 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5954,9/11/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
 5953,9/16/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
 5955,9/27/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
-5361,9/30/04,Oahu,Northeast Oahu,Mokumanu Islet,21.4697,-157.71934,modified
+5361,9/30/04,Oahu,Northeast Oahu,Mokumanu Islet,21.46970,-157.71934,modified
 5913,11/19/23,Oahu,Northeast Oahu,null,null,null,missing
 5367,5/13/12,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
 5378,8/13/18,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
 5773,8/30/22,Oahu,Northwest Oahu,Kea'au Beach Park,21.49639,-158.23402,modified
-5491,8/1/18,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5495,6/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5496,6/20/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5497,6/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5498,7/3/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5501,7/4/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5499,7/7/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5500,7/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5503,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5512,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5505,8/10/20,Oahu,Northwest Oahu,Pupukea,21.64702,158.06592,original
-5504,8/18/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5502,8/19/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5490,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5489,8/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5488,8/24/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5487,8/25/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5486,8/26/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5485,8/27/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5483,8/30/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5533,9/8/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5481,9/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
+5491,8/1/18,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5495,6/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5496,6/20/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5497,6/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5498,7/3/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5501,7/4/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5499,7/7/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5500,7/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5503,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5512,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5505,8/10/20,Oahu,Northwest Oahu,Pupukea,21.64702,-158.06592,modified
+5504,8/18/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5502,8/19/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5490,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5489,8/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5488,8/24/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5487,8/25/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5486,8/26/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5485,8/27/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5483,8/30/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5533,9/8/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5481,9/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
 5482,9/11/20,Oahu,Northwest Oahu,Pupukea,21.64381,-158.06695,original
-5480,9/22/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5484,9/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5534,10/10/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5655,6/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5657,7/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5658,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5659,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5660,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5661,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5662,7/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5663,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5664,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5577,7/27/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5578,8/3/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5580,8/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5579,8/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5666,8/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5667,8/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5582,8/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5583,8/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5584,8/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5585,8/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5586,8/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5587,8/26/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5588,9/2/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5589,9/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5590,9/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5592,9/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5597,9/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5598,9/8/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5599,9/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5593,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5596,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5670,9/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5594,9/18/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5595,9/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5720,5/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5721,5/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5722,5/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5723,6/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5724,6/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5725,6/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5726,6/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5727,6/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5728,6/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5729,7/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5730,7/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5731,7/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5732,7/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5733,7/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5734,7/11/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5735,7/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5736,7/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5738,7/23/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5739,7/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5741,7/26/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5742,7/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5743,8/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5744,8/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5745,8/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5746,8/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5747,8/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5748,8/20/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5749,8/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5750,8/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5751,9/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5752,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5762,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,original
-5519,8/23/20,Oahu,Northwest Oahu,Waimea Bay,21.6406,-158.06487,modified
-5526,8/28/20,Oahu,Northwest Oahu,Waimea Bay,21.6406,-158.06487,modified
-5520,8/29/20,Oahu,Northwest Oahu,Waimea Bay,21.6406,-158.06487,modified
+5480,9/22/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5484,9/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5534,10/10/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5655,6/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5657,7/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5658,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5659,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5660,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5661,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5662,7/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5663,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5664,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5577,7/27/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5578,8/3/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5580,8/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5579,8/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5666,8/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5667,8/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5582,8/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5583,8/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5584,8/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5585,8/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5586,8/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5587,8/26/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5588,9/2/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5589,9/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5590,9/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5592,9/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5597,9/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5598,9/8/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5599,9/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5593,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5596,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5670,9/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5594,9/18/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5595,9/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5720,5/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5721,5/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5722,5/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5723,6/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5724,6/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5725,6/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5726,6/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5727,6/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5728,6/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5729,7/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5730,7/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5731,7/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5732,7/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5733,7/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5734,7/11/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5735,7/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5736,7/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5738,7/23/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5739,7/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5741,7/26/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5742,7/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5743,8/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5744,8/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5745,8/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5746,8/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5747,8/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5748,8/20/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5749,8/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5750,8/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5751,9/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5752,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5762,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5519,8/23/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
+5526,8/28/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
+5520,8/29/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
 5777,2/24/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
 5699,3/2/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
 5937,7/11/24,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
@@ -1232,70 +1232,70 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5764,11/8/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
 5757,8/6/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
 5758,8/10/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
-5753,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5737,7/22/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5755,7/25/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5756,8/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5775,9/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5783,11/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5840,5/10/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5826,5/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5827,5/24/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5828,5/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5829,5/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5830,6/2/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5831,6/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5832,6/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5843,6/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5844,6/16/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5845,6/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5856,6/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5846,7/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5857,7/4/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5848,7/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5850,7/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5851,7/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5852,7/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5853,7/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5854,7/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5883,7/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5887,7/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5888,8/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5889,8/3/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5890,8/7/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5891,8/9/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5892,8/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5893,8/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5894,8/27/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5895,8/29/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5896,8/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5898,9/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5899,9/13/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5900,9/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5901,9/21/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5902,9/22/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5903,9/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5917,5/8/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5918,5/26/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5919,5/28/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5920,6/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5934,6/29/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5922,8/2/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5943,8/4/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5923,8/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5924,8/19/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5950,9/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5951,9/20/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5710,5/15/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5711,5/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5712,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5713,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5714,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5715,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5717,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5718,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5719,7/24/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
-5709,7/25/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.0626,modified
+5753,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5737,7/22/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5755,7/25/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5756,8/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5775,9/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5783,11/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5840,5/10/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5826,5/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5827,5/24/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5828,5/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5829,5/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5830,6/2/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5831,6/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5832,6/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5843,6/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5844,6/16/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5845,6/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5856,6/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5846,7/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5857,7/4/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5848,7/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5850,7/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5851,7/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5852,7/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5853,7/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5854,7/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5883,7/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5887,7/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5888,8/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5889,8/3/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5890,8/7/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5891,8/9/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5892,8/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5893,8/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5894,8/27/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5895,8/29/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5896,8/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5898,9/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5899,9/13/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5900,9/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5901,9/21/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5902,9/22/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5903,9/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5917,5/8/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5918,5/26/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5919,5/28/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5920,6/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5934,6/29/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5922,8/2/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5943,8/4/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5923,8/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5924,8/19/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5950,9/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5951,9/20/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5710,5/15/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5711,5/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5712,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5713,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5714,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5715,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5717,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5718,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5719,7/24/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5709,7/25/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
 5690,2/26/17,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
 5694,3/22/22,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
 5794,12/27/22,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
@@ -1329,24 +1329,24 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5907,1/17/24,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
 5926,2/17/24,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
 5677,1/20/22,Oahu,South Oahu,Kewalo Pipe,21.28783,-157.86546,modified
-5376,4/7/17,Oahu,South Oahu,Kewalos Horshoe Reef,21.28799,-157.8638,modified
-5537,2/19/10,Oahu,East Oahu,Lanai Lookout,21.28140,-157.6702,modified
-5369,1/1/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.6702,modified
-5370,2/15/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.6702,modified
-5374,11/6/16,Oahu,East Oahu,Lanai Lookout,21.28140,-157.6702,modified
-5380,11/4/16,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5688,3/4/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5785,11/25/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5788,11/29/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5787,12/2/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5786,12/16/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5789,12/18/22,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5790,1/3/23,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5834,1/17/23,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5835,3/19/23,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5868,8/28/23,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5878,10/16/23,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
-5909,1/14/24,Oahu,South Oahu,Magic Island,21.28190,-157.8498,modified
+5376,4/7/17,Oahu,South Oahu,Kewalos Horshoe Reef,21.28799,-157.86380,modified
+5537,2/19/10,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5369,1/1/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5370,2/15/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5374,11/6/16,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5380,11/4/16,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5688,3/4/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5785,11/25/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5788,11/29/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5787,12/2/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5786,12/16/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5789,12/18/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5790,1/3/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5834,1/17/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5835,3/19/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5868,8/28/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5878,10/16/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5909,1/14/24,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
 5678,2/3/22,Oahu,South Oahu,Nautilus Dive Site,21.28713,-157.86012,modified
 5364,3/11/18,Oahu,South Oahu,Navy Tug,21.27306,-157.98745,modified
 5816,2/1/22,Oahu,South Oahu,Pearl Harbor,21.31121,-157.96417,modified
@@ -1428,17 +1428,17 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5515,8/25/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
 5769,10/6/22,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
 5865,8/4/23,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
-5782,8/7/22,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5820,4/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5821,5/6/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5822,5/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5823,5/9/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5824,5/10/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
-5825,5/22/23,Oahu,West Oahu,Pupukea,21.65150,-158.0626,original
+5782,8/7/22,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5820,4/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5821,5/6/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5822,5/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5823,5/9/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5824,5/10/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5825,5/22/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
 5529,9/18/19,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
 5522,4/2/20,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
 5523,4/2/20,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
 5653,3/6/21,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
 5414,7/22/20,Oahu,null,null,null,null,missing
-5692,2/11/22,null,Northeast Oahu,Kaneohe Bay,21.459,-157.80396,modified
+5692,2/11/22,null,Northeast Oahu,Kaneohe Bay,21.45900,-157.80396,modified
 5859,null,null,null,null,null,null,missing

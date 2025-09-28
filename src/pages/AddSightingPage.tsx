@@ -11,67 +11,13 @@ function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ fo
 const TIME_OPTIONS = buildTimes(5);
 const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
 
-const ISLAND_CENTROIDS: Record<string, {lat:number; lon:number}> = {
-  "hawaii":   { lat: 19.6,  lon: -155.5 },
-  "hawaiʻi":  { lat: 19.6,  lon: -155.5 },
-  "maui":     { lat: 20.8,  lon: -156.3 },
-  "oahu":     { lat: 21.48, lon: -157.98 },
-  "oʻahu":    { lat: 21.48, lon: -157.98 },
-  "kauai":    { lat: 22.05, lon: -159.50 },
-  "kauaʻi":   { lat: 22.05, lon: -159.50 },
-  "molokai":  { lat: 21.15, lon: -157.07 },
-  "molokaʻi": { lat: 21.15, lon: -157.07 },
-  "lanai":    { lat: 20.82, lon: -156.93 },
-  "lānaʻi":   { lat: 20.82, lon: -156.93 }
-};
-
-function normIslKey(s:string){ return s.toLowerCase().replace(/[’'ʻ]/g,'').trim(); }
-
-// Haversine km
-function haversineKm(a:{lat:number; lon:number}, b:{lat:number; lon:number}){
-  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
-  const lat1=a.lat*Math.PI/180, lat2=b.lat*Math.PI/180;
-  const sinDlat=Math.sin(dLat/2), sinDlon=Math.sin(dLon/2);
-  const h=sinDlat*sinDlat + Math.cos(lat1)*Math.cos(lat2)*sinDlon*sinDlon;
-  return 2*R*Math.asin(Math.sqrt(h));
-}
-function bearingDeg(a:{lat:number; lon:number}, b:{lat:number; lon:number}){
-  const φ1=a.lat*Math.PI/180, φ2=b.lat*Math.PI/180, Δλ=(b.lon-a.lon)*Math.PI/180;
-  const y=Math.sin(Δλ)*Math.cos(φ2);
-  const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
-  return (Math.atan2(y,x)*180/Math.PI+360)%360;
-}
-function moveMeters(lat:number, lon:number, meters:number, bearing:number){
-  const R=6371000, brng=bearing*Math.PI/180, φ1=lat*Math.PI/180, λ1=lon*Math.PI/180, δ=meters/R;
-  const sinφ2 = Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(brng);
-  const φ2 = Math.asin(sinφ2);
-  const y = Math.sin(brng)*Math.sin(δ)*Math.cos(Math.cos(φ1));
-  const x = Math.cos(δ)-Math.sin(φ1)*sinφ2;
-  const λ2 = λ1 + Math.atan2(Math.sin(brng)*Math.sin(δ)*Math.cos(φ1), x);
-  return { lat: φ2*180/Math.PI, lon: ((λ2*180/Math.PI+540)%360)-180 };
-}
-function islandVariants(name:string): string[] {
-  const n = (name||"").trim();
-  switch (n) {
-    case "Hawaiʻi": return ["Hawaiʻi","Hawaii","Hawai'i"];
-    case "Oʻahu":   return ["Oʻahu","Oahu","O'ahu","O’ahu"];
-    case "Kauaʻi":  return ["Kauaʻi","Kauai","Kaua'i"];
-    case "Molokaʻi":return ["Molokaʻi","Molokai","Moloka'i"];
-    case "Lānaʻi":  return ["Lānaʻi","Lanai","Lana'i"];
-    case "Maui":    return ["Maui"];
-    default:        return [n];
-  }
-}
-
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-  // unified modal state
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
-  // form state
   const [date, setDate] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [stopTime, setStopTime] = useState<string>("");
@@ -83,127 +29,105 @@ export default function AddSightingPage() {
   const [island, setIsland] = useState("");
   const [locList, setLocList] = useState<LocRec[]>([]);
   const [locationId, setLocationId] = useState<string>("");
-  const [locationName, setLocationName] = useState<string>(""); // friendly display
+  const [locationName, setLocationName] = useState<string>("");
   const [addingLoc, setAddingLoc] = useState(false);
   const [newLoc, setNewLoc] = useState("");
 
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
-  const [mapOpen, setMapOpen] = useState(false);
-
-  
   const [coordSource, setCoordSource] = useState<string>("");
-const formSightingId = useMemo(()=>uuid(),[]);
+
+  const [mapOpen, setMapOpen] = useState(false);
+  const formSightingId = useMemo(()=>uuid(),[]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // load locations for island (locations table → fallback distinct(sitelocation) from sightings)
+  // Load locations for selected island:
+  // 1) try 'locations' table (name + coords)
+  // 2) fallback to distinct sitelocation strings from sightings (no coords)
   useEffect(()=>{
     let cancelled=false;
-    async function load(){
+    (async () => {
       const isl = island?.trim();
       if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
 
-      const variants = islandVariants(isl);
-
-      // try locations table
       try{
         const { data, error, status } = await supabase
-          .from("locations")
-          .select("id,name,island,latitude,longitude")
-          .in("island", variants)
+          .from("location_defaults")
+          .select("name,island,latitude,longitude")
+          .eq("island", isl)
           .order("name", { ascending: true });
         if(!cancelled && !error && status<400 && data && data.length){
-          // dedupe by name
-          const seen = new Set<string>(); const dedup:LocRec[]=[];
+          const seen=new Set<string>(); const list:LocRec[]=[];
           for(const r of data){
-            const k = (r.name||"").trim().toLowerCase();
-            if(!seen.has(k)){ seen.add(k); dedup.push({ id:String(r.id), name:String(r.name), island:r.island, latitude:r.latitude ?? null, longitude:r.longitude ?? null }); }
+            const key=(r.name||"").trim().toLowerCase();
+            if(!seen.has(key)){
+              seen.add(key);
+              list.push({ id:String(r.name), name:String(r.name), island:r.island, latitude:r.latitude ?? null, longitude:r.longitude ?? null });
+            }
+          }); }
           }
-          setLocList(dedup);
+          setLocList(list);
           return;
         }
-      }catch{ /* continue */ }
+      }catch{}
 
-      // fallback: sightings distinct sitelocation
       try{
         const { data: srows, error: serr } = await supabase
           .from("sightings")
           .select("sitelocation")
-          .in("island", variants)
+          .eq("island", isl)
           .not("sitelocation","is",null);
         if(!cancelled && !serr && srows){
-          const names = Array.from(new Set(
-            srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0)
-          )).sort((a,b)=>a.localeCompare(b));
+          const names = Array.from(new Set(srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0))).sort((a,b)=>a.localeCompare(b));
           setLocList(names.map((n:string)=>({ id:n, name:n, island:isl })));
           return;
         }
-      }catch{/* ignore */}
+      }catch{}
 
-      // minimal seed
       setLocList(["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl})));
-    }
-    load();
+    })();
     return ()=>{ cancelled=true; };
   },[island]);
 
-  // earliest-sighting default coords for a (island, location)
-    // Fallback: geocode with Mapbox (if token present), then nudge 100 m offshore
+  async function fetchEarliestCoords(isl: string, loc: string): Promise<{lat:number; lon:number} | null> {
   try{
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const token = (import.meta as any).env?.VITE_MAPBOX_TOKEN as string | undefined;
-    if(!token) return null;
-    const q = encodeURIComponent(`${loc}, ${isl}, Hawaii, USA`);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&limit=1&country=US`;
-    const res = await fetch(url);
-    if(res.ok){
-      const j = await res.json();
-      const f = j?.features?.[0];
-      if(f?.center?.length===2){
-        const lo = Number(f.center[0]), la = Number(f.center[1]);
-        const key = normIslKey(isl);
-        const pivot = ISLAND_CENTROIDS[key] || ISLAND_CENTROIDS["maui"];
-        const brg = bearingDeg(pivot, {lat:la, lon:lo});
-        const off = moveMeters(la, lo, 100, brg);
-        return { lat: off.lat, lon: off.lon, source: "mapbox 100m offshore" };
-      }
-    }
-  }catch(e){ console.warn("[AddSighting] mapbox fallback failed", e); }
-
-  return null;
+    // Case-insensitive match on name; pick earliest with coords
+    const { data, error } = await supabase
+      .from("sightings")
+      .select("latitude,longitude,sighting_date,pk_sighting_id")
+      .eq("island", isl)
+      .ilike("sitelocation", loc)          // case-insensitive exact string
+      .not("latitude","is", null)
+      .not("longitude","is", null)
+      .order("sighting_date", { ascending: true })
+      .order("pk_sighting_id", { ascending: true })
+      .limit(1);
+    if(error || !data || !data.length) return null;
+    const r = data[0];
+    const la = Number(r.latitude), lo = Number(r.longitude);
+    if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+    return { lat: la, lon: lo };
+  }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
 }
-
-  // open map: if no lat/lon, try fetch canonical first, then open
-  function openMap(){
-  setMapOpen(true);
-}
-
-    const displayLoc = locationName || (locList.find(l=>l.id===locationId)?.name) || "";
-    if (island && displayLoc){
-      try{
-        const res = await fetchDefaultCoords(island, displayLoc);
-        if (res) { setLat(String(Number(res.lat).toFixed(5))); setLng(String(Number(res.lon).toFixed(5))); }
-      }catch{}
-    }
-    setMapOpen(true);
   }
 
-  // auto-fill only from dropdown item coords (no external fetch)
-useEffect(()=>{
-  if(!locationId) return;
-  const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
-  if (rec && rec.name) setLocationName(rec.name);
+// Only auto-fill from dropdown coords if provided (no fetching)
+  useEffect(()=>{
+    if(!locationId) return;
+    const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+    if (rec && rec.name) setLocationName(rec.name);
+    if (rec && rec.latitude != null && rec.longitude != null) {
+      const la=Number(rec.latitude).toFixed(5), lo=Number(rec.longitude).toFixed(5);
+      console.log("[Location autofill] from location_defaults:", rec.name, la, lo);
+      setLat(String(la)); setLng(String(lo));
+      setCoordSource("location defaults");
+    }
+  },[locationId, locList]);
 
-  if (rec && rec.latitude != null && rec.longitude != null) {
-    setLat(String(Number(rec.latitude).toFixed(5)));
-    setLng(String(Number(rec.longitude).toFixed(5)));
-    if (typeof setCoordSource === 'function') setCoordSource('location defaults');
-  }
-  // else: leave Lat/Lon as-is; user can pick on map or type manually
-},[locationId, locList]);
-// modal save handlers
-  const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(p=>[...p,m]); setAddOpen(false); };
+  function openMap(){ setMapOpen(true); }
+
+  const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev,m]); setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
     setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
     setEditingManta(null);
@@ -211,11 +135,9 @@ useEffect(()=>{
 
   return (
     <>
-      {/* unified modals */}
       <UnifiedMantaModal open={addOpen} onClose={()=>setAddOpen(false)} sightingId={formSightingId} onSave={onAddSave} />
       <UnifiedMantaModal open={!!editingManta} onClose={()=>setEditingManta(null)} sightingId={formSightingId} existingManta={editingManta||undefined} onSave={onEditSave} />
 
-      {/* Pick Location dialog */}
       {mapOpen && (
         <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
@@ -229,11 +151,13 @@ useEffect(()=>{
             <div className="grid grid-cols-2 gap-2 mb-3 mt-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>{ setLat(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., 20.456" />
+                <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2"
+                  value={lat} onChange={(e)=>{ setLat(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., 20.456" />
               </div>
               <div>
                 <label className="text-xs text-gray-600">Longitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>{ setLng(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., -156.456" />
+                <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2"
+                  value={lng} onChange={(e)=>{ setLng(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., -156.456" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -245,7 +169,6 @@ useEffect(()=>{
       )}
 
       <Layout>
-        {/* Hero */}
         <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-10 text-white">
           <div className="max-w-5xl mx-auto px-4 text-center">
             <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
@@ -253,7 +176,6 @@ useEffect(()=>{
           </div>
         </div>
 
-        {/* Breadcrumb under header */}
         <div className="bg-white">
           <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-slate-600">
             <a href="/browse" className="underline text-sky-700">Return to Browse Data</a>
@@ -264,9 +186,7 @@ useEffect(()=>{
           </div>
         </div>
 
-        {/* Content */}
         <div className="max-w-5xl mx-auto px-4 pb-10 space-y-6">
-          {/* Sighting Details */}
           <Card>
             <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
@@ -282,7 +202,6 @@ useEffect(()=>{
             </CardContent>
           </Card>
 
-          {/* Photographer / Contact */}
           <Card>
             <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
@@ -292,7 +211,6 @@ useEffect(()=>{
             </CardContent>
           </Card>
 
-          {/* Location */}
           <Card>
             <CardHeader><CardTitle>Location</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -342,23 +260,24 @@ useEffect(()=>{
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-600">Latitude</label>
-                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., 20.456" value={lat} onChange={(e)=>setLat(e.target.value)} />
+                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., 20.456"
+                    value={lat} onChange={(e)=>{ setLat(e.target.value); setCoordSource("manual input"); }} />
                 </div>
                 <div>
-              <div data-coord-source className="text-[11px] text-gray-500">{coordSource ? `coords source: ${coordSource}` : ""}</div>
-
                   <label className="text-xs text-gray-600">Longitude</label>
-                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., -156.456" value={lng} onChange={(e)=>setLng(e.target.value)} />
+                  <input type="number" step="0.00001" inputMode="decimal" className="border rounded px-3 py-2 w-full" placeholder="e.g., -156.456"
+                    value={lng} onChange={(e)=>{ setLng(e.target.value); setCoordSource("manual input"); }} />
                 </div>
               </div>
 
+              <div className="text-[11px] text-gray-500">{coordSource ? `coords source: ${coordSource}` : ""}</div>
+
               <div>
-                <Button variant="outline" onClick={openMap}>Use Map for Location</Button>
+                <Button variant="outline" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Notes */}
           <Card>
             <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
             <CardContent>
@@ -366,7 +285,6 @@ useEffect(()=>{
             </CardContent>
           </Card>
 
-          {/* Mantas Added */}
           <Card>
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
