@@ -149,35 +149,7 @@ const formSightingId = useMemo(()=>uuid(),[]);
   },[island]);
 
   // earliest-sighting default coords for a (island, location)
-  async function fetchDefaultCoords(isl:string, loc:string): Promise<{lat:number, lon:number, source:string} | null> {
-  try{
-    const variants = islandVariants(isl);
-    // Pull several earliest rows; we will ignore centroid-like coords client-side
-    const { data, error } = await supabase
-      .from("sightings")
-      .select("latitude,longitude,sighting_date,pk_sighting_id")
-      .in("island", variants)
-      .eq("sitelocation", loc)
-      .not("latitude","is", null)
-      .not("longitude","is", null)
-      .order("sighting_date", { ascending: true })
-      .order("pk_sighting_id", { ascending: true })
-      .limit(50);
-    if(!error && data && data.length){
-      const key = normIslKey(isl);
-      const pivot = ISLAND_CENTROIDS[key] || ISLAND_CENTROIDS["maui"];
-      const pick = data.find((r:any)=>{
-        const la = Number(r.latitude), lo = Number(r.longitude);
-        if(!Number.isFinite(la)||!Number.isFinite(lo)) return false;
-        const d = haversineKm(pivot, {lat:la, lon:lo});
-        return d > 8; // ignore centroid-like coords
-      }) || data[0];
-      const la = Number(pick.latitude), lo = Number(pick.longitude);
-      if(Number.isFinite(la) && Number.isFinite(lo)) return { lat: la, lon: lo, source: "earliest sighting" };
-    }
-  }catch(e){ console.warn("[AddSighting] fetchDefaultCoords DB step failed", e); }
-
-  // Fallback: geocode with Mapbox (if token present), then nudge 100 m offshore
+    // Fallback: geocode with Mapbox (if token present), then nudge 100 m offshore
   try{
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const token = (import.meta as any).env?.VITE_MAPBOX_TOKEN as string | undefined;
@@ -203,10 +175,9 @@ const formSightingId = useMemo(()=>uuid(),[]);
 }
 
   // open map: if no lat/lon, try fetch canonical first, then open
-  async function openMap(){
-    const hasLat = Number.isFinite(parseFloat(lat));
-    const hasLng = Number.isFinite(parseFloat(lng));
-    if (hasLat && hasLng) { setMapOpen(true); return; }
+  function openMap(){
+  setMapOpen(true);
+}
 
     const displayLoc = locationName || (locList.find(l=>l.id===locationId)?.name) || "";
     if (island && displayLoc){
@@ -218,27 +189,20 @@ const formSightingId = useMemo(()=>uuid(),[]);
     setMapOpen(true);
   }
 
-  // auto-fill coordinates if location has them (or earliest sighting canonical)
-  useEffect(()=>{
-    if(!locationId) return;
-    const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
-    const displayName = rec?.name ?? locationName ?? locationId;
-    if (rec && rec.name) setLocationName(rec.name);
+  // auto-fill only from dropdown item coords (no external fetch)
+useEffect(()=>{
+  if(!locationId) return;
+  const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+  if (rec && rec.name) setLocationName(rec.name);
 
-    const apply = (la:number, lo:number, src?:string) => { setLat(String(Number(la).toFixed(5))); setLng(String(Number(lo).toFixed(5))); if(src) setCoordSource(src); };
-
-    if (rec && rec.latitude != null && rec.longitude != null) {
-      apply(Number(rec.latitude), Number(rec.longitude), "locations table");
-      return;
-    }
-
-    if (!island || !displayName) return;
-    fetchDefaultCoords(island, displayName)
-      .then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } })
-      .catch(()=>{});
-  },[locationId, locList, island]);
-
-  // modal save handlers
+  if (rec && rec.latitude != null && rec.longitude != null) {
+    setLat(String(Number(rec.latitude).toFixed(5)));
+    setLng(String(Number(rec.longitude).toFixed(5)));
+    if (typeof setCoordSource === 'function') setCoordSource('location defaults');
+  }
+  // else: leave Lat/Lon as-is; user can pick on map or type manually
+},[locationId, locList]);
+// modal save handlers
   const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(p=>[...p,m]); setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
     setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
@@ -265,11 +229,11 @@ const formSightingId = useMemo(()=>uuid(),[]);
             <div className="grid grid-cols-2 gap-2 mb-3 mt-3">
               <div>
                 <label className="text-xs text-gray-600">Latitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>setLat(e.target.value)} placeholder="e.g., 20.456" />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lat} onChange={(e)=>{ setLat(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., 20.456" />
               </div>
               <div>
                 <label className="text-xs text-gray-600">Longitude</label>
-                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>setLng(e.target.value)} placeholder="e.g., -156.456" />
+                <input type="number" step="0.00001" inputMode="decimal" className="w-full border rounded px-3 py-2" value={lng} onChange={(e)=>{ setLng(e.target.value); setCoordSource("manual input"); }} placeholder="e.g., -156.456" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
