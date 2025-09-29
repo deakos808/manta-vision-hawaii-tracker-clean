@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";if (typeof useState !== "function") { console.error("[UnifiedMantaModal] useState not a function — check imports"); }
+// __USESTATE_GUARD__
+
 type View = "ventral" | "dorsal" | "other";
 export type Uploaded = {
   id: string;
