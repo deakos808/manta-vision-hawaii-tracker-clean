@@ -3,7 +3,6 @@ import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
-import PhotoMeasureModal from "@/components/tools/PhotoMeasureModal";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 
@@ -13,7 +12,6 @@ const TIME_OPTIONS = buildTimes(5);
 
 // format size to two decimals in cm
 function formatCm(v:any){ const n = Number(v); return Number.isFinite(n) ? `${n.toFixed(2)} cm` : "—"; }
-// ISLANDS removed — islands now come from DB
 
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
@@ -31,6 +29,10 @@ export default function AddSightingPage() {
   const [phone, setPhone] = useState("");
 
   const [island, setIsland] = useState("");
+  const [islands, setIslands] = useState<string[]>([]);
+  const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
+  const [islandsError, setIslandsError] = useState<string|null>(null);
+
   const [locList, setLocList] = useState<LocRec[]>([]);
   const [locationId, setLocationId] = useState<string>("");
   const [locationName, setLocationName] = useState<string>("");
@@ -42,70 +44,41 @@ export default function AddSightingPage() {
   const [coordSource, setCoordSource] = useState<string>("");
 
   const [mapOpen, setMapOpen] = useState(false);
-const [measureOpen, setMeasureOpen] = useState<{mantaId:string, photoUrl:string}|null>(null);
   const formSightingId = useMemo(()=>uuid(),[]);
 
-  useEffect(()=>{ console.log("[AddSighting] mounted"); console.log("[AddSighting] ui tweak: thumbs+size2dp"); }, []);
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-// Islands from DB (public.sightings.island) with loud probes
-const [islands, setIslands] = useState<string[]>([]);
-const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
-const [islandsError, setIslandsError] = useState<string|null>(null);
-
-useEffect(() => {
-  let alive = true;
-  (async () => {
-    console.log("[IslandSelect][fetch] start");
-    setIslandsLoading(true);
-    setIslandsError(null);
-    try {
+  // Load DISTINCT islands from sightings (source of truth)
+  useEffect(()=>{
+    let alive = true;
+    (async ()=>{
+      setIslandsLoading(true); setIslandsError(null);
       const { data, error } = await supabase
         .from("sightings")
         .select("island", { distinct: true })
         .not("island", "is", null)
         .order("island", { ascending: true });
       if (!alive) return;
-      if (error) {
-        console.log("[IslandSelect][fetch] ERROR:", error);
-        setIslandsError(error.message);
-        setIslandsLoading(false);
-        return;
-      }
-      
-const rawIslands = (data ?? [])
-  .map((r:any) => (r.island ?? "").toString().trim())
-  .filter((x:string) => x.length > 0 && x.toLowerCase() !== "null");
-
-// Deduplicate with NFC normalization (avoids unseen unicode differences)
-const seen = new Set<string>();
-const vals: string[] = [];
-for (const name of rawIslands) {
-  const nfc = name.normalize("NFC");
-  if (!seen.has(nfc)) { seen.add(nfc); vals.push(nfc); }
-}
-
-console.log("[IslandSelect][fetch] islands (unique,NFC):", vals, "count=", vals.length);
-setIslands(vals);
-setIslandsLoading(false);
-    } catch (e:any) {
-      if (!alive) return;
-      console.log("[IslandSelect][fetch] EXCEPTION:", e?.message || e);
-      setIslandsError(e?.message || String(e));
+      if (error) { setIslandsError(error.message); setIslandsLoading(false); return; }
+      const raw = (data ?? []).map((r:any)=> (r.island ?? "").toString().trim()).filter(Boolean);
+      // NFC normalize + dedupe
+      const seen = new Set<string>(); const vals:string[]=[];
+      for (const name of raw){ const nfc = name.normalize("NFC"); if(!seen.has(nfc)){ seen.add(nfc); vals.push(nfc); } }
+      setIslands(vals);
       setIslandsLoading(false);
-    }
-  })();
-  return () => { alive = false; };
-}, []);
+      console.log("[IslandSelect][fetch] DISTINCT islands:", vals);
+    })();
+    return ()=>{ alive=false; };
+  },[]);
 
-// Load locations for selected island from a RESTable view with coords,
-  // then fallback to distinct names from sightings.
+  // Load locations for selected island from location_defaults, fallback to sightings
   useEffect(()=>{
     let cancelled=false;
     (async ()=>{
       const isl = island?.trim();
       if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
 
-      // 1) try location_defaults (name + latitude/longitude)
+      // 1) try location_defaults
       try{
         const { data, error, status } = await supabase
           .from("location_defaults")
@@ -113,7 +86,7 @@ setIslandsLoading(false);
           .eq("island", isl)
           .order("name", { ascending: true });
 
-        if(!cancelled && !error && status!>=400 && data && data.length){
+        if(!cancelled && !error && (status ? status < 400 : true) && data && data.length){
           const seen = new Set<string>(); const list:LocRec[]=[];
           for(const r of data){
             const key = (r.name||"").trim().toLowerCase();
@@ -125,7 +98,7 @@ setIslandsLoading(false);
           setLocList(list);
           return;
         }
-      }catch{}
+      }catch(e){ console.warn("[AddSighting] location_defaults failed", e); }
 
       // 2) fallback to distinct sitelocation from sightings (no coords)
       try{
@@ -142,8 +115,9 @@ setIslandsLoading(false);
           setLocList(names.map((n:string)=>({ id:n, name:n, island:isl })));
           return;
         }
-      }catch{}
+      }catch(e){ console.warn("[AddSighting] fallback distinct sights failed", e); }
 
+      // 3) tiny seed if empty
       setLocList(["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl})));
     })();
     return ()=>{ cancelled=true; };
@@ -169,7 +143,7 @@ setIslandsLoading(false);
     }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
   }
 
-  // On location change: use coords from dropdown item if present; otherwise earliest in sightings
+  // On location change: use coords from dropdown if present; otherwise earliest in sightings
   useEffect(()=>{
     if(!locationId) return;
     const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
@@ -180,6 +154,7 @@ setIslandsLoading(false);
       setLat(String(Number(la).toFixed(5)));
       setLng(String(Number(lo).toFixed(5)));
       if (src) setCoordSource(src);
+      console.log("[Location autofill]", displayName, src, la, lo);
     };
 
     if (rec && rec.latitude != null && rec.longitude != null) {
@@ -283,18 +258,15 @@ setIslandsLoading(false);
             <CardHeader><CardTitle>Location</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
-                
-<select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
-  {(() => { const srcLabel = islandsLoading ? "loading" : (islands && islands.length ? "db" : "none");
-    console.log("[IslandSelect][render] source=", srcLabel, "count=", islands?.length ?? 0, "error=", islandsError, "opts=", islands);
-    return null;
-  })()}
-  <option value="">Select island</option>
-  {islandsLoading && <option value="__loading" disabled>Loading…</option>}
-  {(!islandsLoading && islandsError) && <option value="__err" disabled>Load error — check console</option>}
-  {(!islandsLoading && !islandsError && islands.length === 0) && <option value="__none" disabled>No islands from DB</option>}
-  {(!islandsLoading && !islandsError && islands.length > 0) && islands.map((i,idx) => (<option key={`isl-${idx}-${i}`} value={i}>{i}</option>))}
-</select>
+                <select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
+                  <option value="">Select island</option>
+                  {islandsLoading && <option value="__loading" disabled>Loading…</option>}
+                  {(!islandsLoading && islandsError) && <option value="__err" disabled>Load error — check console</option>}
+                  {(!islandsLoading && !islandsError && islands.length === 0) && <option value="__none" disabled>No islands from DB</option>}
+                  {(!islandsLoading && !islandsError && islands.length > 0) &&
+                    islands.map((i,idx) => <option key={`isl-${idx}-${i}`} value={i}>{i}</option>)
+                  }
+                </select>
 
                 <div>
                   <select className="border rounded px-3 py-2 w-full" value={locationId} onChange={(e)=>setLocationId(e.target.value)} disabled={!island}>
@@ -355,10 +327,7 @@ setIslandsLoading(false);
           </Card>
 
           <Card>
-            <div className="text-[11px] text-gray-500 mb-2" data-island-probe>
-  Island options: {islandsLoading ? "loading" : ((islands && islands.length) || 0)} from DB
-</div>
-<CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
             <CardContent>
               <textarea className="w-full border rounded p-2 min-h-[140px]" placeholder="Enter notes about this sighting..." />
             </CardContent>
@@ -370,6 +339,7 @@ setIslandsLoading(false);
               <div className="hidden md:grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] gap-3 text-[11px] uppercase tracking-wide text-gray-500 px-6 pt-2">
                 <div>Photos</div><div>Name</div><div>Gender</div><div>Age Class</div><div>Size (cm)</div>
               </div>
+
               {mantas.length === 0 ? (
                 <div className="text-sm text-gray-600 px-6">No mantas added yet.</div>
               ) : (
@@ -380,13 +350,31 @@ setIslandsLoading(false);
                     return (
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-  {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
-  {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
-</div>
-<div className="text-[11px] text-muted-foreground">
-  { (m as any)._measure ? <>Measured DL: {(m as any)._measure.dlCm.toFixed(2)} cm · DW: {(m as any)._measure.dwCm.toFixed(2)} cm</> : null }
-</div>
+                          {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                          {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
+                        </div>
+                        <div className="truncate">{m.name || "—"}</div>
+                        <div className="truncate">{m.gender || "—"}</div>
+                        <div className="truncate">{m.ageClass || "—"}</div>
+                        <div className="truncate">{formatCm(m.size)}</div>
+                        <div className="col-span-full flex justify-end gap-2">
+                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setEditingManta(m)}>Edit</button>
+                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setMantas(prev=>prev.filter(x=>x.id!==m.id))}>Remove</button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
+          <div className="flex justify-start">
+            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>
+          </div>
+
+          <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
+        </div>
       </Layout>
     </>
   );
