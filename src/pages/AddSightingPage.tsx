@@ -386,7 +386,7 @@ setIslandsLoading(false);
 <div className="text-[11px] text-muted-foreground">
   { (m as any)._measure ? <>Measured DL: {(m as any)._measure.dlCm.toFixed(2)} cm · DW: {(m as any)._measure.dwCm.toFixed(2)} cm</> : null }
 </div>
-</div>
+
       </Layout>
     </>
   );
