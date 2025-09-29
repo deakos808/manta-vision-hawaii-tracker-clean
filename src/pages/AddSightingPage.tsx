@@ -9,6 +9,9 @@ import TempSightingMap from "@/components/map/TempSightingMap";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
+
+// format size to two decimals in cm
+function formatCm(v:any){ const n = Number(v); return Number.isFinite(n) ? `${n.toFixed(2)} cm` : "—"; }
 // ISLANDS removed — islands now come from DB
 
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
@@ -40,7 +43,7 @@ export default function AddSightingPage() {
   const [mapOpen, setMapOpen] = useState(false);
   const formSightingId = useMemo(()=>uuid(),[]);
 
-  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+  useEffect(()=>{ console.log("[AddSighting] mounted"); console.log("[AddSighting] ui tweak: thumbs+size2dp"); }, []);
 
 // Islands from DB (public.sightings.island) with loud probes
 const [islands, setIslands] = useState<string[]>([]);
@@ -362,7 +365,7 @@ setIslandsLoading(false);
           <Card>
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
-              <div className="hidden md:grid grid-cols-[96px_minmax(0,1fr)_120px_160px_100px] gap-3 text-[11px] uppercase tracking-wide text-gray-500 px-6 pt-2">
+              <div className="hidden md:grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] gap-3 text-[11px] uppercase tracking-wide text-gray-500 px-6 pt-2">
                 <div>Photos</div><div>Name</div><div>Gender</div><div>Age Class</div><div>Size (cm)</div>
               </div>
               {mantas.length === 0 ? (
@@ -373,10 +376,10 @@ setIslandsLoading(false);
                     const vBest = m.photos?.find(p=>p.view==="ventral" && p.isBestVentral) || m.photos?.find(p=>p.view==="ventral");
                     const dBest = m.photos?.find(p=>p.view==="dorsal" && p.isBestDorsal)  || m.photos?.find(p=>p.view==="dorsal");
                     return (
-                      <li key={m.id} className="grid grid-cols-[96px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
+                      <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-                          {vBest ? <img src={vBest.url} alt="V" className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
-                          {dBest ? <img src={dBest.url} alt="D" className="w-10 h-10 object-cover rounded" /> : <div className="w-10 h-10 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
+                          {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                          {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
                         </div>
                         <div className="truncate">{m.name || "—"}</div>
                         <div className="truncate">{m.gender || "—"}</div>
