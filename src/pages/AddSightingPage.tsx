@@ -9,7 +9,8 @@ import TempSightingMap from "@/components/map/TempSightingMap";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
-const ISLANDS = ["Hawaiʻi","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
+const ISLANDS = ["Big Island","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
+console.log("[IslandSelect][hardcoded] ISLANDS:", ISLANDS);
 
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
@@ -41,6 +42,7 @@ export default function AddSightingPage() {
   const formSightingId = useMemo(()=>uuid(),[]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLANDS); }, []);
 
   // Load locations for selected island from a RESTable view with coords,
   // then fallback to distinct names from sightings.
