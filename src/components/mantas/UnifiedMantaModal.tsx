@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
 type View = "ventral" | "dorsal" | "other";
 export type Uploaded = {
   id: string;
