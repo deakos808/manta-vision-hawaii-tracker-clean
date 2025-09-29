@@ -18,17 +18,27 @@ export function useDistinctIslands() {
     (async () => {
       setLoading(true);
       setError(null);
+      console.log("[IslandSelect][fetch] start");
       const { data, error } = await supabase
         .from("sightings")
         .select("island", { distinct: true })
         .not("island", "is", null)
         .order("island", { ascending: true });
+
       if (!alive) return;
-      if (error) { setError(error.message); setLoading(false); return; }
+
+      if (error) {
+        console.log("[IslandSelect][fetch] ERROR:", error);
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
       const vals = (data as Row[])
         .map(r => (r.island ?? "").trim())
         .filter(Boolean);
-      console.debug("[IslandSelect] distinct islands from DB:", vals);
+
+      console.log("[IslandSelect][fetch] DISTINCT islands from DB:", vals);
       setIslands(vals);
       setLoading(false);
     })();
