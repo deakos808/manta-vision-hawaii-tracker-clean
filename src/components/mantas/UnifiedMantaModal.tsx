@@ -34,8 +34,12 @@ function uuid() {
 }
 
 console.log("[UnifiedMantaModal] decimals enabled");
+console.log("[UnifiedMantaModal] name/photo validation enabled");
 export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, existingManta }: Props) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState; // keep import hint
+  const [noPhotos, setNoPhotos] = useState(false);
+  const [nameError, setNameError] = useState(false);
+useState("");
   const [gender, setGender] = useState<string | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
@@ -188,7 +192,8 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
           {/* Right: thumbnails */}
           <div className="max-h-80 overflow-auto pr-1">
             {photos.length === 0 ? (
-              <div className="text-sm text-gray-600">No photos added yet.</div>
+              <div className="text-sm text-gray-600">No photos added yet.
+<div className="mt-2"><label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={noPhotos} onChange={e=>setNoPhotos(e.target.checked)} /> No photos taken (allow save without photos)</label></div></div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(p=>(
