@@ -156,9 +156,9 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
           </div>
           <div className="md:col-span-2 col-span-12">
             <label className="text-sm block mb-1">Size (cm)</label>
-            <input
+            <input step="0.01"
               type="number"
-              inputMode="numeric"
+              inputMode="decimal"
               step={1}
               min={0}
               placeholder="cm"
