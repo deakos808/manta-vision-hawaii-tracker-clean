@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import PhotoMeasureModal from "@/components/tools/PhotoMeasureModal";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 
@@ -41,6 +42,7 @@ export default function AddSightingPage() {
   const [coordSource, setCoordSource] = useState<string>("");
 
   const [mapOpen, setMapOpen] = useState(false);
+const [measureOpen, setMeasureOpen] = useState<{mantaId:string, photoUrl:string}|null>(null);
   const formSightingId = useMemo(()=>uuid(),[]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); console.log("[AddSighting] ui tweak: thumbs+size2dp"); }, []);
@@ -378,31 +380,13 @@ setIslandsLoading(false);
                     return (
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-                          {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
-                          {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
-                        </div>
-                        <div className="truncate">{m.name || "—"}</div>
-                        <div className="truncate">{m.gender || "—"}</div>
-                        <div className="truncate">{m.ageClass || "—"}</div>
-                        <div className="truncate">{m.size ? `${parseInt(m.size as any,10)} cm` : "—"}</div>
-                        <div className="col-span-full flex justify-end gap-2">
-                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setEditingManta(m)}>Edit</button>
-                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setMantas(prev=>prev.filter(x=>x.id!==m.id))}>Remove</button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-start">
-            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>
-          </div>
-
-          <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
-        </div>
+  {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+  {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
+</div>
+<div className="text-[11px] text-muted-foreground">
+  { (m as any)._measure ? <>Measured DL: {(m as any)._measure.dlCm.toFixed(2)} cm · DW: {(m as any)._measure.dwCm.toFixed(2)} cm</> : null }
+</div>
+</div>
       </Layout>
     </>
   );
