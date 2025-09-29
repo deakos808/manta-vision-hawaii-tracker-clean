@@ -66,12 +66,22 @@ useEffect(() => {
         setIslandsLoading(false);
         return;
       }
-      const vals = (data ?? [])
-        .map((r:any) => (r.island ?? "").toString().trim())
-        .filter((x:string) => x.length > 0);
-      console.log("[IslandSelect][fetch] DISTINCT islands from DB:", vals);
-      setIslands(vals);
-      setIslandsLoading(false);
+      
+const rawIslands = (data ?? [])
+  .map((r:any) => (r.island ?? "").toString().trim())
+  .filter((x:string) => x.length > 0 && x.toLowerCase() !== "null");
+
+// Deduplicate with NFC normalization (avoids unseen unicode differences)
+const seen = new Set<string>();
+const vals: string[] = [];
+for (const name of rawIslands) {
+  const nfc = name.normalize("NFC");
+  if (!seen.has(nfc)) { seen.add(nfc); vals.push(nfc); }
+}
+
+console.log("[IslandSelect][fetch] islands (unique,NFC):", vals, "count=", vals.length);
+setIslands(vals);
+setIslandsLoading(false);
     } catch (e:any) {
       if (!alive) return;
       console.log("[IslandSelect][fetch] EXCEPTION:", e?.message || e);
@@ -278,9 +288,7 @@ useEffect(() => {
   {islandsLoading && <option value="__loading" disabled>Loading…</option>}
   {(!islandsLoading && islandsError) && <option value="__err" disabled>Load error — check console</option>}
   {(!islandsLoading && !islandsError && islands.length === 0) && <option value="__none" disabled>No islands from DB</option>}
-  {(!islandsLoading && !islandsError && islands.length > 0) && islands.map(i => (
-    <option key={i} value={i}>{i}</option>
-  ))}
+  {(!islandsLoading && !islandsError && islands.length > 0) && islands.map((i,idx) => (<option key={`isl-${idx}-${i}`} value={i}>{i}</option>))}
 </select>
 
                 <div>
