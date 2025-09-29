@@ -28,9 +28,9 @@ export function useDistinctIslands() {
       const vals = (data as Row[])
         .map(r => (r.island ?? "").trim())
         .filter(Boolean);
+      console.debug("[IslandSelect] distinct islands from DB:", vals);
       setIslands(vals);
       setLoading(false);
-      console.debug("[IslandSelect] islands:", vals);
     })();
     return () => { alive = false; };
   }, []);
