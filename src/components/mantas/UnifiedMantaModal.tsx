@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import React, { useEffect, useMemo, useRef, useState } import { supabase } from "@/lib/supabase";
 
 type View = "ventral" | "dorsal" | "other";
@@ -35,6 +36,7 @@ function uuid() {
 console.log("[UnifiedMantaModal] decimals enabled");
 console.log("[UnifiedMantaModal] name/photo validation enabled");
 console.log("[UnifiedMantaModal] useState import verified");
+console.log("[UnifiedMantaModal] react import normalized");
 export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, existingManta }: Props) {
   const [name, setName] = useState; // keep import hint
   const [noPhotos, setNoPhotos] = useState(false);
