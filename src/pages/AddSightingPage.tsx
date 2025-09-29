@@ -42,44 +42,48 @@ export default function AddSightingPage() {
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // Load locations for selected island:
-  // 1) try 'locations' table (name + coords)
-  // 2) fallback to distinct sitelocation strings from sightings (no coords)
+  // Load locations for selected island from a RESTable view with coords,
+  // then fallback to distinct names from sightings.
   useEffect(()=>{
     let cancelled=false;
-    (async () => {
+    (async ()=>{
       const isl = island?.trim();
       if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
 
+      // 1) try location_defaults (name + latitude/longitude)
       try{
         const { data, error, status } = await supabase
           .from("location_defaults")
           .select("name,island,latitude,longitude")
           .eq("island", isl)
           .order("name", { ascending: true });
-        if(!cancelled && !error && status<400 && data && data.length){
-          const seen=new Set<string>(); const list:LocRec[]=[];
+
+        if(!cancelled && !error && status!>=400 && data && data.length){
+          const seen = new Set<string>(); const list:LocRec[]=[];
           for(const r of data){
-            const key=(r.name||"").trim().toLowerCase();
+            const key = (r.name||"").trim().toLowerCase();
             if(!seen.has(key)){
               seen.add(key);
-              list.push({ id:String(r.name), name:String(r.name), island:r.island, latitude:r.latitude ?? null, longitude:r.longitude ?? null });
+              list.push({ id: String(r.name), name: String(r.name), island: r.island, latitude: r.latitude ?? null, longitude: r.longitude ?? null });
             }
-          }); }
           }
           setLocList(list);
           return;
         }
       }catch{}
 
+      // 2) fallback to distinct sitelocation from sightings (no coords)
       try{
         const { data: srows, error: serr } = await supabase
           .from("sightings")
           .select("sitelocation")
           .eq("island", isl)
-          .not("sitelocation","is",null);
+          .not("sitelocation","is", null);
+
         if(!cancelled && !serr && srows){
-          const names = Array.from(new Set(srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0))).sort((a,b)=>a.localeCompare(b));
+          const names = Array.from(new Set(
+            srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0)
+          )).sort((a,b)=>a.localeCompare(b));
           setLocList(names.map((n:string)=>({ id:n, name:n, island:isl })));
           return;
         }
@@ -91,39 +95,48 @@ export default function AddSightingPage() {
   },[island]);
 
   async function fetchEarliestCoords(isl: string, loc: string): Promise<{lat:number; lon:number} | null> {
-  try{
-    // Case-insensitive match on name; pick earliest with coords
-    const { data, error } = await supabase
-      .from("sightings")
-      .select("latitude,longitude,sighting_date,pk_sighting_id")
-      .eq("island", isl)
-      .ilike("sitelocation", loc)          // case-insensitive exact string
-      .not("latitude","is", null)
-      .not("longitude","is", null)
-      .order("sighting_date", { ascending: true })
-      .order("pk_sighting_id", { ascending: true })
-      .limit(1);
-    if(error || !data || !data.length) return null;
-    const r = data[0];
-    const la = Number(r.latitude), lo = Number(r.longitude);
-    if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
-    return { lat: la, lon: lo };
-  }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
-}
+    try{
+      const { data, error } = await supabase
+        .from("sightings")
+        .select("latitude,longitude,sighting_date,pk_sighting_id")
+        .eq("island", isl)
+        .ilike("sitelocation", loc)      // case-insensitive
+        .not("latitude","is", null)
+        .not("longitude","is", null)
+        .order("sighting_date", { ascending: true })
+        .order("pk_sighting_id", { ascending: true })
+        .limit(1);
+      if(error || !data || !data.length) return null;
+      const r = data[0];
+      const la = Number(r.latitude), lo = Number(r.longitude);
+      if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+      return { lat: la, lon: lo };
+    }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
   }
 
-// Only auto-fill from dropdown coords if provided (no fetching)
+  // On location change: use coords from dropdown item if present; otherwise earliest in sightings
   useEffect(()=>{
     if(!locationId) return;
     const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+    const displayName = rec?.name ?? locationName ?? locationId;
     if (rec && rec.name) setLocationName(rec.name);
+
+    const apply = (la:number, lo:number, src?:string) => {
+      setLat(String(Number(la).toFixed(5)));
+      setLng(String(Number(lo).toFixed(5)));
+      if (src) setCoordSource(src);
+    };
+
     if (rec && rec.latitude != null && rec.longitude != null) {
-      const la=Number(rec.latitude).toFixed(5), lo=Number(rec.longitude).toFixed(5);
-      console.log("[Location autofill] from location_defaults:", rec.name, la, lo);
-      setLat(String(la)); setLng(String(lo));
-      setCoordSource("location defaults");
+      apply(Number(rec.latitude), Number(rec.longitude), "location defaults");
+      return;
     }
-  },[locationId, locList]);
+
+    if (!island || !displayName) return;
+    fetchEarliestCoords(island, displayName)
+      .then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } })
+      .catch(()=>{});
+  },[locationId, locList, island]);
 
   function openMap(){ setMapOpen(true); }
 
@@ -193,11 +206,11 @@ export default function AddSightingPage() {
               <input type="date" className="border rounded px-3 py-2" value={date} onChange={(e)=>setDate(e.target.value)} />
               <select className="border rounded px-3 py-2" value={startTime} onChange={(e)=>setStartTime(e.target.value)}>
                 <option value="">Start Time</option>
-                {TIME_OPTIONS.map(t=> <option key={"s-"+t} value={t}>{t}</option>)}
+                {TIME_OPTIONS.map(t=> <option key={t} value={t}>{t}</option>)}
               </select>
               <select className="border rounded px-3 py-2" value={stopTime} onChange={(e)=>setStopTime(e.target.value)}>
                 <option value="">Stop Time</option>
-                {TIME_OPTIONS.map(t=> <option key={"e-"+t} value={t}>{t}</option>)}
+                {TIME_OPTIONS.map(t=> <option key={t} value={t}>{t}</option>)}
               </select>
             </CardContent>
           </Card>
@@ -273,7 +286,7 @@ export default function AddSightingPage() {
               <div className="text-[11px] text-gray-500">{coordSource ? `coords source: ${coordSource}` : ""}</div>
 
               <div>
-                <Button variant="outline" onClick={()=>setMapOpen(true)}>Use Map for Location</Button>
+                <Button variant="outline" onClick={openMap}>Use Map for Location</Button>
               </div>
             </CardContent>
           </Card>
