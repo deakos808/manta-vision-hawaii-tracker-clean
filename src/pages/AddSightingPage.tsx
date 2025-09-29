@@ -10,7 +10,6 @@ function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Mat
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
 // ISLANDS removed — islands now come from DB
-console.log("[IslandSelect][hardcoded] ISLANDS:", ISLANDS);
 
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
@@ -83,9 +82,7 @@ useEffect(() => {
   return () => { alive = false; };
 }, []);
 
-useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLANDS); }, []);
-
-  // Load locations for selected island from a RESTable view with coords,
+// Load locations for selected island from a RESTable view with coords,
   // then fallback to distinct names from sightings.
   useEffect(()=>{
     let cancelled=false;
@@ -271,7 +268,8 @@ useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLAND
             <CardHeader><CardTitle>Location</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
-                <select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
+                
+<select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
   {(() => { const srcLabel = islandsLoading ? "loading" : (islands && islands.length ? "db" : "none");
     console.log("[IslandSelect][render] source=", srcLabel, "count=", islands?.length ?? 0, "error=", islandsError, "opts=", islands);
     return null;
