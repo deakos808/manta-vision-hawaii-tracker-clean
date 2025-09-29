@@ -59,8 +59,8 @@ pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
 5353,3/7/18,Maui,Molokini,Molokini,20.63022,-156.49598,original
 5029,1/29/18,Maui,South Maui,,null,null,missing
 5031,2/13/18,Maui,South Maui,,null,null,missing
-5115,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.78974,-156.33692,original
-5357,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.78974,-156.33692,original
+5115,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.61326,-156.43905,modified
+5357,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.61326,-156.43905,modified
 5359,9/14/18,Maui,South Maui,Five Caves,20.65640,-156.44394,modified
 5625,11/21/21,Maui,South Maui,Kalepolepo Fish Pond,20.76370,-156.46011,modified
 5043,2/12/18,Maui,South Maui,Kam1,20.72170,-156.44896,modifed
