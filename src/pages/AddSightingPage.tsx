@@ -9,7 +9,7 @@ import TempSightingMap from "@/components/map/TempSightingMap";
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
-const ISLANDS = ["Big Island","Maui","Oʻahu","Kauaʻi","Molokaʻi","Lānaʻi"];
+// ISLANDS removed — islands now come from DB
 console.log("[IslandSelect][hardcoded] ISLANDS:", ISLANDS);
 
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
@@ -42,6 +42,47 @@ export default function AddSightingPage() {
   const formSightingId = useMemo(()=>uuid(),[]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+
+// Islands from DB (public.sightings.island) with loud probes
+const [islands, setIslands] = useState<string[]>([]);
+const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
+const [islandsError, setIslandsError] = useState<string|null>(null);
+
+useEffect(() => {
+  let alive = true;
+  (async () => {
+    console.log("[IslandSelect][fetch] start");
+    setIslandsLoading(true);
+    setIslandsError(null);
+    try {
+      const { data, error } = await supabase
+        .from("sightings")
+        .select("island", { distinct: true })
+        .not("island", "is", null)
+        .order("island", { ascending: true });
+      if (!alive) return;
+      if (error) {
+        console.log("[IslandSelect][fetch] ERROR:", error);
+        setIslandsError(error.message);
+        setIslandsLoading(false);
+        return;
+      }
+      const vals = (data ?? [])
+        .map((r:any) => (r.island ?? "").toString().trim())
+        .filter((x:string) => x.length > 0);
+      console.log("[IslandSelect][fetch] DISTINCT islands from DB:", vals);
+      setIslands(vals);
+      setIslandsLoading(false);
+    } catch (e:any) {
+      if (!alive) return;
+      console.log("[IslandSelect][fetch] EXCEPTION:", e?.message || e);
+      setIslandsError(e?.message || String(e));
+      setIslandsLoading(false);
+    }
+  })();
+  return () => { alive = false; };
+}, []);
+
 useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLANDS); }, []);
 
   // Load locations for selected island from a RESTable view with coords,
@@ -231,9 +272,18 @@ useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLAND
             <CardContent className="space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
                 <select className="border rounded px-3 py-2" value={island} onChange={(e)=>setIsland(e.target.value)}>
-                  <option value="">Select island</option>
-                  {ISLANDS.map(i=> <option key={i} value={i}>{i}</option>)}
-                </select>
+  {(() => { const srcLabel = islandsLoading ? "loading" : (islands && islands.length ? "db" : "none");
+    console.log("[IslandSelect][render] source=", srcLabel, "count=", islands?.length ?? 0, "error=", islandsError, "opts=", islands);
+    return null;
+  })()}
+  <option value="">Select island</option>
+  {islandsLoading && <option value="__loading" disabled>Loading…</option>}
+  {(!islandsLoading && islandsError) && <option value="__err" disabled>Load error — check console</option>}
+  {(!islandsLoading && !islandsError && islands.length === 0) && <option value="__none" disabled>No islands from DB</option>}
+  {(!islandsLoading && !islandsError && islands.length > 0) && islands.map(i => (
+    <option key={i} value={i}>{i}</option>
+  ))}
+</select>
 
                 <div>
                   <select className="border rounded px-3 py-2 w-full" value={locationId} onChange={(e)=>setLocationId(e.target.value)} disabled={!island}>
@@ -294,7 +344,10 @@ useEffect(()=>{ console.log("[IslandSelect][hardcoded][render] options:", ISLAND
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+            <div className="text-[11px] text-gray-500 mb-2" data-island-probe>
+  Island options: {islandsLoading ? "loading" : ((islands && islands.length) || 0)} from DB
+</div>
+<CardHeader><CardTitle>Notes</CardTitle></CardHeader>
             <CardContent>
               <textarea className="w-full border rounded p-2 min-h-[140px]" placeholder="Enter notes about this sighting..." />
             </CardContent>
