@@ -337,7 +337,7 @@ export default function AddSightingPage() {
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
               <div className="hidden md:grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] gap-3 text-[11px] uppercase tracking-wide text-gray-500 px-6 pt-2">
-                <div>Photos</div><div>Name</div><div>Gender</div><div>Age Class</div><div>Size (cm)</div>
+                <div>Photos</div><div> Temp Name </div><div>Gender</div><div>Age Class</div><div>Size (cm)</div>
               </div>
 
               {mantas.length === 0 ? (
