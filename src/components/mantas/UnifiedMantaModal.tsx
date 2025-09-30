@@ -177,7 +177,7 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
-          onWheel={()=>{}}}
+          onWheel={()=>{}}
         >
           <img
             ref={imgRef}
