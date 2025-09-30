@@ -11,6 +11,8 @@ export type Uploaded = {
   view: View;
   isBestVentral?: boolean;
   isBestDorsal?: boolean;
+  dlCm?: number;  // disc length in cm
+  dwCm?: number;  // disc width in cm (DL * 2.3)
 };
 
 export type MantaDraft = {
@@ -18,7 +20,7 @@ export type MantaDraft = {
   name: string;
   gender?: string | null;
   ageClass?: string | null;
-  size?: string | null; // keep as string; parent can format 2dp when displaying
+  size?: string | null; // Mean DW in cm (two decimals as string)
   photos: Uploaded[];
 };
 
@@ -34,123 +36,23 @@ function uuid() {
   try { return (crypto as any).randomUUID(); }
   catch { return Math.random().toString(36).slice(2); }
 }
-
-/** Measurement modal for dorsal photos.
- * Click 1–2 on laser dots (scale = 60 cm). Click 3–4 on disc endpoints.
- * DL = (discPx / scalePx) * 60;  DW = DL * 2.3
- */
-function MeasureModal({
-  url,
-  onClose,
-  onApply
-}: {
-  url: string;
-  onClose: () => void;
-  onApply: (dlCm: number, dwCm: number) => void;
-}) {
-  const imgRef = useRef<HTMLImageElement|null>(null);
-  const canvasRef = useRef<HTMLCanvasElement|null>(null);
-  const [points, setPoints] = useState<{x:number;y:number}[]>([]);
-
-  function reset() { setPoints([]); }
-
-  // Map click to image pixels (handles zoomed display)
-  function handleClick(e: React.MouseEvent) {
-    const img = imgRef.current;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    const scaleX = (img.naturalWidth || rect.width) / rect.width;
-    const scaleY = (img.naturalHeight || rect.height) / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top)  * scaleY;
-    setPoints(prev => prev.length >= 4 ? prev : [...prev, {x,y}]);
-  }
-
-  // Draw overlay
-  useEffect(()=>{
-    const c = canvasRef.current, img = imgRef.current;
-    if (!c || !img) return;
-    const rect = img.getBoundingClientRect();
-    c.width = Math.max(1, Math.floor(rect.width));
-    c.height = Math.max(1, Math.floor(rect.height));
-    const ctx = c.getContext('2d')!;
-    ctx.clearRect(0,0,c.width,c.height);
-
-    const sx = c.width  / (img.naturalWidth || rect.width);
-    const sy = c.height / (img.naturalHeight|| rect.height);
-
-    const drawPt = (p:{x:number;y:number}, color:string) => {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(p.x*sx, p.y*sy, 4, 0, Math.PI*2);
-      ctx.fill();
-    };
-    const drawLine = (a:{x:number;y:number}, b:{x:number;y:number}, color:string) => {
-      ctx.strokeStyle = color; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(a.x*sx, a.y*sy); ctx.lineTo(b.x*sx, b.y*sy); ctx.stroke();
-    };
-
-    if (points[0]) drawPt(points[0], '#22c55e');
-    if (points[1]) { drawPt(points[1], '#22c55e'); drawLine(points[0], points[1], '#22c55e'); }
-
-    if (points[2]) drawPt(points[2], '#0ea5e9');
-    if (points[3]) { drawPt(points[3], '#0ea5e9'); drawLine(points[2], points[3], '#0ea5e9'); }
-  }, [points]);
-
-  const dist = (a:{x:number;y:number}, b:{x:number;y:number}) => Math.hypot(a.x-b.x, a.y-b.y);
-  const scalePx = points.length >= 2 ? dist(points[0], points[1]) : null;
-  const discPx  = points.length >= 4 ? dist(points[2], points[3]) : null;
-  const dlCm = (scalePx && discPx && scalePx>0) ? (discPx / scalePx) * 60.0 : null;
-  const dwCm = (dlCm!=null) ? dlCm * 2.3 : null;
-
-  return (
-    <div className="fixed inset-0 z-[300100] bg-black/60 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white w-full max-w-5xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
-        <button className="absolute top-2 right-2 h-8 w-8 rounded-full border grid place-items-center" onClick={onClose} aria-label="Close">&times;</button>
-        <h3 className="text-lg font-medium mb-3">Measure (click 1–2 laser dots, then 3–4 disc ends)</h3>
-        <div className="relative border rounded overflow-hidden">
-          <img ref={imgRef} src={url} alt="measure" className="max-h-[60vh] w-auto block mx-auto" />
-          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" onClick={handleClick} style={{cursor:'crosshair'}} />
-        </div>
-        <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-          <div>
-            <div>Scale (px): <span className="font-mono">{scalePx ? scalePx.toFixed(1) : "—"}</span> (60 cm)</div>
-            <div>Disc length (px): <span className="font-mono">{discPx ? discPx.toFixed(1) : "—"}</span></div>
-          </div>
-          <div>
-            <div>DL (cm): <span className="font-mono">{dlCm!=null ? dlCm.toFixed(2) : "—"}</span></div>
-            <div>DW (cm = DL × 2.3): <span className="font-mono">{dwCm!=null ? dwCm.toFixed(2) : "—"}</span></div>
-          </div>
-        </div>
-        <div className="mt-4 flex justify-between">
-          <div className="text-[11px] text-slate-500">probe:measure-modal</div>
-          <div className="flex gap-2">
-            <button className="px-3 py-2 rounded border" onClick={reset}>Reset</button>
-            <button className="px-3 py-2 rounded bg-sky-600 text-white disabled:opacity-50"
-              disabled={!(dlCm!=null && dwCm!=null)}
-              onClick={()=>{ if (dlCm!=null && dwCm!=null) { onApply(dlCm, dwCm); onClose(); }}}>
-              Apply & Fill
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function mean(nums: number[]): number | null {
+  const n = nums.filter((v) => Number.isFinite(v));
+  return n.length ? n.reduce((a,b)=>a+b,0)/n.length : null;
 }
 
 export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, existingManta }: Props) {
   const [name, setName] = useState<string>("");
+  const [nameError, setNameError] = useState(false);
+  const [noPhotos, setNoPhotos] = useState(false);
+
   const [gender, setGender] = useState<string | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
-  const [size, setSize] = useState<string | null>(null);
+  const [size, setSize] = useState<string | null>(null); // Mean DW (cm)
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
-  const [noPhotos, setNoPhotos] = useState(false);
-  const [measureFor, setMeasureFor] = useState<{photoId: string; url: string} | null>(null);
-  const [measured, setMeasured] = useState<Record<string, {dlCm:number; dwCm:number}>>({});
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const nameInputRef = useRef<HTMLInputElement | null>(null);
   const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
@@ -161,74 +63,88 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
     setSize(existingManta?.size ?? null);
     setPhotos(existingManta?.photos ?? []);
     setNoPhotos(false);
+    setNameError(false);
   }, [open, existingManta]);
 
-  if (!open) return null;
+  // Recompute Mean Size (DW) when dorsal measurements change
+  useEffect(() => {
+    const vals = photos
+      .filter(p => p.view === "dorsal" && Number.isFinite(p.dwCm))
+      .map(p => Number(p.dwCm));
+    const m = mean(vals);
+    if (m != null) setSize(m.toFixed(2));
+  }, [photos.map(p => `${p.id}:${p.dwCm}`).join(",")]);
 
   async function handleFiles(files: File[]) {
     if (!files?.length) return;
     setBusy(true);
-    const allow = ["image/jpeg","image/png","image/webp"];
+    const allow = ["image/jpeg","image/png","image/webp","image/heic","image/heif"];
     const added: Uploaded[] = [];
+
     for (const f of files) {
-      if (!allow.includes(f.type)) { console.warn("[UnifiedMantaModal] skip type", f.type, f.name); continue; }
+      if (!allow.includes(f.type)) { console.warn("[UnifiedMantaModal] skip type", f.type); continue; }
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
       const id = uuid();
       const path = `${sightingId}/${mantaId}/${id}.${ext}`;
+
       try {
         const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
         if (error) { console.warn("[UnifiedMantaModal] upload error", error.message); continue; }
         const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
         added.push({ id, name: f.name, url: data?.publicUrl || "", path, view: "other" });
-      } catch (e:any) {
-        console.warn("[UnifiedMantaModal] upload error", e?.message || e);
-      }
+      } catch (e: any) { console.warn("[UnifiedMantaModal] upload exception", e?.message || e); }
     }
+
     if (added.length) setPhotos(prev => [...prev, ...added]);
     setBusy(false);
   }
 
-  function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault(); e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files || []);
-    handleFiles(files);
-  }
-  function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    handleFiles(files);
-    e.currentTarget.value = "";
-  }
+  const [measureOpen, setMeasureOpen] = useState<{ photoId: string; url: string } | null>(null);
+  const [scaleCm, setScaleCm] = useState(60);
 
   function setView(id: string, view: View) {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, view } : p));
   }
   function setBestVentral(id: string) {
-    setPhotos(prev => prev.map(p => p.view !== "ventral" ? { ...p, isBestVentral: false } : { ...p, isBestVentral: p.id === id }));
+    setPhotos(prev =>
+      prev.map(p => p.view !== "ventral"
+        ? { ...p, isBestVentral: false }
+        : { ...p, isBestVentral: p.id === id }
+      )
+    );
   }
   function setBestDorsal(id: string) {
-    setPhotos(prev => prev.map(p => p.view !== "dorsal" ? { ...p, isBestDorsal: false } : { ...p, isBestDorsal: p.id === id }));
+    setPhotos(prev =>
+      prev.map(p => p.view !== "dorsal"
+        ? { ...p, isBestDorsal: false }
+        : { ...p, isBestDorsal: p.id === id }
+      )
+    );
   }
 
   function save() {
-    const nm = (name || "").trim();
-    if (!nm) {
-      window.alert("You need to choose a temporary name");
-      nameInputRef.current?.focus();
+    const trimmed = (name || "").trim();
+    if (!trimmed) { setNameError(true); return; }
+    if (photos.length === 0 && !noPhotos) {
+      alert("You need to add a photo image or check that no photos were taken.");
       return;
     }
-    if (!noPhotos && photos.length === 0) {
-      window.alert("You need to add a photo image or check that no photos were taken.");
-      return;
-    }
-    const draft: MantaDraft = { id: mantaId, name: nm, gender, ageClass, size, photos };
+    const draft: MantaDraft = { id: mantaId, name: trimmed, gender, ageClass, size, photos };
     onSave(draft);
     onClose();
   }
 
+  if (!open) return null;
+
   return (
     <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
       <div className="bg-white rounded-lg border w-full max-w-5xl p-4 pointer-events-auto relative">
-        <button aria-label="Close" type="button" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50" onClick={(e)=>{ e.stopPropagation(); onClose(); }}>
+        <button
+          aria-label="Close"
+          type="button"
+          className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50"
+          onClick={(e)=>{ e.stopPropagation(); onClose(); }}
+        >
           &times;
         </button>
 
@@ -237,10 +153,18 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
           <div className="text-[11px] text-gray-500">sighting: {sightingId.slice(0,8)}</div>
         </div>
 
-        <div className="grid md:grid-cols-12 gap-3 mb-4">
+        <div className="grid md:grid-cols-12 gap-3">
           <div className="md:col-span-5 col-span-12">
-            <label className="text-sm block mb-1">Name</label>
-            <input ref={nameInputRef} className="w-full border rounded px-3 py-2" value={name} onChange={(e)=> setName(e.target.value)} placeholder="e.g., A, B, C" />
+            <label className="text-sm block mb-1">Temp Name</label>
+            <input
+              className={`w-full border rounded px-3 py-2 ${nameError && !name.trim() ? "border-red-500" : ""}`}
+              value={name}
+              onChange={(e)=>{ setName(e.target.value); if (nameError) setNameError(false); }}
+              placeholder="e.g., A, B, C"
+            />
+            {nameError && !name.trim() ? (
+              <div className="mt-1 text-xs text-red-600">please choose a temporary name</div>
+            ) : null}
           </div>
           <div className="md:col-span-2 col-span-12">
             <label className="text-sm block mb-1">Gender</label>
@@ -261,114 +185,206 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
             </select>
           </div>
           <div className="md:col-span-2 col-span-12">
-            <label className="text-sm block mb-1">Size (cm)</label>
+            <label className="text-sm block mb-1">Mean Size (cm)</label>
             <input
               type="number" step="0.01" inputMode="decimal" min={0} placeholder="cm"
               className="w-full border rounded px-3 py-2"
               value={(size as any) ?? ""}
-              onChange={(e)=> setSize((e.target.value||"").replace(/[^0-9.]/g,"").replace(/(..*)./g,"$1"))}
+              onChange={(e)=> setSize((e.target.value||"").replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1"))}
             />
+            <div className="mt-1 text-[11px] text-slate-500">Mean of dorsal measurements</div>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Left: centered dropzone */}
-          <div className="flex items-center justify-center">
-            <div
-              className="mt-1 border-dashed border-2 rounded p-6 text-sm text-gray-600 flex flex-col items-center justify-center w-full"
-              onDrop={onDrop}
-              onDragOver={(e)=>{e.preventDefault();}}
-            >
-              <div>Drag &amp; drop photos here</div>
-              <div className="my-2">or</div>
-              <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
-              <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={onBrowse} />
-              {photos.length === 0 && (
-                <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" checked={noPhotos} onChange={(e)=>setNoPhotos(e.target.checked)} />
-                  No photos taken (allow save without photos)
-                </label>
-              )}
-            </div>
+        {/* Dropzone above photos */}
+        <div className="mt-4">
+          <div
+            className="border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
+            onDrop={(e)=>{ e.preventDefault(); const files = Array.from(e.dataTransfer.files || []); handleFiles(files); }}
+            onDragOver={(e)=>e.preventDefault()}
+          >
+            <div>Drag &amp; drop photos here</div>
+            <div className="my-2">or</div>
+            <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
+            <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={(e)=>{ const files = Array.from(e.target.files || []); handleFiles(files); e.currentTarget.value=""; }} />
           </div>
+          <div className="mt-2">
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={noPhotos} onChange={e=>setNoPhotos(e.target.checked)} />
+              No photos taken (allow save without photos)
+            </label>
+          </div>
+        </div>
 
-          {/* Right: photos as rows */}
-          <div className="max-h-80 overflow-auto pr-1">
-            {photos.length === 0 ? (
-              <div className="text-sm text-gray-600">No photos added yet.</div>
-            ) : (
-              <div className="space-y-2">
-                {photos.map(p=>(
-                  <div key={p.id} className="border rounded p-2 flex items-center gap-3">
-                    <img src={p.url} alt={p.name} className="w-24 h-24 object-cover rounded" />
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-600">View:</span>
-                      {(["ventral","dorsal","other"] as View[]).map(v=>(
-                        <label key={v} className="text-xs flex items-center gap-1">
-                          <input type="radio" name={`view-${p.id}`} checked={p.view===v} onChange={()=>setView(p.id, v)} />
-                          {v}
-                        </label>
-                      ))}
+        {/* Photos list */}
+        <div className="mt-4 space-y-2">
+          {photos.map(p=>(
+            <div key={p.id} className="flex items-center gap-3 border rounded p-2">
+              <img src={p.url} alt={p.name} className="w-[96px] h-[72px] object-cover rounded" />
+              <div className="flex-1 grid grid-cols-[140px_1fr_auto] items-center gap-2">
+                {/* View column */}
+                <div className="text-sm">
+                  <div className="text-[11px] text-slate-500 mb-1">View</div>
+                  <label className="mr-3"><input type="radio" name={`v-${p.id}`} checked={p.view==="ventral"} onChange={()=>setView(p.id,"ventral")} /> ventral</label>
+                  <label className="mr-3"><input type="radio" name={`v-${p.id}`} checked={p.view==="dorsal"} onChange={()=>setView(p.id,"dorsal")} /> dorsal</label>
+                  <label><input type="radio" name={`v-${p.id}`} checked={p.view==="other"} onChange={()=>setView(p.id,"other")} /> other</label>
+                </div>
+
+                {/* Best for selected view */}
+                <div className="text-sm">
+                  <div className="text-[11px] text-slate-500 mb-1">Best</div>
+                  {p.view === "ventral" ? (
+                    <label className="text-sky-700 font-medium">
+                      <input type="radio" name="best-ventral" checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} /> Best ventral
+                    </label>
+                  ) : p.view === "dorsal" ? (
+                    <label className="text-sky-700 font-medium">
+                      <input type="radio" name="best-dorsal" checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} /> Best dorsal
+                    </label>
+                  ) : <span className="text-slate-400">—</span>}
+                </div>
+
+                {/* Actions */}
+                <div className="text-right">
+                  {p.view === "dorsal" ? (
+                    <div className="flex items-center gap-2 justify-end">
+                      <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white" onClick={()=>setMeasureOpen({ photoId: p.id, url: p.url })}>
+                        Size
+                      </button>
+                      {Number.isFinite(p.dwCm) ? (
+                        <span className="text-xs text-slate-600">DL: {(p.dlCm as number).toFixed(2)} · DW: {(p.dwCm as number).toFixed(2)}</span>
+                      ) : null}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {p.view==="ventral" && (
-                        <label className="text-xs flex items-center gap-1">
-                          <input type="radio" name="best-ventral" checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} />
-                          Best
-                        </label>
-                      )}
-                      {p.view==="dorsal" && (
-                        <label className="text-xs flex items-center gap-1">
-                          <input type="radio" name="best-dorsal" checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} />
-                          Best
-                        </label>
-                      )}
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      {p.view === "dorsal" && (
-                        <>
-                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=> setMeasureFor({photoId: p.id, url: p.url})}>
-                            Size
-                          </button>
-                          {measured[p.id] ? (
-                            <div className="text-[11px] text-slate-600 whitespace-nowrap">
-                              DL: {measured[p.id].dlCm.toFixed(2)} cm · DW: {measured[p.id].dwCm.toFixed(2)} cm
-                            </div>
-                          ) : <div className="text-[11px] text-slate-400">—</div>}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ) : null}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ))}
+          {photos.length === 0 ? <div className="text-sm text-slate-500">No photos added yet.</div> : null}
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={(e)=>{ e.stopPropagation(); onClose(); }} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
-          <button
-            type="button"
-            onClick={(e)=>{ e.stopPropagation(); save(); }}
-            className="px-3 py-2 rounded bg-sky-600 text-white disabled:opacity-50"
-            disabled={busy || !(((name || "").trim()) && (photos.length > 0 || noPhotos))}
-          >
-            Save Manta
-          </button>
+          <button type="button" className="px-3 py-2 rounded border" onClick={(e)=>{ e.stopPropagation(); onClose(); }} disabled={busy}>Cancel</button>
+          <button type="button" className="px-3 py-2 rounded bg-sky-600 text-white" onClick={(e)=>{ e.stopPropagation(); save(); }} disabled={busy || (!noPhotos && photos.length===0)}>Save Manta</button>
         </div>
-      </div>
 
-      {measureFor && (
-        <MeasureModal
-          url={measureFor.url}
-          onClose={()=> setMeasureFor(null)}
-          onApply={(dlCm, dwCm)=>{
-            setMeasured(prev => ({ ...prev, [measureFor.photoId]: { dlCm, dwCm }}));
-            // Fill overall Size (cm) with DW to two decimals
-            setSize(dwCm.toFixed(2));
-          }}
-        />
-      )}
+        {measureOpen ? (
+          <MeasureModal
+            key={measureOpen.photoId}
+            url={measureOpen.url}
+            scaleCm={scaleCm}
+            onScaleChange={(cm)=>setScaleCm(Number.isFinite(cm)? cm : 60)}
+            onClose={()=>setMeasureOpen(null)}
+            onApply={(dlCm, dwCm)=>{
+              setPhotos(prev => prev.map(p => p.id === measureOpen.photoId ? { ...p, dlCm, dwCm } : p));
+              setMeasureOpen(null);
+            }}
+          />
+        ) : null}
+
+        <div id="probe:measure-modal" className="sr-only">probe:measure-modal</div>
+      </div>
+    </div>
+  );
+}
+
+type MeasureModalProps = {
+  url: string;
+  onClose: () => void;
+  onApply: (dlCm:number, dwCm:number)=>void;
+  scaleCm: number;
+  onScaleChange: (n:number)=>void;
+};
+
+function MeasureModal({ url, onClose, onApply, scaleCm, onScaleChange }: MeasureModalProps) {
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [displayWidth, setDisplayWidth] = useState<number>(800);
+  const [displayHeight, setDisplayHeight] = useState<number>(450);
+  const [zoom, setZoom] = useState(1);
+  const [points, setPoints] = useState<{x:number;y:number}[]>([]);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const img = imgRef.current; if (!img) return;
+    img.onload = () => {
+      const natW = img.naturalWidth, natH = img.naturalHeight;
+      const baseW = Math.min(natW, 1000);
+      const baseH = natH * (baseW / natW);
+      setDisplayWidth(Math.round(baseW * zoom));
+      setDisplayHeight(Math.round(baseH * zoom));
+    };
+  }, [zoom, url]);
+
+  function clamp(n:number,min:number,max:number){ return Math.max(min, Math.min(max, n)); }
+
+  function relPos(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const x = clamp(e.clientX - rect.left, 0, rect.width);
+    const y = clamp(e.clientY - rect.top, 0, rect.height);
+    return { x, y };
+  }
+  function dist(a:{x:number;y:number}, b:{x:number;y:number}) { const dx=a.x-b.x, dy=a.y-b.y; return Math.sqrt(dx*dx + dy*dy); }
+
+  function onClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (dragIdx !== null) return;
+    const p = relPos(e);
+    setPoints(prev => prev.length >= 4 ? [p] : [...prev, p]);
+  }
+  function onMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    const p = relPos(e);
+    const i = points.findIndex(pt => dist(pt,p) <= 10);
+    if (i >= 0) setDragIdx(i);
+  }
+  function onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (dragIdx === null) return;
+    const p = relPos(e);
+    setPoints(prev => prev.map((pt, i) => i === dragIdx ? p : pt));
+  }
+  function onMouseUp(){ setDragIdx(null); }
+
+  const scalePx = points.length >= 2 ? dist(points[0], points[1]) : 0;
+  const discPx  = points.length >= 4 ? dist(points[2], points[3]) : 0;
+  const dlCm    = scalePx > 0 ? (discPx / scalePx) * scaleCm : 0;
+  const dwCm    = dlCm * 2.3;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[400000] flex items-center justify-center" onClick={onClose}>
+      <div className="bg-white rounded-lg border w-full max-w-5xl p-4 pointer-events-auto relative" onClick={(e)=>e.stopPropagation()}>
+        <button aria-label="Close" type="button" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50" onClick={onClose}>&times;</button>
+        <div className="text-sm font-medium mb-2">Measure (click 1–2 laser dots, then 3–4 disc ends)</div>
+
+        <div
+          className="relative border rounded overflow-hidden select-none"
+          style={{ width: displayWidth, height: displayHeight }}
+          onClick={onClick} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
+        >
+          <img ref={imgRef} src={url} alt="to measure" draggable={false} style={{ width: displayWidth, height: displayHeight, userSelect: "none" }} />
+          <svg className="absolute inset-0" width={displayWidth} height={displayHeight}>
+            {points.length >= 2 ? <line x1={points[0].x} y1={points[0].y} x2={points[1].x} y2={points[1].y} stroke="#12a8cf" strokeWidth={2} /> : null}
+            {points.length >= 4 ? <line x1={points[2].x} y1={points[2].y} x2={points[3].x} y2={points[3].y} stroke="#12a8cf" strokeWidth={2} /> : null}
+            {points.map((pt, i) => <circle key={i} cx={pt.x} cy={pt.y} r={6} fill="#12a8cf" />)}
+          </svg>
+        </div>
+
+        <div className="flex items-center justify-between mt-3">
+          <div className="text-sm text-slate-700 space-x-6">
+            <span>Scale (px): <strong>{scalePx.toFixed(1)}</strong> (<input type="number" min={1} step="0.1" value={scaleCm} onChange={(e)=>onScaleChange(parseFloat(e.target.value) || 60)} className="w-20 border rounded px-2 py-0.5 text-sm" /> cm)</span>
+            <span>DL (cm): <strong>{dlCm.toFixed(2)}</strong></span>
+            <span>DW (cm = DL × 2.3): <strong>{dwCm.toFixed(2)}</strong></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 mr-3 text-sm">
+              <button className="px-2 py-1 border rounded" onClick={()=>setZoom(z=>Math.max(0.5, z-0.25))}>-</button>
+              <span>Zoom {Math.round(zoom*100)}%</span>
+              <button className="px-2 py-1 border rounded" onClick={()=>setZoom(z=>Math.min(3, z+0.25))}>+</button>
+            </div>
+            <button className="px-3 py-1 border rounded" onClick={()=>setPoints([])}>Reset</button>
+            <button className="px-3 py-1 rounded bg-sky-600 text-white" onClick={()=>{ if (dlCm>0) onApply(parseFloat(dlCm.toFixed(2)), parseFloat(dwCm.toFixed(2))); }}>Apply &amp; Fill</button>
+          </div>
+        </div>
+
+        <div id="probe:measure-modal" className="mt-2 text-[10px] text-muted-foreground">probe:measure-modal</div>
+      </div>
     </div>
   );
 }
