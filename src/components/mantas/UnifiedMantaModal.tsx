@@ -160,7 +160,7 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
-      <div className="bg-white rounded-lg border w-full max-w-5xl p-4 relative max-h-[90vh] overflow-auto" onClick={(e)=>e.stopPropagation()}>
+      <div className="bg-white rounded-lg border w-full max-w-5xl p-4 relative max-h-[85vh] overflow-auto" onClick={(e)=>e.stopPropagation()}>
         <button
           aria-label="Close"
           className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border hover:bg-gray-50"
@@ -177,7 +177,7 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
-          onWheel={onWheel}
+          onWheel={()=>{}}
         >
           <img
             ref={imgRef}
@@ -240,9 +240,9 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="px-2 py-1 border rounded" onClick={()=> setZoom(z=>clamp(Number((z-0.1).toFixed(2)),0.25,4))}>–</button>
+            <button className="px-2 py-1 border rounded" onClick={()=> setZoom(1).toFixed(2)),0.25,4))}>–</button>
             <span>Zoom {Math.round(zoom*100)}%</span>
-            <button className="px-2 py-1 border rounded" onClick={()=> setZoom(z=>clamp(Number((z+0.1).toFixed(2)),0.25,4))}>+</button>
+            <button className="px-2 py-1 border rounded" onClick={()=> setZoom(1).toFixed(2)),0.25,4))}>+</button>
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
