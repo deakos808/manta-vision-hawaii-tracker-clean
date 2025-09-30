@@ -25,7 +25,7 @@ export type MantaDraft = {
   name: string;
   gender?: string | null;
   ageClass?: string | null;
-  size?: string | null;       // Mean DW in cm (two decimals as string)
+  size?: string | null;       // Mean DW in cm (two decimals)
   photos: Uploaded[];
 };
 
@@ -40,51 +40,57 @@ type Props = {
 function uuid() {
   try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); }
 }
+
 function to2(n: number) { return (Math.round(n * 100) / 100).toFixed(2); }
 function clamp(n: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, n)); }
 function dist(a: {x:number;y:number}, b:{x:number;y:number}) { return Math.hypot(a.x-b.x, a.y-b.y); }
 
-// ---------------------- Measure Modal ----------------------
 type MeasureModalProps = {
   url: string;
   onCancel: () => void;
   onApply: (r: { scalePx: number; discPx: number; dlCm: number; dwCm: number }) => void;
 };
+
 function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
   const imgRef = useRef<HTMLImageElement | null>(null);
-  // natural image info set on load
+  // natural image info (set after image loads)
   const [nat, setNat] = useState({ w: 0, h: 0 });
 
-  // 0,1 = laser dots; 2,3 = disc ends; all in *natural* pixel space
+  // points in *natural image pixel space* (accurate & zoom independent)
+  // points[0], points[1] => laser dots; points[2], points[3] => disc ends
   const [points, setPoints] = useState<{x:number;y:number}[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
-  // pan/zoom
-  const [zoom, setZoom] = useState(1); // default 100%
+  // viewport transform
+  const [zoom, setZoom] = useState(1);          // 1 = 100%
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
   const panAtDown = useRef({ x: 0, y: 0 });
 
-  // scale in cm (editable), defaults to 60
+  // scale cm (editable), default 60 cm
   const [scaleCm, setScaleCm] = useState(60);
 
-  // derived values
+  // compute scale/disc/dl/dw
   const scalePx = useMemo(() => (points.length >= 2 ? dist(points[0], points[1]) : NaN), [points]);
   const discPx  = useMemo(() => (points.length >= 4 ? dist(points[2], points[3]) : NaN), [points]);
   const dlCm    = useMemo(() => Number.isFinite(scalePx) && scalePx > 0 && Number.isFinite(discPx) ? (discPx * scaleCm / scalePx) : NaN, [scalePx, discPx, scaleCm]);
   const dwCm    = useMemo(() => Number.isFinite(dlCm) ? dlCm * 2.3 : NaN, [dlCm]);
 
-  // helpers (CSS pixel <-> natural pixel)
+  // helpers: CSS pixel <-> natural pixel mapping
   function cssToNat(e: {clientX:number; clientY:number}) {
     const img = imgRef.current!;
     const rect = img.getBoundingClientRect();
+    // current drawn size (CSS pixels)
     const drawnW = rect.width;
     const drawnH = rect.height;
+    // pointer in CSS pixels relative to image top-left
     const xCss = e.clientX - rect.left - pan.x;
     const yCss = e.clientY - rect.top  - pan.y;
+    // remove zoom
     const xCssUnscaled = xCss / zoom;
     const yCssUnscaled = yCss / zoom;
+    // map to natural
     const xNat = clamp(xCssUnscaled * (nat.w / drawnW), 0, nat.w);
     const yNat = clamp(yCssUnscaled * (nat.h / drawnH), 0, nat.h);
     return { x: xNat, y: yNat };
@@ -99,34 +105,29 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
     return { x: xCssUnscaled * zoom + pan.x, y: yCssUnscaled * zoom + pan.y };
   }
 
-  // place points by click
   function onImgClick(e: React.MouseEvent) {
-    if (dragIdx !== null) { setDragIdx(null); return; } // end drag if any
-    if (!nat.w || !nat.h) return;
+    // If dragging a point, release.
+    if (dragIdx !== null) { setDragIdx(null); return; }
     const p = cssToNat(e);
     setPoints(prev => {
-      if (prev.length >= 4) return [p];        // start over after 4th click
-      return [...prev, p];
+      const next = [...prev, p].slice(0, 4);
+      return next;
     });
   }
 
-  // drag & pan
   function onMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (!imgRef.current || points.length === 0) { // start panning
-      isPanning.current = true;
-      panStart.current = { x: e.clientX, y: e.clientY };
-      panAtDown.current = { ...pan };
-      return;
+    // Try to grab an existing point within 10 CSS px
+    if (imgRef.current && points.length) {
+      const rect = imgRef.current.getBoundingClientRect();
+      const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      let idx = -1;
+      points.forEach((pt, i) => {
+        const c = natToCss(pt);
+        if (Math.hypot(c.x - cursor.x, c.y - cursor.y) <= 10) idx = i;
+      });
+      if (idx >= 0) { setDragIdx(idx); return; }
     }
-    // try to grab an existing point (10 px radius)
-    const rect = imgRef.current.getBoundingClientRect();
-    const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    let idx = -1;
-    points.forEach((pt, i) => {
-      const c = natToCss(pt);
-      if (Math.hypot(c.x - cursor.x, c.y - cursor.y) <= 10) idx = i;
-    });
-    if (idx >= 0) { setDragIdx(idx); return; }
+    // else begin panning
     isPanning.current = true;
     panStart.current = { x: e.clientX, y: e.clientY };
     panAtDown.current = { ...pan };
@@ -155,11 +156,12 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
   function reset() { setPoints([]); setZoom(1); setPan({x:0,y:0}); }
   function apply() {
     if (!Number.isFinite(scalePx) || scalePx <= 0 || !Number.isFinite(discPx)) return;
-    onApply({ scalePx, discPx, dlCm: dlCm, dwCm: dwCm });
+    const r = { scalePx, discPx, dlCm: dlCm, dwCm: dwCm };
+    onApply(r);
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 z-[300000] flex items-center justify-center" onClick={(e)=>{e.stopPropagation();}}>
       <div className="bg-white rounded-lg border w-full max-w-5xl p-4 relative max-h-[90vh] overflow-auto" onClick={(e)=>e.stopPropagation()}>
         <button
           aria-label="Close"
@@ -167,12 +169,10 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
           onClick={onCancel}
         >&times;</button>
 
-        <h3 className="text-[15px] font-medium mb-3">
-          Measure (click 1–2 laser dots, then 3–4 disc ends)
-        </h3>
+        <h3 className="text-[15px] font-medium mb-3">Measure (click 1–2 laser dots, then 3–4 disc ends)</h3>
 
         <div
-          className="relative select-none bg-black/5 cursor-crosshair"
+          className="relative select-none bg-black/5"
           style={{ width: "100%", minHeight: 360 }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
@@ -189,33 +189,26 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "top left", userSelect:"none" }}
             draggable={false}
           />
-
-          {/* overlay SVG (absolute) */}
+          {/* overlay SVG in absolute layer, uses CSS pixels; we map nat->css per render */}
           <svg className="absolute inset-0 pointer-events-none" style={{ overflow: "visible" }}>
-            {/* show first scale dot immediately */}
-            {points.length >= 1 && (() => {
-              const a = natToCss(points[0]); return <circle cx={a.x} cy={a.y} r={6} fill="#00897B" />;
-            })()}
-            {/* show scale line + second dot when available */}
+            {/* scale (0-1): teal */}
             {points.length >= 2 && (() => {
               const a = natToCss(points[0]); const b = natToCss(points[1]);
               return (
                 <>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#00897B" strokeWidth={3} />
+                  <circle cx={a.x} cy={a.y} r={6} fill="#00897B" />
                   <circle cx={b.x} cy={b.y} r={6} fill="#00897B" />
                 </>
               );
             })()}
-            {/* first disc dot */}
-            {points.length >= 3 && (() => {
-              const a = natToCss(points[2]); return <circle cx={a.x} cy={a.y} r={6} fill="#0284C7" />;
-            })()}
-            {/* full disc line */}
+            {/* disc (2-3): blue */}
             {points.length >= 4 && (() => {
               const a = natToCss(points[2]); const b = natToCss(points[3]);
               return (
                 <>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#0284C7" strokeWidth={3} />
+                  <circle cx={a.x} cy={a.y} r={6} fill="#0284C7" />
                   <circle cx={b.x} cy={b.y} r={6} fill="#0284C7" />
                 </>
               );
@@ -265,7 +258,7 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
   );
 }
 
-// ---------------------- Main Modal ----------------------
+// Simple inline icons
 function TrashIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -280,14 +273,12 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
   const [nameTouched, setNameTouched] = useState(false);
   const [gender, setGender] = useState<string | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
-  const [size, setSize] = useState<string | null>(null); // Mean DW in cm (2dp)
+  const [size, setSize] = useState<string | null>(null); // Mean DW cm (2dp)
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [noPhotos, setNoPhotos] = useState(false);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const mantaId = useMemo(()=> existingManta?.id ?? uuid(), [existingManta?.id]);
-
-  const [measureOpen, setMeasureOpen] = useState<{ photoId: string; url: string } | null>(null);
 
   // mean DW across dorsal photos that have a measure
   const meanSizeDW = useMemo(()=>{
@@ -312,7 +303,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
 
   if (!open) return null;
 
-  // single best per view
+  // enforce single best per view
   function setBest(id: string, view: View) {
     setPhotos(prev => prev.map(p => {
       if (p.view !== view) return p;
@@ -359,7 +350,20 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
   }
 
   function openMeasure(p: Uploaded) {
-    setMeasureOpen({ photoId: p.id, url: p.url });
+    const onApply = (r: { scalePx:number; discPx:number; dlCm:number; dwCm:number }) => {
+      setPhotos(prev => prev.map(x => x.id === p.id ? ({ ...x, measure: r }) : x));
+    };
+    // render a floating modal by placing a portal-ish ad‑hoc node
+    const holder = document.createElement("div");
+    holder.id = "measure-holder-" + p.id;
+    document.body.appendChild(holder);
+    const close = () => { try { holder.remove(); } catch {} };
+    const Comp = () => (
+      <MeasureModal url={p.url} onCancel={close} onApply={(r)=>{ onApply(r); close(); }} />
+    );
+    // minimal client render
+    // @ts-ignore
+    import("react-dom").then(ReactDOM => { ReactDOM.createRoot(holder).render(<Comp />); });
   }
 
   function save() {
@@ -503,7 +507,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
 
               <div className="flex flex-col gap-2 items-end">
                 <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white" onClick={()=>openMeasure(p)} title="Measure disc length from dorsal photo" disabled={p.view!=="dorsal"}>Size</button>
-                <button type="button" className="p-1 rounded border border-red-300 text-red-600" onClick={()=>deletePhoto(p.id)} title="Delete photo"><TrashIcon/></button>
+                <button type="button" className="px-2 py-1 rounded border border-red-300 text-red-600 flex items-center gap-1" onClick={()=>deletePhoto(p.id)} title="Delete photo"><TrashIcon/> Delete</button>
               </div>
             </div>
           ))}
@@ -515,18 +519,6 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
           <button type="button" className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy} onClick={save}>Save Manta</button>
         </div>
       </div>
-
-      {/* Inline measure modal (no portal, no createRoot issue) */}
-      {measureOpen && (
-        <MeasureModal
-          url={measureOpen.url}
-          onCancel={()=> setMeasureOpen(null)}
-          onApply={(r)=> {
-            setPhotos(prev => prev.map(x => x.id === measureOpen.photoId ? ({ ...x, measure: r }) : x));
-            setMeasureOpen(null);
-          }}
-        />
-      )}
     </div>
   );
 }
