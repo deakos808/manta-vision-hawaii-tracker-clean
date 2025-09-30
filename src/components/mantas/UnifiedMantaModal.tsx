@@ -174,7 +174,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
       if (!allow.includes(f.type)) { console.warn("[UnifiedMantaModal] skip type", f.type, f.name); continue; }
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
       const id = uuid();
-      const path = \`\${sightingId}/\${mantaId}/\${id}.\${ext}\`;
+      const path = `${sightingId}/${mantaId}/${id}.${ext}`;
       try {
         const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
         if (error) { console.warn("[UnifiedMantaModal] upload error", error.message); continue; }
@@ -266,7 +266,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
               type="number" step="0.01" inputMode="decimal" min={0} placeholder="cm"
               className="w-full border rounded px-3 py-2"
               value={(size as any) ?? ""}
-              onChange={(e)=> setSize((e.target.value||"").replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1"))}
+              onChange={(e)=> setSize((e.target.value||"").replace(/[^0-9.]/g,"").replace(/(..*)./g,"$1"))}
             />
           </div>
         </div>
