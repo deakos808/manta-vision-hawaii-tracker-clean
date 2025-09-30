@@ -149,7 +149,7 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
   function onWheel(e: React.WheelEvent<HTMLDivElement>) {
     e.preventDefault();
     const delta = e.deltaY < 0 ? 0.1 : -0.1;
-    setZoom(z => clamp(Number((z + delta).toFixed(2)), 0.25, 4));
+    setZoom(1).toFixed(2)), 0.25, 4));
   }
 
   function reset() { setPoints([]); setZoom(1); setPan({x:0,y:0}); }
@@ -241,8 +241,8 @@ function MeasureModal({ url, onCancel, onApply }: MeasureModalProps) {
 
           <div className="flex items-center gap-2">
             <button className="px-2 py-1 border rounded" onClick={()=> setZoom(1).toFixed(2)),0.25,4))}>–</button>
-            <span>Zoom {Math.round(zoom*100)}%</span>
-            <button className="px-2 py-1 border rounded" onClick={()=> setZoom(1).toFixed(2)),0.25,4))}>+</button>
+            
+            
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
