@@ -354,7 +354,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                     return (
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-                          {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
+                          {vBest ? (<div className="flex flex-col items-start"><img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
                 <div
                   className="text-[11px] text-blue-600 underline cursor-pointer mt-1"
                   onClick={()=>{
@@ -363,7 +363,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                     setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
                     setPageMatchOpen(true);
                   }}
-                >Match</div> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                >Match</div> </div>) : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
                           
               {(vBest) && (
                 <div className="text-[11px] text-blue-600 underline cursor-pointer mt-1"
