@@ -53,6 +53,8 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
   const [potentialNoMatch, setPotentialNoMatch] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const bestVentralIndex = useMemo(() => photos.findIndex(p => p.view === "ventral" && p.isBestVentral), [photos]);
+  const bestVentralPhoto = bestVentralIndex >= 0 ? photos[bestVentralIndex] : null;
   const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
@@ -233,6 +235,9 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                         <label className={`flex items-center gap-2 mb-1 ${ventralDisabled ? "text-slate-400" : ""}`}>
                           <input type="radio" name={`best-ventral-${p.id}`} disabled={ventralDisabled} checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} /> Best ventral
                         </label>
+                    {p.view==="ventral" && p.isBestVentral && i===bestVentralIndex && (
+                      <div className="text-xs text-blue-600 underline cursor-pointer mt-1" onClick={()=>setMatchOpen(true)}>Match</div>
+                    )}
                         <label className={`flex items-center gap-2 ${dorsalDisabled ? "text-slate-400" : ""}`}>
                           <input type="radio" name={`best-dorsal-${p.id}`} disabled={dorsalDisabled} checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} /> Best dorsal
                         </label>
