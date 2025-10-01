@@ -122,27 +122,21 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
               onMouseUp={onMouseUp}
             >
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                {points.length >= 2 && (
-                  <>
-                    <line
-                      x1={px(points[0]).x} y1={px(points[0]).y}
-                      x2={px(points[1]).x} y2={px(points[1]).y}
-                      stroke="#0ea5e9" strokeWidth={3} />
-                    <circle cx={px(points[0]).x} cy={px(points[0]).y} r={5} fill="#0ea5e9" />
-                    <circle cx={px(points[1]).x} cy={px(points[1]).y} r={5} fill="#0ea5e9" />
-                  </>
-                )}
-                {points.length >= 4 && (
-                  <>
-                    <line
-                      x1={px(points[2]).x} y1={px(points[2]).y}
-                      x2={px(points[3]).x} y2={px(points[3]).y}
-                      stroke="#14b8a6" strokeWidth={3} />
-                    <circle cx={px(points[2]).x} cy={px(points[2]).y} r={5} fill="#14b8a6" />
-                    <circle cx={px(points[3]).x} cy={px(points[3]).y} r={5} fill="#14b8a6" />
-                  </>
-                )}
-              </svg>
+  {points[0] && <circle cx={px(points[0]).x} cy={px(points[0]).y} r={6} fill="#0ea5e9" />}
+  {points.length>=2 && (
+    <>
+      <circle cx={px(points[1]).x} cy={px(points[1]).y} r={6} fill="#0ea5e9" />
+      <line x1={px(points[0]).x} y1={px(points[0]).y} x2={px(points[1]).x} y2={px(points[1]).y} stroke="#0ea5e9" strokeWidth={3} />
+    </>
+  )}
+  {points.length>=3 && <circle cx={px(points[2]).x} cy={px(points[2]).y} r={6} fill="#14b8a6" />}
+  {points.length>=4 && (
+    <>
+      <circle cx={px(points[3]).x} cy={px(points[3]).y} r={6} fill="#14b8a6" />
+      <line x1={px(points[2]).x} y1={px(points[2]).y} x2={px(points[3]).x} y2={px(points[3]).y} stroke="#14b8a6" strokeWidth={3} />
+    </>
+  )}
+</svg>
             </div>
           </div>
         </div>
