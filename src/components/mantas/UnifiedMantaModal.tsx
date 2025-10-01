@@ -53,7 +53,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
   const [potentialNoMatch, setPotentialNoMatch] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const bestVentralIndex = useMemo(() => photos.findIndex(p => p.view === "ventral" && p.isBestVentral), [photos]);
+  const bestVentralIndex = photos.findIndex(p => p.view === "ventral" && p.isBestVentral);
   const bestVentralPhoto = bestVentralIndex >= 0 ? photos[bestVentralIndex] : null;
   const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
@@ -216,7 +216,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                   <div key={p.id} className="border rounded p-3 grid grid-cols-[110px,1fr,auto] gap-3 items-center">
                     <div>
                       <img src={p.url} alt={p.name} className="w-[110px] h-[80px] object-cover rounded border" />
-                      {p.view === "ventral" && p.isBestVentral && (<div className="text-xs text-blue-600 underline cursor-pointer mt-1" onClick={()=>setMatchOpen(p)}>Match</div>)}
+                      {(p.view==="ventral" && p.isBestVentral) && (<div className="text-xs text-blue-600 underline cursor-pointer mt-1" onClick={()=>setMatchOpen(true)}>Match</div>)}{p.view === "ventral" && p.isBestVentral && (<div className="text-xs text-blue-600 underline cursor-pointer mt-1" onClick={()=>setMatchOpen(p)}>Match</div>)}
 {p.view === "ventral" && p.isBestVentral && (
                         <button className="text-blue-600 underline text-xs mt-1" onClick={()=> setMatchOpen(p)}>Match</button>
                       )}
