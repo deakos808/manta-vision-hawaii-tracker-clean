@@ -53,8 +53,6 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
   const [potentialNoMatch, setPotentialNoMatch] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const bestVentralIndex = photos.findIndex(p => p.view === "ventral" && p.isBestVentral);
-  const bestVentralPhoto = bestVentralIndex >= 0 ? photos[bestVentralIndex] : null;
   const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
@@ -216,9 +214,9 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                   <div key={p.id} className="border rounded p-3 grid grid-cols-[110px,1fr,auto] gap-3 items-center">
                     <div>
                       <img src={p.url} alt={p.name} className="w-[110px] h-[80px] object-cover rounded border" />
-                      
+                      {p.view === "ventral" && p.isBestVentral && (<div className="text-xs text-blue-600 underline cursor-pointer mt-1" onClick={()=>setMatchOpen(p)}>Match</div>)}
 {p.view === "ventral" && p.isBestVentral && (
-                        
+                        <button className="text-blue-600 underline text-xs mt-1" onClick={()=> setMatchOpen(p)}>Match</button>
                       )}
                     </div>
 
@@ -235,7 +233,6 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                         <label className={`flex items-center gap-2 mb-1 ${ventralDisabled ? "text-slate-400" : ""}`}>
                           <input type="radio" name={`best-ventral-${p.id}`} disabled={ventralDisabled} checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} /> Best ventral
                         </label>
-                    
                         <label className={`flex items-center gap-2 ${dorsalDisabled ? "text-slate-400" : ""}`}>
                           <input type="radio" name={`best-dorsal-${p.id}`} disabled={dorsalDisabled} checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} /> Best dorsal
                         </label>
