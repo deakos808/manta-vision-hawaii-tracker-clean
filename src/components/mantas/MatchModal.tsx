@@ -31,7 +31,7 @@ export default function MatchModal({ open, onClose, leftUrl, aMeta, onChoose, on
     (async () => {
       const { data, error } = await supabase
         .from("catalog_with_photo_view")
-        .select("pk_catalog_id,name,gender,age_class,species,last_size,best_catalog_ventral_thumb_url")
+        .select("pk_catalog_id,name,gender,age_class,species,best_catalog_ventral_thumb_url")
         .order("pk_catalog_id", { ascending: true });
       if (error) {
         console.error("[MatchModal] load", error);
