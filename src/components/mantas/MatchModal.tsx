@@ -1,108 +1,118 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+type CatalogRow = {
+  pk_catalog_id: number;
+  name?: string | null;
+  gender?: string | null;
+  age_class?: string | null;
+  species?: string | null;
+  best_catalog_ventral_thumb_url?: string | null;
+  thumbnail_url?: string | null;
+  last_size_cm?: number | null;
+};
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  ventralUrl: string;
-  aMeta: { name?: string; gender?: string | null; ageClass?: string | null; meanSize?: number | null };
-  onChoose: (id: number) => void;
+  imageUrl: string;
+  aMeta: { name?: string; gender?: string | null; ageClass?: string | null; meanSize?: number | string | null };
+  onChoose: (catalogId: number) => void;
   onNoMatch: () => void;
 };
 
-type Row = {
-  pk_catalog_id: number;
-  name: string | null;
-  gender: string | null;
-  age_class: string | null;
-  best_catalog_ventral_thumb_url?: string | null;
-  thumbnail_url?: string | null;
-};
-
-export default function MatchModal({ open, onClose, ventralUrl, aMeta, onChoose, onNoMatch }: Props) {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [i, setI] = useState(0);
-  const [q, setQ] = useState("");
+export default function MatchModal({ open, onClose, imageUrl, aMeta, onChoose, onNoMatch }: Props) {
+  const [all, setAll] = useState<CatalogRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [idx, setIdx] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("catalog_with_photo_view")
-        .select("pk_catalog_id,name,gender,age_class,best_catalog_ventral_thumb_url,thumbnail_url")
-        .order("pk_catalog_id", { ascending: true })
-        .limit(500);
-      if (error) { console.warn("[MatchModal] fetch error", error.message); setRows([]); }
-      else setRows((data as any) || []);
-      setI(0);
+      setLoading(true);
+      const { data, error } = await supabase.from("catalog_with_photo_view").select("*").limit(1000);
+      if (error) { console.error("[MatchModal] load error", error.message); setAll([]); }
+      else setAll((data as unknown as CatalogRow[]) ?? []);
+      setIdx(0); setLoading(false);
     })();
   }, [open]);
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter(r => (r.name ?? "").toLowerCase().includes(s) || String(r.pk_catalog_id).includes(s));
-  }, [rows, q]);
+    const s = search.trim().toLowerCase();
+    if (!s) return all;
+    return all.filter((r) => ((r.name ?? "").toLowerCase().includes(s)) || String(r.pk_catalog_id).includes(s));
+  }, [all, search]);
 
-  const cur = filtered[i] || null;
-  const count = filtered.length;
+  const cur = filtered[idx] ?? null;
+  const countText = `${filtered.length} of ${all.length} total${search ? ` (filtered by "${search}")` : ""}`;
 
   if (!open) return null;
+  const next = () => setIdx((i) => (filtered.length ? (i + 1) % filtered.length : 0));
+  const prev = () => setIdx((i) => (filtered.length ? (i - 1 + filtered.length) % filtered.length : 0));
 
   return (
-    <div className="fixed inset-0 z-[500001] bg-black/60 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded shadow-lg w-[min(1100px,95vw)] max-h-[90vh] overflow-hidden" onClick={(e)=>e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="font-medium">Match (Best ventral)</div>
-          <button onClick={onClose} className="h-8 w-8 grid place-items-center border rounded">&times;</button>
+    <div className="fixed inset-0 z-[400000] bg-black/40" onClick={onClose}>
+      <div className="absolute inset-6 bg-white rounded shadow-xl border overflow-hidden" onClick={(e)=>e.stopPropagation()}>
+        <div className="p-3 border-b flex items-center justify-between">
+          <div className="font-medium text-sm">Find Catalog Match</div>
+          <button className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100" onClick={onClose} aria-label="Close">×</button>
         </div>
 
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <img src={ventralUrl} alt="best ventral" className="w-full max-h-[60vh] object-contain rounded border" />
-            <div className="text-sm mt-2">
-              <div className="font-medium">This sighting</div>
-              <div className="text-slate-600">Temp: {aMeta.name || "—"} · Gender: {aMeta.gender || "—"} · Age: {aMeta.ageClass || "—"} · Mean size: {aMeta.meanSize ?? "—"} cm</div>
+        <div className="p-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="border rounded p-2">
+            <div className="text-xs text-gray-600 mb-2">Best ventral (temp)</div>
+            <img src={imageUrl} alt="temp" className="w-full max-h-[60vh] object-contain rounded border" />
+            <div className="mt-2 text-xs text-gray-700 space-y-1">
+              <div><span className="text-gray-500">Temp name:</span> {aMeta.name || "—"}</div>
+              <div><span className="text-gray-500">Gender:</span> {aMeta.gender || "—"}</div>
+              <div><span className="text-gray-500">Age class:</span> {aMeta.ageClass || "—"}</div>
+              <div><span className="text-gray-500">Mean size:</span> {aMeta.meanSize ?? "—"} {aMeta.meanSize ? "cm" : ""}</div>
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <input value={q} onChange={(e)=>setQ(e.target.value)} className="border rounded px-2 py-1 w-56" placeholder="Search ID or name…" />
-              <div className="text-sm text-slate-600">{count} records{count>0 && cur ? ` · showing ID ${cur.pk_catalog_id}` : ""}</div>
+          <div className="border rounded p-2 flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <input className="border rounded px-2 py-1 text-sm w-full" placeholder="Search by Catalog ID or name…" value={search} onChange={(e)=>{ setSearch(e.target.value); setIdx(0); }} />
+              <div className="text-xs text-gray-600 whitespace-nowrap">{countText}</div>
             </div>
 
-            <div className="border rounded p-2">
-              {cur ? (
-                <>
-                  <img
-                    src={cur.best_catalog_ventral_thumb_url || cur.thumbnail_url || "/manta-logo.svg"}
-                    alt={cur.name ?? "catalog"}
-                    className="w-full max-h-[50vh] object-contain rounded border"
-                  />
-                  <div className="text-sm mt-2">
-                    <div className="font-medium">{cur.name ?? `Catalog ${cur.pk_catalog_id}`}</div>
-                    <div className="text-slate-600">ID: {cur.pk_catalog_id} · Gender: {cur.gender || "—"} · Age: {cur.age_class || "—"}</div>
-                  </div>
+            <div className="flex-1 border rounded p-2 grid grid-rows-[1fr_auto]">
+              <div className="flex items-center justify-center">
+                {loading ? (
+                  <div className="text-sm text-gray-500">Loading…</div>
+                ) : !cur ? (
+                  <div className="text-sm text-gray-500">No records.</div>
+                ) : (
+                  <img src={cur.best_catalog_ventral_thumb_url || cur.thumbnail_url || "/manta-logo.svg"} alt={cur.name || "catalog"} className="w-full max-h-[50vh] object-contain rounded border" onError={(ev)=>((ev.currentTarget as HTMLImageElement).src="/manta-logo.svg")} />
+                )}
+              </div>
+              <div className="mt-2 text-xs text-gray-700">
+                {!!cur && (<>
+                  <div className="font-medium text-gray-800">Catalog {cur.pk_catalog_id}: {cur.name || "—"}</div>
+                  <div>Gender: {cur.gender || "—"} · Age class: {cur.age_class || "—"} · Species: {cur.species || "—"}</div>
+                  <div>Last size: {cur.last_size_cm ?? "—"}{cur.last_size_cm ? " cm" : ""}</div>
+                </>)}
+              </div>
+            </div>
 
-                  <div className="mt-3 flex justify-between">
-                    <div className="flex gap-2">
-                      <button className="px-3 py-2 border rounded" onClick={()=> setI(Math.max(0, i-1))}>Prev</button>
-                      <button className="px-3 py-2 border rounded" onClick={()=> setI(Math.min(count-1, i+1))}>Next</button>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-2 rounded bg-sky-600 text-white" onClick={()=> onChoose(cur.pk_catalog_id)}>This Matches</button>
-                      <button className="px-3 py-2 rounded border text-red-600" onClick={onNoMatch}>No Matches Found</button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-slate-600">No results.</div>
-              )}
+            <div className="mt-2 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button className="px-3 py-1 border rounded" onClick={prev} disabled={!filtered.length}>Prev</button>
+                <button className="px-3 py-1 border rounded" onClick={next} disabled={!filtered.length}>Next</button>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-50" disabled={!cur} onClick={()=> cur && onChoose(cur.pk_catalog_id)}>This Matches</button>
+                <button className="px-3 py-1 rounded border text-gray-700" onClick={onNoMatch}>No Matches Found</button>
+              </div>
             </div>
           </div>
         </div>
 
+        <div className="p-3 border-t text-right">
+          <button className="px-3 py-2 rounded border" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
