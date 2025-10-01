@@ -217,9 +217,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                     <div>
                       <img src={p.url} alt={p.name} className="w-[110px] h-[80px] object-cover rounded border" />
                       
-{p.view === "ventral" && p.isBestVentral && (
-                        
-                      )}
+
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
