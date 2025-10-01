@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
+import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
@@ -16,7 +17,10 @@ function formatCm(v:any){ const n = Number(v); return Number.isFinite(n) ? `${n.
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-  const [mantas, setMantas] = useState<MantaDraft[]>([]);
+    const [pageMatchOpen, setPageMatchOpen] = useState(false);
+  const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
+  const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
+const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
@@ -351,6 +355,12 @@ export default function AddSightingPage() {
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
                           {vBest ? <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
+                          {(m.photos?.some(p=>p.view==="ventral" && p.isBestVentral) && vBest) && (
+                            <div className="text-[11px] text-blue-600 underline cursor-pointer mt-1"
+                                 onClick={()=>{ setPageMatchUrl(vBest.url); setPageMatchMeta({name:m.name, gender:m.gender||null, ageClass:m.ageClass||null, meanSize:m.size||null}); setPageMatchOpen(true); }}>
+                              Match
+                            </div>
+                          )}
                           {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
                         </div>
                         <div className="truncate">{m.name || "—"}</div>
