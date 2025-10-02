@@ -53,6 +53,9 @@ const hasAny = (needles: string[], hay?: (string | null)[] | null) =>
   needles.length === 0 || (hay ? hay.some((x) => x && needles.includes(x)) : false);
 
 export default function MatchModal({
+  const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
+  useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
+
   open,
   onClose,
   tempUrl,
