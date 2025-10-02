@@ -111,14 +111,16 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
               <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
               <div className="w-full h-[420px] grid place-items-center bg-gray-50 rounded">
                 <img
-                  src={leftSrc || '/manta-logo.svg'}
-                  alt="temp"
-                  className="max-w-full max-h-full object-contain"
-                  referrerPolicy="no-referrer"
-                  onError={(e) = referrerPolicy="no-referrer" crossOrigin="anonymous"> {
-                    console.warn('[MatchModal] left image failed to load:', leftSrc);
-                    (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg';
-                  }}
+  src={leftSrc || "/manta-logo.svg"}
+  alt="temp"
+  className="max-w-full max-h-full object-contain"
+  referrerPolicy="no-referrer"
+  crossOrigin="anonymous"
+  onError={(e) => {
+    console.warn('[MatchModal] left image failed to load:', leftSrc);
+    (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg';
+  }}
+/>}
                 />
               </div>
               <div className="mt-3 text-xs text-gray-600 space-y-1">
