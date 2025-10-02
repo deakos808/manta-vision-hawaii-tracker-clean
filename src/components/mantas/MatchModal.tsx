@@ -26,8 +26,6 @@ interface Props {
   aMeta?: Meta;
   onChoose?: (catalogId: number) => void;
   onNoMatch?: () => void;
-}
-
 const EMPTY_FILTERS: FiltersState = {
   population: [],
   island: [],
@@ -40,8 +38,6 @@ const EMPTY_FILTERS: FiltersState = {
 function imgFromRow(r?: CatalogRow): string {
   if (!r) return '/manta-logo.svg';
   return r.best_catalog_ventral_thumb_url || r.best_catalog_ventral_path || r.thumbnail_url || '/manta-logo.svg';
-}
-
 const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
   const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
   useEffect(() => { if (open) { if (tempUrl) setLeftSrc(tempUrl); } else { setLeftSrc(null); } }, [open, tempUrl]);
@@ -68,7 +64,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
         else setRows((data as unknown as CatalogRow[]) ?? []);
         setLoading(false);
         setIdx(0);
-      }
     })();
     return () => { cancelled = true; };
   }, [open]);
@@ -110,7 +105,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
             <div className="border rounded p-3 bg-white">
               <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
               <div className="w-full h-[420px] grid place-items-center bg-gray-50 rounded">
-                <img
+  <img
   src={leftSrc || "/manta-logo.svg"}
   alt="temp"
   className="max-w-full max-h-full object-contain"
@@ -120,9 +115,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
     console.warn('[MatchModal] left image failed to load:', leftSrc);
     (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg';
   }}
-/>}
-                />
-              </div>
+</div>
               <div className="mt-3 text-xs text-gray-600 space-y-1">
                 <div>Temp name: {aMeta?.name ?? '—'}</div>
                 <div>Gender: {aMeta?.gender ?? '—'}</div>
@@ -139,7 +132,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                   placeholder="Search by Catalog ID or name..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setIdx(0); }}
-                />
                 <CatalogFilterBox
                   catalog={rows}
                   filters={filters}
@@ -147,7 +139,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                   sortAsc={sortAsc}
                   setSortAsc={setSortAsc}
                   onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
-                />
                 <div className="text-xs text-gray-600">
                   {filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'}
                 </div>
@@ -160,7 +151,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                   className="max-w-full max-h-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg'; }}
-                />
               </div>
 
               <div className="mt-3 text-xs text-gray-700 min-h-[40px]">
