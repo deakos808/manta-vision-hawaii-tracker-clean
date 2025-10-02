@@ -53,9 +53,6 @@ const hasAny = (needles: string[], hay?: (string | null)[] | null) =>
   needles.length === 0 || (hay ? hay.some((x) => x && needles.includes(x)) : false);
 
 export default function MatchModal({
-  const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
-  useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
-
   open,
   onClose,
   tempUrl,
@@ -63,6 +60,10 @@ export default function MatchModal({
   onChoose,
   onNoMatch,
 }: Props) {
+  const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
+  useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
+  const safeClose = () => { try { if (onClose) onClose(); } catch (e) { console.warn("[MatchModal] onClose error", e); } };
+
   const safeClose = () => { if (typeof onClose === "function") onClose(); };
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
@@ -158,7 +159,7 @@ export default function MatchModal({
                 src={leftSrc || "/manta-logo.svg"}
                 alt="temp"
                 className="max-w-full max-h-full object-contain"
-                onError={(ev) => ((ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
+                onError={(ev)=>{ if (leftSrc && leftSrc.includes("/storage/v1/object/") && !leftSrc.includes("/storage/v1/object/public/")) { try { setLeftSrc(leftSrc.replace("/storage/v1/object/","/storage/v1/object/public/")); } catch(_) { (ev.currentTarget).src="/manta-logo.svg"; } } else { (ev.currentTarget).src="/manta-logo.svg"; } }}
               />
             </div>
             <div className="mt-3 text-xs text-gray-600 space-y-1">
