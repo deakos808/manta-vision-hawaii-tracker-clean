@@ -171,8 +171,8 @@ const filteredSummary = useMemo(() => {
                 onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
               /></div>
               <div className="text-xs text-gray-600 mt-2">
-                ({filtered.length ? `${idx+1} of ${filtered.length} total` : "0 of 0 total"}{filteredSummaryClean ? ` (filtered by: ${filteredSummaryClean})` : ""})` : ''})
-              </div>
+  {filtered.length ? `${idx + 1} of ${filtered.length} total` : "0 of 0 total"}{filteredSummaryClean ? ` (filtered by: ${filteredSummaryClean})` : ""}
+</div>
             </div>
 
             <div className="mt-3 w-full rounded bg-gray-50 grid place-items-center" style={{ height: IMG_BOX_H }}>
