@@ -114,9 +114,8 @@ const filteredSummary = useMemo(() => {
     const s = search.trim().toLowerCase();
     const matchesList = (list: string[], v?: string | null) => list.length === 0 || (v ? list.includes(v) : false);
     const base = rows.filter((c) => {
-  const byText =
-    (c.name ? c.name.toLowerCase().includes(s) : false) ||
-    String(c.pk_catalog_id).includes(s);
+  const nm = _norm(c.name);
+  const byText = (nm ? nm.includes(s) : false) || String(c.pk_catalog_id).includes(s);
 
   const byFilters =
     inListArrayAware(filters.population, c.populations ?? null, c.population ?? null) &&
@@ -125,9 +124,8 @@ const filteredSummary = useMemo(() => {
     inListArrayAware(filters.gender,    null, c.gender ?? null) &&
     inListArrayAware(filters.age_class, null, c.age_class ?? null);
 
-  const speciesOk =
-    filters.species.length === 0 ||
-    (c.species ? filters.species.includes(c.species) : false);
+  const speciesOk = filters.species.length === 0 ||
+    (c.species ? filters.species.map(_norm).some(v => filters.species.map(_norm).includes(v)) : false);
 
   return byText && byFilters && speciesOk;
 });
