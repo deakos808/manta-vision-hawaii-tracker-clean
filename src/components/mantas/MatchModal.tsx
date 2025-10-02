@@ -2,6 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import CatalogFilterBox, { type FiltersState } from '@/components/catalog/CatalogFilterBox';
 
+function normStr(v?: string | null): string {
+  return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
+}
+function arrHas(active: string[], arr?: (string | null)[] | null, single?: string | null) {
+  if (active.length === 0) return true;
+  const want = active.map(normStr);
+  if (arr && arr.length) {
+    const hay = arr.map(normStr);
+    return hay.some(x => x && want.includes(x));
+  }
+  if (single) return want.includes(normStr(single));
+  return false;
+}
+
+
+
 type CatalogRow = {
   pk_catalog_id: number;
   name: string | null;
@@ -45,12 +61,6 @@ function imgFromRow(r?: CatalogRow): string {
 }
 
 
-function inListArrayAware(active:string[], arr?: (string|null)[]|null, single?: string|null) {
-  if (active.length === 0) return true;
-  if (arr && arr.length) return arr.some(x => x && active.includes(x));
-  if (single) return active.includes(single);
-  return false;
-}
 const TOOLBAR_H = 300;
 const IMG_BOX_H = 420;
 
@@ -114,18 +124,18 @@ const filteredSummary = useMemo(() => {
     const s = search.trim().toLowerCase();
     const matchesList = (list: string[], v?: string | null) => list.length === 0 || (v ? list.includes(v) : false);
     const base = rows.filter((c) => {
-  const nm = _norm(c.name);
+  const nm = normStr(c.name);
   const byText = (nm ? nm.includes(s) : false) || String(c.pk_catalog_id).includes(s);
 
   const byFilters =
-    inListArrayAware(filters.population, c.populations ?? null, c.population ?? null) &&
-    inListArrayAware(filters.island,     c.islands     ?? null, c.island     ?? null) &&
-    inListArrayAware(filters.sitelocation, c.locations ?? null, c.sitelocation ?? null) &&
-    inListArrayAware(filters.gender,    null, c.gender ?? null) &&
-    inListArrayAware(filters.age_class, null, c.age_class ?? null);
+    arrHas(filters.population, c.populations ?? null, c.population ?? null) &&
+    arrHas(filters.island,     c.islands     ?? null, c.island     ?? null) &&
+    arrHas(filters.sitelocation, c.locations ?? null, c.sitelocation ?? null) &&
+    arrHas(filters.gender,    null, c.gender ?? null) &&
+    arrHas(filters.age_class, null, c.age_class ?? null);
 
   const speciesOk = filters.species.length === 0 ||
-    (c.species ? filters.species.map(_norm).some(v => filters.species.map(_norm).includes(v)) : false);
+    (c.species ? filters.species.map(normStr).includes(normStr(c.species)) : false);
 
   return byText && byFilters && speciesOk;
 });
