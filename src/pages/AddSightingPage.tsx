@@ -418,15 +418,6 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
           <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
         </div>
       
-<MatchModal
-  open={pageMatchOpen}
-  onOpenChange={(o)=> setPageMatchOpen(o)}
-  leftUrl={pageMatchUrl || ""}
-  aMeta={{ name: pageMatchMeta.name, gender: pageMatchMeta.gender, ageClass: pageMatchMeta.ageClass, meanSize: pageMatchMeta.meanSize }}
-  onChoose={(id)=>{ console.log('[MatchModal onChoose]', id); setPageMatchOpen(false); }}
-  onNoMatch={()=>{ console.log('[MatchModal onNoMatch]'); setPageMatchOpen(false); }}
-/>
-
 </Layout>
     </>
   );
