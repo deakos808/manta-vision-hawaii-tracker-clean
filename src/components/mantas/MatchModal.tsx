@@ -14,6 +14,9 @@ type CatalogRow = {
   best_catalog_ventral_thumb_url?: string | null;
   best_catalog_ventral_path?: string | null;
   thumbnail_url?: string | null;
+  populations?: string[] | null;
+  islands?: string[] | null;
+  locations?: string[] | null;
 };
 
 type Meta = { name?: string|null; gender?: string|null; ageClass?: string|null; meanSize?: number|null };
@@ -41,6 +44,13 @@ function imgFromRow(r?: CatalogRow): string {
   return r.best_catalog_ventral_thumb_url || r.best_catalog_ventral_path || r.thumbnail_url || '/manta-logo.svg';
 }
 
+
+function inListArrayAware(active:string[], arr?: (string|null)[]|null, single?: string|null) {
+  if (active.length === 0) return true;
+  if (arr && arr.length) return arr.some(x => x && active.includes(x));
+  if (single) return active.includes(single);
+  return false;
+}
 const TOOLBAR_H = 300;
 const IMG_BOX_H = 420;
 
@@ -104,20 +114,25 @@ const filteredSummary = useMemo(() => {
     const s = search.trim().toLowerCase();
     const matchesList = (list: string[], v?: string | null) => list.length === 0 || (v ? list.includes(v) : false);
     const base = rows.filter((c) => {
-      const byText = (c.name ? c.name.toLowerCase().includes(s) : false) || String(c.pk_catalog_id).includes(s);
-      const byFilters =
-        matchesList(filters.population, c.population ?? undefined) &&
-        matchesList(filters.island, c.island ?? undefined) &&
-        matchesList(filters.sitelocation, c.sitelocation ?? undefined) &&
-        matchesList(filters.gender, c.gender ?? undefined) &&
-        matchesList(filters.age_class, c.age_class ?? undefined);
-      const speciesOk = filters.species.length === 0 || (c.species ? filters.species.includes(c.species) : false);
-      return byText && byFilters && speciesOk;
-    });
-    return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
-  }, [rows, search, filters, sortAsc]);
+  const byText =
+    (c.name ? c.name.toLowerCase().includes(s) : false) ||
+    String(c.pk_catalog_id).includes(s);
 
-  useEffect(() => {
+  const byFilters =
+    inListArrayAware(filters.population, c.populations ?? null, c.population ?? null) &&
+    inListArrayAware(filters.island,     c.islands     ?? null, c.island     ?? null) &&
+    inListArrayAware(filters.sitelocation, c.locations ?? null, c.sitelocation ?? null) &&
+    inListArrayAware(filters.gender,    null, c.gender ?? null) &&
+    inListArrayAware(filters.age_class, null, c.age_class ?? null);
+
+  const speciesOk =
+    filters.species.length === 0 ||
+    (c.species ? filters.species.includes(c.species) : false);
+
+  return byText && byFilters && speciesOk;
+});
+return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
+}, [rows, search, filters, sortAsc]);useEffect(() => {
     setIdx((i) => (filtered.length ? Math.min(i, filtered.length - 1) : 0));
   }, [filtered.length]);
 
