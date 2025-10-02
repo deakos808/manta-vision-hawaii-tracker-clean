@@ -20,6 +20,7 @@ export default function AddSightingPage() {
     const [pageMatchOpen, setPageMatchOpen] = useState(false);
   const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
+  const [pageMatchForId, setPageMatchForId] = useState<string | null>(null);
 const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
@@ -364,9 +365,11 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
       onClick={()=>{
         try{
           console.log("[AddSightingPage] Match", vBest?.url);
-          if (typeof setPageMatchUrl==="function") setPageMatchUrl(vBest?.url || "");
+          setPageMatchForId(String(m.id));
+if (typeof setPageMatchUrl==="function") setPageMatchUrl(vBest?.url || "");
           if (typeof setPageMatchMeta==="function") setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
-          if (typeof setPageMatchOpen==="function") setPageMatchOpen(true);
+          if (typeof setPageMatchOpen==="function") setPageMatchForId(String(m.id));
+setPageMatchOpen(true);
         } catch(e) { console.log("match click error", e); }
       }}
     >Match</button>
@@ -406,11 +409,12 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     tempUrl={pageMatchUrl}
     aMeta={pageMatchMeta}
     onChoose={(catalogId) => {
-      console.log("[MatchModal] chosen:", catalogId);
-      // TODO: persist chosen catalogId onto current manta row
+      setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: catalogId} as any) : mm)));
+      setPageMatchOpen(false);
     }}
     onNoMatch={() => {
-      console.log("[MatchModal] no matches");
+      setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: null, potentialNoMatch: true} as any) : mm)));
+      setPageMatchOpen(false);
     }}
   />
   {/* MM_MOUNT_END */}
