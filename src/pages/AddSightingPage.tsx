@@ -357,10 +357,8 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                           {vBest ? (<div className="flex flex-col items-start"><img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
 </div>) : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
                           
-              {(vBest) && (
-)}
-{(m.photos?.some(p=>p.view==="ventral" && p.isBestVentral) && vBest) && (
-)}
+              
+
                           {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
                         </div>
                         <div className="truncate">{m.name || "—"}</div>
