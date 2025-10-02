@@ -125,13 +125,13 @@ export default function MatchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={()=>{try{typeof onClose==="function"&&onClose()}catch(e){console.error("[MatchModal] onClose error",e)}}} />
       <div className="relative bg-white w-[min(1200px,96vw)] max-h-[92vh] rounded shadow overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="text-lg font-semibold">Find Catalog Match</div>
           <button
             className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100"
-            onClick={onClose}
+            onClick={()=>{try{typeof onClose==="function"&&onClose()}catch(e){console.error("[MatchModal] onClose error",e)}}}
             aria-label="Close"
             title="Close"
           >
@@ -141,6 +141,8 @@ export default function MatchModal({
 
         <div className="p-3 overflow-y-auto max-h-[calc(92vh-56px)]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="hidden md:block h-[136px]"></div>
+
             <div className="border rounded p-3 bg-white">
               <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
               <div className="w-full h-[520px] grid place-items-center bg-gray-50 rounded">
