@@ -62,9 +62,9 @@ export default function MatchModal({
 }: Props) {
   const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
   useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
-  const safeClose = () => { try { if (onClose) onClose(); } catch (e) { console.warn("[MatchModal] onClose error", e); } };
+  const safeClose = () => { try { if (typeof onClose === "function") onClose(); } catch (e) { console.warn("[MatchModal] onClose error", e); } };
 
-  const safeClose = () => { if (typeof onClose === "function") onClose(); };
+const safeClose = () => { if (typeof onClose === "function") onClose(); };
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState(false);
