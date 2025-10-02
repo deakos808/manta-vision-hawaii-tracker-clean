@@ -26,6 +26,8 @@ interface Props {
   aMeta?: Meta;
   onChoose?: (catalogId: number) => void;
   onNoMatch?: () => void;
+}
+
 const EMPTY_FILTERS: FiltersState = {
   population: [],
   island: [],
