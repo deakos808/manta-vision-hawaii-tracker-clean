@@ -44,9 +44,8 @@ function imgFromRow(r?: CatalogRow): string {
 
 const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
   const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
-  useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
-
-  /* helpful debug so we know what we're rendering on the left */
+  useEffect(() => { if (open) { if (tempUrl) setLeftSrc(tempUrl); } else { setLeftSrc(null); } }, [open, tempUrl]);
+/* helpful debug so we know what we're rendering on the left */
   useEffect(() => { if (open) console.log('[MatchModal] tempUrl for left image:', tempUrl); }, [open, tempUrl]);
 
   const safeClose = () => { try { if (typeof onClose === 'function') onClose(); } catch (e) { console.warn('[MatchModal] onClose error', e); } };
@@ -116,7 +115,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                   alt="temp"
                   className="max-w-full max-h-full object-contain"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
+                  onError={(e) = referrerPolicy="no-referrer" crossOrigin="anonymous"> {
                     console.warn('[MatchModal] left image failed to load:', leftSrc);
                     (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg';
                   }}
