@@ -62,6 +62,16 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [sortAsc, setSortAsc] = useState(true);
   const [idx, setIdx] = useState(0);
+  const filteredSummary = useMemo(() => {
+    const parts:string[]=[];
+    if (filters.species.length) parts.push('species: ' + filters.species.join(', '));
+    if (filters.population.length) parts.push('population: ' + filters.population.join(', '));
+    if (filters.island.length) parts.push('island: ' + filters.island.join(', '));
+    if (filters.sitelocation.length) parts.push('location: ' + filters.sitelocation.join(', '));
+    if (filters.gender.length) parts.push('gender: ' + filters.gender.join(', '));
+    if (filters.age_class.length) parts.push('age: ' + filters.age_class.join(', '));
+    return parts.join(' • ');
+  }, [filters]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,16 +151,16 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setIdx(0); }}
               />
-              <CatalogFilterBox
+              <div className="scale-[0.95] origin-top-left"><CatalogFilterBox
                 catalog={rows}
                 filters={filters}
                 setFilters={(f) => { setFilters(f); setIdx(0); }}
                 sortAsc={sortAsc}
                 setSortAsc={setSortAsc}
                 onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
-              />
+              /></div>
               <div className="text-xs text-gray-600 mt-2">
-                {filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'}
+                ({filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'} + (filteredSummary ? ` — filtered by ${filteredSummary}` : ""))
               </div>
             </div>
 
