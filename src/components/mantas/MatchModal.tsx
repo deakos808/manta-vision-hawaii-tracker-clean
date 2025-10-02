@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { supabase } from "@/lib/supabase";
 import CatalogFilterBox, { type FiltersState } from "@/components/catalog/CatalogFilterBox";
 
-/** Catalog row shape used in the modal */
 type CatalogRow = {
   pk_catalog_id: number;
   name: string | null;
@@ -10,16 +9,15 @@ type CatalogRow = {
   gender?: string | null;
   age_class?: string | null;
 
-  /* single-value fallbacks (some views expose these) */
+  /* single values (some views) */
   population?: string | null;
   island?: string | null;
   sitelocation?: string | null;
 
-  /* array-based filters (some views expose these) */
+  /* arrays (other views) */
   populations?: string[] | null;
   islands?: string[] | null;
 
-  /* image choices */
   best_catalog_ventral_thumb_url?: string | null;
   best_catalog_ventral_path?: string | null;
   thumbnail_url?: string | null;
@@ -56,7 +54,7 @@ const imgFromRow = (r?: CatalogRow): string =>
     r?.thumbnail_url ||
     "/manta-logo.svg");
 
-const overlap = (needles: string[], hay?: (string | null)[] | null) =>
+const hasAny = (needles: string[], hay?: (string | null)[] | null) =>
   needles.length === 0 || (hay ? hay.some((x) => x && needles.includes(x)) : false);
 
 export default function MatchModal({
@@ -67,7 +65,7 @@ export default function MatchModal({
   onChoose,
   onNoMatch,
 }: Props) {
-  const safeClose = () => { try { onClose && onClose(); } catch { /* no-op */ } };
+  const safeClose = () => { if (typeof onClose === "function") onClose(); };
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +74,7 @@ export default function MatchModal({
   const [sortAsc, setSortAsc] = useState(true);
   const [index, setIndex] = useState(0);
 
-  /** measure right-column tools so left image can pad to align exactly */
+  /* measure the toolbar so we can pad the left column to align images */
   const toolsRef = useRef<HTMLDivElement | null>(null);
   const [toolsH, setToolsH] = useState(0);
   useLayoutEffect(() => {
@@ -86,7 +84,7 @@ export default function MatchModal({
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  /** ESC closes */
+  /* ESC closes */
   useEffect(() => {
     if (!open) return;
     const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") safeClose(); };
@@ -94,7 +92,7 @@ export default function MatchModal({
     return () => window.removeEventListener("keydown", onEsc);
   }, [open]);
 
-  /** load catalog on open */
+  /* load catalog on open */
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -114,7 +112,7 @@ export default function MatchModal({
     return () => { cancelled = true; };
   }, [open]);
 
-  /** filter + sort */
+  /* filter + sort */
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return rows
@@ -128,19 +126,19 @@ export default function MatchModal({
         const site = r.sitelocation ? [r.sitelocation] : [];
 
         const filterOk =
-          overlap(filters.population, pops) &&
-          overlap(filters.island, islands) &&
-          overlap(filters.sitelocation, site) &&
-          overlap(filters.gender, r.gender ? [r.gender] : []) &&
-          overlap(filters.age_class, r.age_class ? [r.age_class] : []) &&
-          overlap(filters.species, r.species ? [r.species] : []);
+          hasAny(filters.population, pops) &&
+          hasAny(filters.island, islands) &&
+          hasAny(filters.sitelocation, site) &&
+          hasAny(filters.gender, r.gender ? [r.gender] : []) &&
+          hasAny(filters.age_class, r.age_class ? [r.age_class] : []) &&
+          hasAny(filters.species, r.species ? [r.species] : []);
 
         return textOk && filterOk;
       })
       .sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
   }, [rows, search, filters, sortAsc]);
 
-  /** keep index valid */
+  /* keep index valid */
   useEffect(() => {
     if (filtered.length === 0) setIndex(0);
     else if (index > filtered.length - 1) setIndex(filtered.length - 1);
@@ -168,9 +166,9 @@ export default function MatchModal({
           >×</button>
         </div>
 
-        {/* body */}
+        {/* body: two columns; left is padded by toolbar height */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 max-h-[calc(92vh-56px)] overflow-auto">
-          {/* LEFT: reference (top padded to align with right tools) */}
+          {/* left: reference */}
           <div className="border rounded p-3 bg-white" style={{ paddingTop: toolsH }}>
             <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
             <div className="w-full h-[420px] grid place-items-center bg-gray-50 rounded">
@@ -189,9 +187,9 @@ export default function MatchModal({
             </div>
           </div>
 
-          {/* RIGHT: tools + catalog + controls */}
+          {/* right: toolbar + catalog + controls */}
           <div className="border rounded p-3 bg-white flex flex-col">
-            {/* tools */}
+            {/* toolbar */}
             <div ref={toolsRef}>
               <input
                 className="border rounded px-3 py-2 text-sm w-full mb-2"
@@ -222,7 +220,7 @@ export default function MatchModal({
               />
             </div>
 
-            {/* meta */}
+            {/* catalog meta */}
             <div className="mt-3 text-xs text-gray-700 space-y-1 min-h-[40px]">
               {loading && <div className="text-gray-500">Loading…</div>}
               {!loading && !current && <div className="text-gray-500">No records.</div>}
@@ -234,7 +232,7 @@ export default function MatchModal({
               )}
             </div>
 
-            {/* controls (stable row) */}
+            {/* stable controls */}
             <div className="mt-auto pt-3 border-t flex items-center justify-between">
               <div className="flex gap-2">
                 <button
@@ -266,8 +264,8 @@ export default function MatchModal({
               </div>
             </div>
           </div>
-        </div>{/* /body */}
-      </div>{/* /panel */}
+        </div>
+      </div>
     </div>
   );
 }
