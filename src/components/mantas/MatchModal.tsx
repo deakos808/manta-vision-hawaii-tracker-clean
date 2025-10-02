@@ -182,5 +182,4 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
     </div>
   );
 };
-
 export default MatchModal;
