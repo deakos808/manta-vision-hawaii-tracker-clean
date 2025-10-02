@@ -105,11 +105,11 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={safeClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={(()=>{ try{ onClose && onClose(); }catch{} })} />
       <div className="relative bg-white w-[min(1280px,96vw)] max-h-[92vh] rounded shadow overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="text-lg font-semibold">Find Catalog Match</div>
-          <button type="button" className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100" onClick={safeClose} aria-label="Close">×</button>
+          <button type="button" className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100" onClick={(()=>{ try{ onClose && onClose(); }catch{} })} aria-label="Close">×</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 max-h-[calc(92vh-56px)] overflow-auto">
