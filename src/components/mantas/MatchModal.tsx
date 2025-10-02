@@ -41,7 +41,7 @@ function imgFromRow(r?: CatalogRow): string {
   return r.best_catalog_ventral_thumb_url || r.best_catalog_ventral_path || r.thumbnail_url || '/manta-logo.svg';
 }
 
-const TOOLBAR_H = 220;
+const TOOLBAR_H = 300;
 const IMG_BOX_H = 420;
 
 const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
@@ -171,7 +171,7 @@ const filteredSummary = useMemo(() => {
                 onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
               /></div>
               <div className="text-xs text-gray-600 mt-2">
-                ({filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'} {filteredSummaryClean ? `(filtered by: ${filteredSummaryClean})` : ''})
+                ({filtered.length ? `${idx+1} of ${filtered.length} total` : "0 of 0 total"}{filteredSummaryClean ? ` (filtered by: ${filteredSummaryClean})` : ""})` : ''})
               </div>
             </div>
 
