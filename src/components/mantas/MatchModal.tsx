@@ -41,7 +41,7 @@ function imgFromRow(r?: CatalogRow): string {
   return r.best_catalog_ventral_thumb_url || r.best_catalog_ventral_path || r.thumbnail_url || '/manta-logo.svg';
 }
 
-const TOOLBAR_H = 156;
+const TOOLBAR_H = 220;
 const IMG_BOX_H = 420;
 
 const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
@@ -62,7 +62,18 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [sortAsc, setSortAsc] = useState(true);
   const [idx, setIdx] = useState(0);
-  const filteredSummary = useMemo(() => {
+  const filteredSummaryClean = useMemo(() => {
+    const parts:string[]=[];
+    if (filters.species.length) parts.push(filters.species.join(', '));
+    if (filters.population.length) parts.push(filters.population.join(', '));
+    if (filters.island.length) parts.push(filters.island.join(', '));
+    if (filters.sitelocation.length) parts.push(filters.sitelocation.join(', '));
+    if (filters.gender.length) parts.push(filters.gender.join(', '));
+    if (filters.age_class.length) parts.push(filters.age_class.join(', '));
+    if (!parts.length) return '';
+    return parts.join(' • ');
+  }, [filters]);
+const filteredSummary = useMemo(() => {
     const parts:string[]=[];
     if (filters.species.length) parts.push('species: ' + filters.species.join(', '));
     if (filters.population.length) parts.push('population: ' + filters.population.join(', '));
@@ -160,7 +171,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                 onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
               /></div>
               <div className="text-xs text-gray-600 mt-2">
-                ({filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'} + (filteredSummary ? ` — filtered by ${filteredSummary}` : ""))
+                ({filtered.length ? `${idx + 1} of ${filtered.length} total` : '0 of 0 total'} {filteredSummaryClean ? `(filtered by: ${filteredSummaryClean})` : ''})
               </div>
             </div>
 
