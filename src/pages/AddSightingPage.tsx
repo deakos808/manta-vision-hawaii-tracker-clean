@@ -399,6 +399,22 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>
           </div>
 
+  {/* MM_MOUNT_START */}
+  <MatchModal
+    open={pageMatchOpen}
+    onClose={() => setPageMatchOpen(false)}
+    tempUrl={pageMatchUrl}
+    aMeta={pageMatchMeta}
+    onChoose={(catalogId) => {
+      console.log("[MatchModal] chosen:", catalogId);
+      // TODO: persist chosen catalogId onto current manta row
+    }}
+    onNoMatch={() => {
+      console.log("[MatchModal] no matches");
+    }}
+  />
+  {/* MM_MOUNT_END */}
+
           <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
         </div>
       
