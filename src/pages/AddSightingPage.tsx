@@ -354,13 +354,13 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                     return (
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-                          {vBest ? (<div className="flex flex-col items-start"><img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
-</div>
-{vBest && (
-  <div data-match-anchor-ventral className="pt-1 w-14">
+                          {vBest ? (
+  <div className="w-14 flex flex-col items-start">
+    <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
     <button
       type="button"
-      className="text-[11px] text-blue-600 underline"
+      data-match-anchor-ventral
+      className="text-[11px] text-blue-600 underline mt-1"
       onClick={()=>{
         try{
           console.log("[AddSightingPage] Match", vBest?.url);
@@ -371,8 +371,9 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
       }}
     >Match</button>
   </div>
+) : (
+  <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>
 )}
-) : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>}
                           
               
 
