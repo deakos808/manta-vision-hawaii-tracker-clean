@@ -22,7 +22,7 @@ type Meta = { name?: string|null; gender?: string|null; ageClass?: string|null; 
 interface Props {
   open: boolean;
   onClose: () => void;
-  tempUrl?: string | null;
+  tempUrl?: string | null;     /* <- reference (best ventral) image URL passed in */
   aMeta?: Meta;
   onChoose?: (catalogId: number) => void;
   onNoMatch?: () => void;
@@ -45,6 +45,9 @@ function imgFromRow(r?: CatalogRow): string {
 const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
   const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
   useEffect(() => { setLeftSrc(tempUrl ?? null); }, [tempUrl]);
+
+  /* helpful debug so we know what we're rendering on the left */
+  useEffect(() => { if (open) console.log('[MatchModal] tempUrl for left image:', tempUrl); }, [open, tempUrl]);
 
   const safeClose = () => { try { if (typeof onClose === 'function') onClose(); } catch (e) { console.warn('[MatchModal] onClose error', e); } };
 
@@ -74,7 +77,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     const matchesList = (list: string[], v?: string | null) => list.length === 0 || (v ? list.includes(v) : false);
-
     const base = rows.filter((c) => {
       const byText = (c.name ? c.name.toLowerCase().includes(s) : false) || String(c.pk_catalog_id).includes(s);
       const byFilters =
@@ -86,7 +88,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
       const speciesOk = filters.species.length === 0 || (c.species ? filters.species.includes(c.species) : false);
       return byText && byFilters && speciesOk;
     });
-
     return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
   }, [rows, search, filters, sortAsc]);
 
@@ -106,14 +107,19 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
 
         <div className="p-3 overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="border rounded p-3 bg-white flex flex-col">
+            {/* left: reference image */}
+            <div className="border rounded p-3 bg-white">
               <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
               <div className="w-full h-[420px] grid place-items-center bg-gray-50 rounded">
                 <img
                   src={leftSrc || '/manta-logo.svg'}
                   alt="temp"
                   className="max-w-full max-h-full object-contain"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg'; }}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    console.warn('[MatchModal] left image failed to load:', leftSrc);
+                    (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg';
+                  }}
                 />
               </div>
               <div className="mt-3 text-xs text-gray-600 space-y-1">
@@ -124,6 +130,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
               </div>
             </div>
 
+            {/* right: catalog candidate */}
             <div className="border rounded p-3 bg-white flex flex-col">
               <div className="flex flex-col gap-2 mb-2">
                 <input
@@ -150,6 +157,7 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
                   src={imgFromRow(current)}
                   alt={current?.name ?? 'catalog'}
                   className="max-w-full max-h-full object-contain"
+                  referrerPolicy="no-referrer"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg'; }}
                 />
               </div>
