@@ -152,7 +152,7 @@ export default function MatchModal({
             <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
             <div className="w-full h-[420px] grid place-items-center bg-gray-50 rounded">
               <img
-                src={tempUrl || "/manta-logo.svg"}
+                src={leftSrc || "/manta-logo.svg"}
                 alt="temp"
                 className="max-w-full max-h-full object-contain"
                 onError={(ev) => ((ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
