@@ -58,7 +58,21 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // Load DISTINCT islands from sightings (source of truth)
+  
+  useEffect(() => {
+    const killSlashText = (el) => {
+      if (!el || !el.parentNode) return;
+      const p = el.parentNode;
+      Array.from(p.childNodes).forEach(n=>{
+        if(n.nodeType===Node.TEXT_NODE && n.nodeValue && n.nodeValue.trim()==='\\'){ p.removeChild(n); }
+      });
+    };
+    killSlashText(document.querySelector('button[data-clean-id="add-mantas"]'));
+    killSlashText(document.querySelector('button[data-clean-id="submit-sighting"]'));
+    const email = document.getElementById('contact-email-field');
+    if (email) { killSlashText(email); if (email.parentElement) killSlashText(email.parentElement); }
+  }, []);
+// Load DISTINCT islands from sightings (source of truth)
   useEffect(()=>{
     let alive = true;
     (async ()=>{
@@ -267,7 +281,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
               <input className="border rounded px-3 py-2" placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
-              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} />\
+              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)= id="contact-email-field">setEmail(e.target.value)} />\
               {!emailValid && (<div className="text-xs text-red-600 mt-1">An email address is required.</div>)}
               <input className="border rounded px-3 py-2" placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} />
             </CardContent>
@@ -430,13 +444,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             </CardContent>
           </Card>
 
-          <div className="flex justify-start">\
-            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>\
-          </div>\
-
-          <div className="flex justify-center mt-6">\
-            <Button onClick={handleSubmit} disabled={!emailValid}>Submit Sighting</Button>\
-          </div>
+          <div className="flex justify-start"><Button onClick={()=>setAddOpen(true)}>Add Mantas</Button></div><div className="flex justify-center mt-6"><Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid}>Submit Sighting</Button></div>
 
   {/* MM_MOUNT_START */}
   <MatchModal
