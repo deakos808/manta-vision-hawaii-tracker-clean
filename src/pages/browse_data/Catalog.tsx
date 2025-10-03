@@ -65,6 +65,39 @@ const EMPTY_FILTERS: FiltersState = {
   species: [],
 };
 
+function computeFiltered(catalog:any[], search:any, filters:any, sortAsc:boolean){
+  const norm=(v:any)=> (v??'').toString().normalize('NFC').trim().toLowerCase();
+  const set=(arr:any[])=> new Set((arr||[]).map(norm));
+  const overlaps=(sel:Set<string>, vals:(any[]|null|undefined))=>{
+    if(!sel || sel.size===0) return true;
+    if(!vals) return false;
+    for(const v of vals){ if(sel.has(norm(v))) return true; }
+    return false;
+  };
+
+  const sTxt=(search??'').toString().trim().toLowerCase();
+  const popSel=set(filters?.population||[]);
+  const islSel=set(filters?.island||[]);
+  const locSel=set(filters?.sitelocation||[]);
+  const genSel=set(filters?.gender||[]);
+  const ageSel=set(filters?.age_class||[]);
+  const spSel =set(filters?.species||[]);
+
+  const out=(catalog||[]).filter((c:any)=>{
+    const byText = (c?.name ? c.name.toLowerCase().includes(sTxt) : false) || String(c?.pk_catalog_id??'').includes(sTxt);
+    const popOk = overlaps(popSel, c?.populations);
+    const islOk = overlaps(islSel, c?.islands);
+    const locVals = Array.isArray(c?.locations) ? c.locations : (c?.sitelocation ? [c.sitelocation] : []);
+    const locOk = overlaps(locSel, locVals);
+    const genOk = genSel.size===0 || genSel.has(norm(c?.gender));
+    const ageOk = ageSel.size===0 || ageSel.has(norm(c?.age_class));
+    const spOk  = spSel.size===0  || spSel.has(norm(c?.species));
+    return byText && popOk && islOk && locOk && genOk && ageOk && spOk;
+  }).sort((a:any,b:any)=> sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id);
+
+  return out;
+}
+
 export default function Catalog() {
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
@@ -94,8 +127,7 @@ export default function Catalog() {
     load();
   }, [catalogIdParam]);
 
-  const filtered = useMemo(() => {
-    const s = search.trim().toLowerCase();
+  const filtered = useMemo(() => computeFiltered(catalog, search, filters, sortAsc), [catalog, search, filters, sortAsc]);
     const matches = (arr: string[], v?: string | null) =>
       arr.length === 0 || (v ? arr.includes(v) : false);
 
