@@ -372,17 +372,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                           {vBest ? (
   <div className="w-14 flex flex-col items-start">
     <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
-    {(m as any).matchedCatalogId ? (
-      <div className="text-[11px] text-green-600 mt-1">Matched · ID {(m as any).matchedCatalogId}</div>
-    ) : (
-      {matchedCatalogByManta[m.id] ? (
-      <>
-        <button type="button" data-match-anchor-ventral className="text-[11px] text-green-700 underline mt-1" onClick={()=>{ try{ setPageMatchFor(m.id); if (typeof setPageMatchUrl==="function") setPageMatchUrl(vBest?.url || ""); if (typeof setPageMatchMeta==="function") setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null }); if (typeof setPageMatchOpen==="function") setPageMatchOpen(true);} catch(e){ console.log("match click error", e); } }}>Matched</button>
-        <div className="text-[10px] text-green-700">Catalog {matchedCatalogByManta[m.id]}</div>
-      </>
-    ) : (
-      <button type="button" data-match-anchor-ventral className="text-[11px] text-blue-600 underline mt-1" onClick={()=>{ try{ console.log("[AddSightingPage] Match", vBest?.url); setPageMatchFor(m.id); if (typeof setPageMatchUrl==="function") setPageMatchUrl(vBest?.url || ""); if (typeof setPageMatchMeta==="function") setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null }); if (typeof setPageMatchOpen==="function") setPageMatchOpen(true);} catch(e) { console.log("match click error", e); } }}>Match</button>
-    )}
+    
     )}
   </div>
 ) : (
@@ -423,7 +413,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     onClose={() => setPageMatchOpen(false)}
     tempUrl={pageMatchUrl}
     aMeta={pageMatchMeta}
-    onChoose={(catalogId) => { if (pageMatchFor) { setMatchedCatalogByManta(prev => ({...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
+    onChoose={(catalogId) => { if (pageMatchFor) { setMatchedCatalogByManta(prev => ({ ...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
     onNoMatch={() => {
       setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: null, potentialNoMatch: true} as any) : mm)));
       setPageMatchOpen(false);
