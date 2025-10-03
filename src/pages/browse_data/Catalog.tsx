@@ -127,33 +127,34 @@ export default function Catalog() {
     load();
   }, [catalogIdParam]);
 
-  const filtered = useMemo(() => computeFiltered(catalog, search, filters, sortAsc), [catalog, search, filters, sortAsc]);
-    const matches = (arr: string[], v?: string | null) =>
-      arr.length === 0 || (v ? arr.includes(v) : false);
+  const filtered = useMemo(() => {
+  const term = (search || '').trim().toLowerCase();
 
-    return catalog
-      .filter((c) => {
-        const text =
-          (c.name ? c.name.toLowerCase().includes(s) : false) ||
-          String(c.pk_catalog_id).includes(s);
-        const byFilters =
-          matches(filters.population, c.population ?? undefined) &&
-          matches(filters.island, c.island ?? undefined) &&
-          matches(filters.sitelocation, c.sitelocation ?? undefined) &&
-          matches(filters.gender, c.gender ?? undefined) &&
-          matches(filters.age_class, c.age_class ?? undefined);
-        const speciesOk =
-          filters.species.length === 0 ||
-          (c.species ? filters.species.includes(c.species) : false);
+  const textOK = (c: CatalogRow) =>
+    (c.name ? c.name.toLowerCase().includes(term) : false) ||
+    String(c.pk_catalog_id).includes(term);
 
-        return text && byFilters && speciesOk;
-      })
-      .sort((a, b) =>
-        sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id
-      );
-  }, [catalog, search, filters, sortAsc]);
+  const arrHasAny = (need: string[], have?: string[] | null) =>
+    !need.length || (Array.isArray(have) && have.some(v => need.includes(v)));
 
-  const clearAll = () => {
+  const valOK = (need: string[], v?: string | null) =>
+    !need.length || (v ? need.includes(v) : false);
+
+  const rows = catalog.filter((c) =>
+    textOK(c) &&
+    arrHasAny(filters.population, c.populations) &&
+    arrHasAny(filters.island, c.islands) &&
+    valOK(filters.sitelocation, c.sitelocation) &&
+    valOK(filters.gender, c.gender) &&
+    valOK(filters.age_class, c.age_class) &&
+    (!filters.species.length || (c.species ? filters.species.includes(c.species) : false))
+  );
+
+  rows.sort((a,b)=> (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
+  return rows;
+}, [catalog, search, filters, sortAsc]);
+
+    const clearAll = () => {
     setSearch("");
     setFilters(EMPTY_FILTERS);
     setSortAsc(true);
