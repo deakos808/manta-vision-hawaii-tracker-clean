@@ -10,6 +10,22 @@ import CatalogBestPhotoModal from "@/pages/browse_data/modals/CatalogBestPhotoMo
 import CatalogSightingsQuickModal from "@/pages/browse_data/modals/CatalogSightingsQuickModal";
 import SightingMantasQuickModal from "@/pages/browse_data/modals/SightingMantasQuickModal";
 
+function _norm(v?: string | null): string {
+  return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
+}
+function _arrHas(active: string[], arr?: (string|null)[]|null, single?: string|null): boolean {
+  if (active.length === 0) return true;
+  const want = active.map(_norm);
+  if (arr && arr.length) {
+    const hay = arr.map(_norm);
+    return hay.some(x => x && want.includes(x));
+  }
+  if (single) return want.includes(_norm(single));
+  return false;
+}
+
+
+
 type CatalogRow = {
   pk_catalog_id: number;
   name: string | null;
