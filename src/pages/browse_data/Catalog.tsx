@@ -107,7 +107,7 @@ export default function Catalog() {
         const byFilters =
           matches(filters.population, c.population ?? undefined) &&
           matches(filters.island, c.island ?? undefined) &&
-          matches(filters.sitelocation, c.location ?? undefined) &&
+          matches(filters.sitelocation, c.sitelocation ?? undefined) &&
           matches(filters.gender, c.gender ?? undefined) &&
           matches(filters.age_class, c.age_class ?? undefined);
         const speciesOk =

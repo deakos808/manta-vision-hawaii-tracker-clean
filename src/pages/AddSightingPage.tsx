@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
+import { useNavigate } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,8 @@ function formatCm(v:any){ const n = Number(v); return Number.isFinite(n) ? `${n.
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-    const [pageMatchOpen, setPageMatchOpen] = useState(false);
+    const navigate = useNavigate();
+const [pageMatchOpen, setPageMatchOpen] = useState(false);
   const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
   const [pageMatchForId, setPageMatchForId] = useState<string | null>(null);
@@ -31,6 +33,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
 
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
+  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
   const [phone, setPhone] = useState("");
 
   const [island, setIsland] = useState("");
@@ -175,6 +178,14 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
 
   function openMap(){ setMapOpen(true); }
 
+  const handleSubmit = async () => {
+    if (!emailValid) return;
+    const mantaCount = mantas.length;
+    const photoCount = mantas.reduce((sum, m) => sum + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0);
+    window.alert(`Your sighting has been submitted for review with ${mantaCount} mantas and ${photoCount} photos. Thank you!`);
+    console.log("[Submission] notify admin (stub)", { date, mantaCount, photoCount });
+    navigate("/");
+  };
   const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev,m]); setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
     setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
@@ -254,7 +265,8 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
               <input className="border rounded px-3 py-2" placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
-              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} />
+              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} />\
+              {!emailValid && (<div className="text-xs text-red-600 mt-1">An email address is required.</div>)}
               <input className="border rounded px-3 py-2" placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} />
             </CardContent>
           </Card>
@@ -358,21 +370,24 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                           {vBest ? (
   <div className="w-14 flex flex-col items-start">
     <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
-    <button
-      type="button"
-      data-match-anchor-ventral
-      className="text-[11px] text-blue-600 underline mt-1"
-      onClick={()=>{
-        try{
-          console.log("[AddSightingPage] Match", vBest?.url);
-          setPageMatchForId(String(m.id));
-if (typeof setPageMatchUrl==="function") setPageMatchUrl(vBest?.url || "");
-          if (typeof setPageMatchMeta==="function") setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
-          if (typeof setPageMatchOpen==="function") setPageMatchForId(String(m.id));
-setPageMatchOpen(true);
-        } catch(e) { console.log("match click error", e); }
-      }}
-    >Match</button>
+    {(m as any).matchedCatalogId ? (
+      <div className="text-[11px] text-green-600 mt-1">Matched · ID {(m as any).matchedCatalogId}</div>
+    ) : (
+      <button
+        type="button"
+        data-match-anchor-ventral
+        className="text-[11px] text-blue-600 underline mt-1"
+        onClick={()=>{
+          try{
+            setPageMatchForId(m.id);
+            console.log("[AddSightingPage] Match", vBest?.url);
+            setPageMatchUrl(vBest?.url || "");
+            setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
+            setPageMatchOpen(true);
+          } catch(e) { console.log("match click error", e); }
+        }}
+      >Match</button>
+    )}
   </div>
 ) : (
   <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>
@@ -398,8 +413,12 @@ setPageMatchOpen(true);
             </CardContent>
           </Card>
 
-          <div className="flex justify-start">
-            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>
+          <div className="flex justify-start">\
+            <Button onClick={()=>setAddOpen(true)}>Add Mantas</Button>\
+          </div>\
+\
+          <div className="flex justify-center mt-6">\
+            <Button onClick={handleSubmit} disabled={!emailValid}>Submit Sighting</Button>\
           </div>
 
   {/* MM_MOUNT_START */}
