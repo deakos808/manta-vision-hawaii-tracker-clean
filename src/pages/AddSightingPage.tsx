@@ -369,21 +369,52 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                     return (
                       <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
                         <div className="flex items-center gap-1">
-                          {vBest ? (
-  <div className="w-14 flex flex-col items-start">
-    <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
-    
-    )}
-  </div>
-) : (
-  <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>
-)}
-                          
-              
-
-                          {dBest ? <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" /> : <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>}
-                        </div>
-                        <div className="truncate">{m.name || "—"}</div>
+  {vBest ? (
+    <div className="w-14 flex flex-col items-start">
+      <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
+      {matchedCatalogByManta[m.id] ? (
+        <>
+          <button
+            type="button"
+            data-match-anchor-ventral
+            className="text-[11px] text-green-700 underline mt-1"
+            onClick={()=>{
+              try{
+                setPageMatchFor(m.id);
+                setPageMatchUrl(vBest?.url || "");
+                setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
+                setPageMatchOpen(true);
+              }catch(e){ console.log("match click error", e); }
+            }}
+          >Matched</button>
+          <div className="text-[10px] text-green-700">Catalog {matchedCatalogByManta[m.id]}</div>
+        </>
+      ) : (
+        <button
+          type="button"
+          data-match-anchor-ventral
+          className="text-[11px] text-blue-600 underline mt-1"
+          onClick={()=>{
+            try{
+              setPageMatchFor(m.id);
+              setPageMatchUrl(vBest?.url || "");
+              setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
+              setPageMatchOpen(true);
+            }catch(e){ console.log("match click error", e); }
+          }}
+        >Match</button>
+      )}
+    </div>
+  ) : (
+    <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>
+  )}
+  {dBest ? (
+    <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" />
+  ) : (
+    <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>
+  )}
+</div>
+<div className="truncate">{m.name || "—"}</div>
                         <div className="truncate">{m.gender || "—"}</div>
                         <div className="truncate">{m.ageClass || "—"}</div>
                         <div className="truncate">{formatCm(m.size)}</div>
@@ -413,7 +444,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     onClose={() => setPageMatchOpen(false)}
     tempUrl={pageMatchUrl}
     aMeta={pageMatchMeta}
-    onChoose={(catalogId) => { if (pageMatchFor) { setMatchedCatalogByManta(prev => ({ ...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
+    onChoose={(catalogId)=>{ if(pageMatchFor){ setMatchedCatalogByManta(prev=>({ ...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
     onNoMatch={() => {
       setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: null, potentialNoMatch: true} as any) : mm)));
       setPageMatchOpen(false);
