@@ -401,7 +401,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
               }catch(e){ console.log("match click error", e); }
             }}
           >Matched</button>
-          <div className="text-[10px] text-green-700">Catalog {matchedCatalogByManta[m.id]}</div>
+          <div className="text-[10px] text-green-700">pk_catalog_id: {matchedCatalogByManta[m.id]}</div>
         </>
       ) : (
         <button
