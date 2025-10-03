@@ -181,7 +181,7 @@ export default function UnifiedMantaModal({ open, onClose, sightingId, onSave, e
                 <select className="w-full border rounded px-2 py-2" value={ageClass ?? ""} onChange={(e)=>setAgeClass(e.target.value || null)}>
                   <option value="">—</option>
                   <option value="juvenile">juvenile</option>
-                  <option value="subadult">subadult</option>
+<option value="yearling">yearling</option>
                   <option value="adult">adult</option>
                 </select>
               </div>

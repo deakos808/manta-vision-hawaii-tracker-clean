@@ -12,6 +12,9 @@ function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Mat
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
 
+const ROW_GRID = "grid grid-cols-[220px_minmax(0,1fr)_140px_140px_120px] items-center gap-4";
+const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (Array.isArray(m?.photos) ? m.photos.length : 0), 0);
+
 // format size to two decimals in cm
 function formatCm(v:any){ const n = Number(v); return Number.isFinite(n) ? `${n.toFixed(2)} cm` : "—"; }
 
@@ -23,9 +26,8 @@ const [pageMatchOpen, setPageMatchOpen] = useState(false);
   const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
   const [pageMatchFor, setPageMatchFor] = useState<string | null>(null);
-  const [matchedCatalogByManta, setMatchedCatalogByManta] = useState<Record<string, number>>({});
-  const [pageMatchForId, setPageMatchForId] = useState<string | null>(null);
 const [mantas, setMantas] = useState<MantaDraft[]>([]);
+  const totalPhotos = useMemo(() => useTotalPhotos(mantas as any), [mantas]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
@@ -55,6 +57,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
 
   const [mapOpen, setMapOpen] = useState(false);
   const formSightingId = useMemo(()=>uuid(),[]);
+  const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
@@ -195,18 +198,40 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
   function openMap(){ setMapOpen(true); }
 
   const handleSubmit = async () => {
-    if (!emailValid) return;
-    const mantaCount = mantas.length;
-    const photoCount = mantas.reduce((sum, m) => sum + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0);
-    window.alert(`Your sighting has been submitted for review with ${mantaCount} mantas and ${photoCount} photos. Thank you!`);
-    console.log("[Submission] notify admin (stub)", { date, mantaCount, photoCount });
-    navigate("/");
+  if (!emailValid) return;
+  const payload = {
+    date, startTime, stopTime, photographer, email, phone,
+    island, locationId, locationName,
+    latitude: lat, longitude: lng,
+    mantas
   };
+  try {
+    await supabase.from("sighting_submissions").insert({
+      email: email || null,
+      sighting_date: date || null,
+      manta_count: mantas.length,
+      photo_count: totalPhotos,
+      payload,
+      status: "pending"
+    });
+  } catch {}
+  window.alert(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
+  navigate("/");
+};
   const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev,m]); setAddOpen(false); };
   const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
-    setMantas(prev=>{ const i=prev.findIndex(x=>x.id===m.id); if(i>=0){ const c=[...prev]; c[i]=m; return c; } return [...prev,m]; });
-    setEditingManta(null);
-  };
+  setMantas(prev=>{
+    const i = prev.findIndex(x=>x.id===m.id);
+    if(i>=0){
+      const c = [...prev];
+      const keep = (c[i] as any).matchedCatalogId ?? (m as any).matchedCatalogId ?? null;
+      c[i] = { ...(c[i] as any), ...m, matchedCatalogId: keep };
+      return c;
+    }
+    return [...prev, m];
+  });
+  setEditingManta(null);
+};
 
   return (
     <>
@@ -281,7 +306,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-3">
               <input className="border rounded px-3 py-2" placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} />
-              <input className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)= id="contact-email-field">setEmail(e.target.value)} />\
+              <input id="contact-email-field" className="border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} />
               {!emailValid && (<div className="text-xs text-red-600 mt-1">An email address is required.</div>)}
               <input className="border rounded px-3 py-2" placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} />
             </CardContent>
@@ -369,10 +394,13 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
           <Card>
             <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
             <CardContent>
-              <div className="hidden md:grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] gap-3 text-[11px] uppercase tracking-wide text-gray-500 px-6 pt-2">
-                <div>Photos</div><div> Temp Name </div><div>Gender</div><div>Age Class</div><div>Size (cm)</div>
-              </div>
-
+              <div className={`${ROW_GRID} text-sm text-gray-600 px-6 pt-2`}>
+  <div className="text-center">Photos{totalPhotos ? ` (${totalPhotos})` : ""}</div>
+  <div className="text-center">Temp Name</div>
+  <div className="text-center">Gender</div>
+  <div className="text-center">Age Class</div>
+  <div className="text-center">Size (cm)</div>
+</div>
               {mantas.length === 0 ? (
                 <div className="text-sm text-gray-600 px-6">No mantas added yet.</div>
               ) : (
@@ -381,62 +409,70 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
                     const vBest = m.photos?.find(p=>p.view==="ventral" && p.isBestVentral) || m.photos?.find(p=>p.view==="ventral");
                     const dBest = m.photos?.find(p=>p.view==="dorsal" && p.isBestDorsal)  || m.photos?.find(p=>p.view==="dorsal");
                     return (
-                      <li key={m.id} className="grid grid-cols-[120px_minmax(0,1fr)_120px_160px_100px] items-center gap-3 border rounded mb-2 p-2">
-                        <div className="flex items-center gap-1">
-  {vBest ? (
-    <div className="w-14 flex flex-col items-start">
-      <img src={vBest.url} alt="V" className="w-14 h-14 object-cover rounded" />
-      {matchedCatalogByManta[m.id] ? (
+                      <li
+  key={m.id}
+  className={`${ROW_GRID} border rounded mb-3 p-3 px-6`}
+>
+  <div className="grid grid-cols-[80px_1fr_80px] items-center gap-3">
+    <div className="w-20 h-20 rounded overflow-hidden border bg-gray-50">
+      {vBest ? (
+        <img src={vBest.url} alt="Ventral" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full grid place-items-center text-[10px] text-gray-400">ventral</div>
+      )}
+    </div>
+    <div className="flex flex-col items-center">
+      {(m as any).matchedCatalogId != null ? (
         <>
           <button
             type="button"
-            data-match-anchor-ventral
-            className="text-[11px] text-green-700 underline mt-1"
+            className="h-8 px-3 rounded-full bg-emerald-600 text-white text-xs"
             onClick={()=>{
-              try{
-                setPageMatchFor(m.id);
-                setPageMatchUrl(vBest?.url || "");
-                setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
-                setPageMatchOpen(true);
-              }catch(e){ console.log("match click error", e); }
-            }}
-          >Matched</button>
-          <div className="text-[10px] text-green-700">pk_catalog_id: {matchedCatalogByManta[m.id]}</div>
-        </>
-      ) : (
-        <button
-          type="button"
-          data-match-anchor-ventral
-          className="text-[11px] text-blue-600 underline mt-1"
-          onClick={()=>{
-            try{
               setPageMatchFor(m.id);
               setPageMatchUrl(vBest?.url || "");
               setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
               setPageMatchOpen(true);
-            }catch(e){ console.log("match click error", e); }
+            }}
+          >Matched</button>
+          <div className="mt-1 text-[11px] text-green-700 whitespace-nowrap">
+            pk_catalog_id: {(m as any).matchedCatalogId}
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="h-8 px-3 rounded-full bg-blue-600 text-white text-xs"
+          onClick={()=>{
+            setPageMatchFor(m.id);
+            setPageMatchUrl(vBest?.url || "");
+            setPageMatchMeta({ name: m.name, gender: m.gender ?? null, ageClass: m.ageClass ?? null, meanSize: m.size ?? null });
+            setPageMatchOpen(true);
           }}
         >Match</button>
       )}
+      <div className="mt-1 text-[11px] text-gray-500">
+        Photos: {Array.isArray(m.photos) ? m.photos.length : 0}
+      </div>
     </div>
-  ) : (
-    <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no V</div>
-  )}
-  {dBest ? (
-    <img src={dBest.url} alt="D" className="w-14 h-14 object-cover rounded" />
-  ) : (
-    <div className="w-14 h-14 rounded bg-gray-100 grid place-items-center text-[10px] text-gray-400">no D</div>
-  )}
-</div>
-<div className="truncate">{m.name || "—"}</div>
-                        <div className="truncate">{m.gender || "—"}</div>
-                        <div className="truncate">{m.ageClass || "—"}</div>
-                        <div className="truncate">{formatCm(m.size)}</div>
-                        <div className="col-span-full flex justify-end gap-2">
-                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setEditingManta(m)}>Edit</button>
-                          <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setMantas(prev=>prev.filter(x=>x.id!==m.id))}>Remove</button>
-                        </div>
-                      </li>
+    <div className="w-20 h-20 rounded overflow-hidden border bg-gray-50">
+      {dBest ? (
+        <img src={dBest.url} alt="Dorsal" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full grid place-items-center text-[10px] text-gray-400">dorsal</div>
+      )}
+    </div>
+  </div>
+
+  <div className="text-center truncate">{m.name || "—"}</div>
+  <div className="text-center truncate">{m.gender || "—"}</div>
+  <div className="text-center truncate">{m.ageClass || "—"}</div>
+  <div className="text-center truncate">{formatCm(m.size)}</div>
+
+  <div className="col-span-full flex justify-end gap-2 mt-2">
+    <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setEditingManta(m)}>Edit</button>
+    <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setMantas(prev=>prev.filter(x=>x.id!==m.id))}>Remove</button>
+  </div>
+</li>
                     );
                   })}
                 </ul>
@@ -444,22 +480,37 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
             </CardContent>
           </Card>
 
-          <div className="flex justify-start"><Button onClick={()=>setAddOpen(true)}>Add Mantas</Button></div><div className="flex justify-center mt-6"><Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid}>Submit Sighting</Button></div>
-
-  {/* MM_MOUNT_START */}
-  <MatchModal
-    open={pageMatchOpen}
-    onClose={() => setPageMatchOpen(false)}
-    tempUrl={pageMatchUrl}
-    aMeta={pageMatchMeta}
-    onChoose={(catalogId)=>{ if(pageMatchFor){ setMatchedCatalogByManta(prev=>({ ...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
-    onNoMatch={() => {
-      setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: null, potentialNoMatch: true} as any) : mm)));
-      setPageMatchOpen(false);
-    }}
-  />
-  {/* MM_MOUNT_END */}
-
+          <div className="flex justify-start"><Button data-clean-id="add-mantas" onClick={()=>setAddOpen(true)}>Add Mantas</Button></div><div className="flex justify-center mt-6"><Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid}>Submit Sighting</Button></div>
+{/* MM_MOUNT_START */}
+<MatchModal
+  open={pageMatchOpen}
+  onClose={() => setPageMatchOpen(false)}
+  tempUrl={pageMatchUrl}
+  aMeta={pageMatchMeta}
+  onChoose={(catalogId) => {
+    if (!pageMatchFor) { setPageMatchOpen(false); return; }
+    setMantas(prev =>
+      prev.map(mm =>
+        String(mm.id) === String(pageMatchFor)
+          ? ({ ...mm, matchedCatalogId: catalogId } as any)
+          : mm
+      )
+    );
+    setPageMatchOpen(false);
+  }}
+  onNoMatch={() => {
+    if (!pageMatchFor) { setPageMatchOpen(false); return; }
+    setMantas(prev =>
+      prev.map(mm =>
+        String(mm.id) === String(pageMatchFor)
+          ? ({ ...mm, matchedCatalogId: null } as any)
+          : mm
+      )
+    );
+    setPageMatchOpen(false);
+  }}
+/>
+{/* MM_MOUNT_END */}
           <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
         </div>
       
