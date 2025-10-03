@@ -87,7 +87,7 @@ function computeFiltered(catalog:any[], search:any, filters:any, sortAsc:boolean
     const byText = (c?.name ? c.name.toLowerCase().includes(sTxt) : false) || String(c?.pk_catalog_id??'').includes(sTxt);
     const popOk = overlaps(popSel, c?.populations);
     const islOk = overlaps(islSel, c?.islands);
-    const locVals = Array.isArray(c?.locations) ? c.locations : (c?.sitelocation ? [c.sitelocation] : []);
+    const locVals = Array.isArray(c?.locations) ? c.sitelocations : (c?.sitelocation ? [c.sitelocation] : []);
     const locOk = overlaps(locSel, locVals);
     const genOk = genSel.size===0 || genSel.has(norm(c?.gender));
     const ageOk = ageSel.size===0 || ageSel.has(norm(c?.age_class));
