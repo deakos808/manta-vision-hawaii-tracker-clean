@@ -423,7 +423,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     onClose={() => setPageMatchOpen(false)}
     tempUrl={pageMatchUrl}
     aMeta={pageMatchMeta}
-    onChoose={(catalogId)=>{ if(pageMatchFor){ setMatchedCatalogByManta(prev=>({ ...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
+    onChoose={(catalogId) => { if (pageMatchFor) { setMatchedCatalogByManta(prev => ({...prev, [pageMatchFor]: catalogId })); } setPageMatchOpen(false); }}
     onNoMatch={() => {
       setMantas(prev => prev.map(mm => (String(mm.id) === String(pageMatchForId) ? ({...mm, potentialCatalogId: null, potentialNoMatch: true} as any) : mm)));
       setPageMatchOpen(false);
