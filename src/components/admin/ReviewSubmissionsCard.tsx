@@ -46,7 +46,7 @@ export default function ReviewSubmissionsCard() {
           {loading ? "Loading…" : `${rows.length} submission(s)`}
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_150px_120px_90px_90px_220px] gap-2 text-sm font-medium text-gray-700 mb-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_170px_120px_90px_90px_220px] gap-2 text-sm font-medium text-gray-700 mb-2">
           <div>Email</div>
           <div>Submitted</div>
           <div>Sighting</div>
@@ -56,14 +56,14 @@ export default function ReviewSubmissionsCard() {
         </div>
 
         {rows.map((r) => (
-          <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_150px_120px_90px_90px_220px] items-center gap-2 border rounded p-2 mb-2">
+          <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_170px_120px_90px_90px_220px] items-center gap-2 border rounded p-2 mb-2">
             <div className="truncate">{r.email ?? "—"}</div>
             <div className="text-sm">{new Date(r.submitted_at).toLocaleString()}</div>
             <div className="text-sm">{r.sighting_date ?? "—"}</div>
             <div className="text-sm">{r.manta_count ?? 0}</div>
             <div className="text-sm">{r.photo_count ?? 0}</div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={()=>{ window.location.href = \`/admin/review-submission?id=\${r.id}\`; }}>Review</Button>
+              <Button size="sm" variant="outline" onClick={()=>{ window.location.href = `/admin/review-submission?id=${r.id}`; }}>Review</Button>
               <Button size="sm" onClick={() => commit(r.id)}>Commit</Button>
             </div>
           </div>

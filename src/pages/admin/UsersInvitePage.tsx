@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import toast from "react-hot-toast";
 
+import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
 export default function UsersInvitePage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"user" | "admin">("user");
@@ -58,8 +59,8 @@ export default function UsersInvitePage() {
     }
   }
 
-  return (
-    <Layout>
+  return (<Layout>
+  <ReviewSubmissionsCard />
       <div className="mx-auto max-w-xl p-4">
         <div className="mb-3 text-sm text-muted-foreground">
           <Link to="/admin" className="hover:underline">← Admin Dashboard</Link>
