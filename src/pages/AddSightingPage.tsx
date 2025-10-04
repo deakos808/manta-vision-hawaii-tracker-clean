@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ type LocRec = { id: string; name: string; island?: string; latitude?: number|nul
 
 export default function AddSightingPage() {
     const navigate = useNavigate();
+const location = useLocation();
 const [pageMatchOpen, setPageMatchOpen] = useState(false);
   const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
@@ -60,6 +61,28 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+
+/* Review mode loader: when ?reviewId=<uuid> is present, hydrate state from submission payload */
+useEffect(()=>{
+  const params = new URLSearchParams(location.search);
+  const rid = params.get('reviewId');
+  if(!rid) return;
+  (async()=>{
+    try{
+      const { data, error } = await supabase
+        .from("sighting_submissions")
+        .select("payload, email, sighting_date, manta_count, photo_count")
+        .eq("id", rid)
+        .single();
+      if(!error && data){
+        const p = (data as any).payload || {};
+        if(p.date) setDate(String(p.date));
+        if(p.email) setEmail(String(p.email));
+        if(Array.isArray(p.mantas)) setMantas(p.mantas as any);
+      }
+    }catch(err){ console.warn("[Review load] failed", err); }
+  })();
+}, [location.search]);
 
   
   useEffect(() => {
@@ -219,14 +242,16 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
   navigate("/");
 };
   const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev,m]); setAddOpen(false); };
-  const onEditSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified edit save", m);
+  const onEditSave = (m:MantaDraft) => {
+  console.log("[AddSighting] unified edit save", m);
   setMantas(prev=>{
-    const i = prev.findIndex(x=>x.id===m.id);
+    const i=prev.findIndex(x=>x.id===m.id);
     if(i>=0){
-      const c = [...prev];
-      const keep = (c[i] as any).matchedCatalogId ?? (m as any).matchedCatalogId ?? null;
-      c[i] = { ...(c[i] as any), ...m, matchedCatalogId: keep };
-      return c;
+      const keep:any = prev[i] as any;
+      const merged:any = { ...(m as any) };
+      if (keep.matchedCatalogId != null && merged.matchedCatalogId == null) merged.matchedCatalogId = keep.matchedCatalogId;
+      if (typeof keep.noMatch === "boolean" && typeof merged.noMatch !== "boolean") merged.noMatch = keep.noMatch;
+      const c=[...prev]; c[i]=merged as any; return c;
     }
     return [...prev, m];
   });
@@ -492,6 +517,15 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     setMantas(prev =>
       prev.map(mm =>
         String(mm.id) === String(pageMatchFor)
+          ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false } as any)
+          : mm
+      )
+    );
+    setPageMatchOpen(false);
+  }}
+    setMantas(prev =>
+      prev.map(mm =>
+        String(mm.id) === String(pageMatchFor)
           ? ({ ...mm, matchedCatalogId: catalogId } as any)
           : mm
       )
@@ -503,7 +537,7 @@ const [mantas, setMantas] = useState<MantaDraft[]>([]);
     setMantas(prev =>
       prev.map(mm =>
         String(mm.id) === String(pageMatchFor)
-          ? ({ ...mm, matchedCatalogId: null } as any)
+          ? ({ ...mm, matchedCatalogId: null, noMatch: true } as any)
           : mm
       )
     );
