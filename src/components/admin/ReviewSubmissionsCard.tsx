@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -14,7 +15,9 @@ type SubRow = {
   payload?: any;
 };
 
-function summaryFromPayload(payload: any) {
+function summaryFromPayload(
+
+payload: any) {
   const arr = Array.isArray(payload?.mantas) ? payload.mantas : [];
   let done = 0, pending = 0, no = 0;
   for (const m of arr) {
@@ -26,7 +29,9 @@ function summaryFromPayload(payload: any) {
 }
 
 export default function ReviewSubmissionsCard() {
-  const [rows, setRows] = useState<SubRow[]>([]);
+  
+  const navigate = useNavigate();
+const [rows, setRows] = useState<SubRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
@@ -89,10 +94,10 @@ export default function ReviewSubmissionsCard() {
                   <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">{sum.no} no-match</span>
                 )}
                 <span className="flex-1" />
-                <Button size="sm" variant="outline" onClick={() => { window.location.href = `/sightings/add?reviewId=${r.id}`; }}>
+                <Button type="button" size="sm" variant="outline" onClick={() => { window.location.href = `/sightings/add?reviewId=${r.id}`; }}>
                   Review
                 </Button>
-                <Button size="sm" onClick={() => commit(r.id)}>Commit</Button>
+                <Button type="button" size="sm" onClick={() => commit(r.id)}>Commit</Button>
               </div>
             </div>
           );

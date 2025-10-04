@@ -241,7 +241,16 @@ useEffect(()=>{
   window.alert(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
   navigate("/");
 };
-  const onAddSave = (m:MantaDraft)=>{ console.log("[AddSighting] unified add save", m); setMantas(prev=>[...prev,m]); setAddOpen(false); };
+  const onAddSave = (m: MantaDraft) => {
+    console.log("[AddSighting] unified add save", m);
+    setAddOpen(false);
+    setMantas(prev => {
+      const incomingId = (m as any).id ? String((m as any).id) : "";
+      const exists = incomingId && prev.some(p => String(p.id) === incomingId);
+      const id = exists || !incomingId ? uuid() : incomingId;
+      return [...prev, { ...(m as any), id }];
+    });
+  };
   const onEditSave = (m:MantaDraft) => {
   console.log("[AddSighting] unified edit save", m);
   setMantas(prev=>{
@@ -438,7 +447,7 @@ useEffect(()=>{
   key={m.id}
   className={`${ROW_GRID} border rounded mb-3 p-3 px-6`}
 >
-  <div className="grid grid-cols-[80px_1fr_80px] items-center gap-3">
+  <div className="grid grid-cols-[160px_minmax(0,1fr)_120px_120px_120px] items-center gap-3">
     <div className="w-20 h-20 rounded overflow-hidden border bg-gray-50">
       {vBest ? (
         <img src={vBest.url} alt="Ventral" className="w-full h-full object-cover" />
@@ -488,10 +497,10 @@ useEffect(()=>{
     </div>
   </div>
 
-  <div className="text-center truncate">{m.name || "—"}</div>
-  <div className="text-center truncate">{m.gender || "—"}</div>
-  <div className="text-center truncate">{m.ageClass || "—"}</div>
-  <div className="text-center truncate">{formatCm(m.size)}</div>
+  <div className="text-center truncate" className="truncate text-center" className="truncate text-center">{m.name || "—"}</div>
+  <div className="text-center truncate" className="truncate text-center" className="truncate text-center">{m.gender || "—"}</div>
+  <div className="text-center truncate" className="truncate text-center" className="truncate text-center">{m.ageClass || "—"}</div>
+  <div className="text-center truncate" className="truncate text-center" className="truncate text-center">{formatCm(m.size)}</div>
 
   <div className="col-span-full flex justify-end gap-2 mt-2">
     <button type="button" className="px-2 py-1 border rounded text-xs" onClick={()=>setEditingManta(m)}>Edit</button>
@@ -518,15 +527,6 @@ useEffect(()=>{
       prev.map(mm =>
         String(mm.id) === String(pageMatchFor)
           ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false } as any)
-          : mm
-      )
-    );
-    setPageMatchOpen(false);
-  }}
-    setMantas(prev =>
-      prev.map(mm =>
-        String(mm.id) === String(pageMatchFor)
-          ? ({ ...mm, matchedCatalogId: catalogId } as any)
           : mm
       )
     );
