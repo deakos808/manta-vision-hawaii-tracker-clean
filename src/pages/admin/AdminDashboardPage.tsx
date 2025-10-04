@@ -4,11 +4,12 @@ import Layout from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
-  return (
-    <Layout>
+  return (<Layout>
+  <ReviewSubmissionsCard />
       <div className="p-6 space-y-8">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         <p className="text-sm text-muted-foreground">
