@@ -7,6 +7,7 @@ import SightingQuickForm from "@/pages/SightingQuickForm";
 import Layout from "@/components/layout/Layout";
 import { Routes, Route, Navigate } from "react-router-dom";
 
+import ReviewListPage from "@/pages/admin/ReviewListPage";
 import RequireAuth from "@/components/auth/RequireAuth";
 
 import LandingPage from "@/pages/public/LandingPage";
