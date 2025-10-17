@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-
-// patch helper: centimeters -> meters for display
-function toMeters(v){ const n = Number(v ?? 0); return (Number.isFinite(n) ? (n/100).toFixed(2) : '0.00'); }
 type Pt = { x: number; y: number }; // normalized 0..1 within displayed image
 
 export type MeasureResult = {
@@ -168,8 +165,8 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
             </div>
 
             <div className="text-sm">
-              <div><span className="text-slate-600">DL (m):</span> <span className="font-medium">{to2(dlCm)}</span></div>
-              <div><span className="text-slate-600">DW (m):</span> <span className="font-medium">{to2(dwCm)}</span></div>
+              <div><span className="text-slate-600">DL (cm):</span> <span className="font-medium">{to2(dlCm)}</span></div>
+              <div><span className="text-slate-600">DW (cm):</span> <span className="font-medium">{to2(dwCm)}</span></div>
             </div>
 
             <div className="flex justify-end gap-2">

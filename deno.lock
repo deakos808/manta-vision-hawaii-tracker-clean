@@ -158,7 +158,7 @@
         "npm:@radix-ui/react-tooltip@^1.1.4",
         "npm:@supabase/auth-helpers-react@0.5",
         "npm:@supabase/auth-helpers-shared@0.7",
-        "npm:@supabase/supabase-js@^2.56.0",
+        "npm:@supabase/supabase-js@^2.75.0",
         "npm:@tailwindcss/typography@~0.5.15",
         "npm:@tanstack/react-query@^5.56.2",
         "npm:@tensorflow-models/mobilenet@^2.1.1",

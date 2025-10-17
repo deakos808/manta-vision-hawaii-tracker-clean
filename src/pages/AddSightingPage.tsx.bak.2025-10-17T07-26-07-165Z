@@ -19,6 +19,12 @@ type LocRec = { id: string; name: string; island?: string; latitude?: number|nul
 
 export default function AddSightingPage() {
 
+  if (!emailValid) missing.push('Email');
+    if (!island) missing.push('Island');
+    if (!locationId && !locationName) missing.push('Location');
+    return { ok: missing.length === 0, missing };
+  }, [dateValid, emailValid, island, locationId, locationName]);
+
 const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -194,7 +200,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           const seen = new Set<string>(); const list:LocRec[]=[];
 
   
-    
+  if (!emailValid) missing.push('Email');
+    if (!island) missing.push('Island');
+    if (!locationId && !locationName) missing.push('Location');
+    return { ok: missing.length === 0, missing };
+  }, [dateValid, emailValid, island, locationId, locationName]);
           for(const r of data){
             const key = (r.name||"").trim().toLowerCase();
             if(!seen.has(key)){
@@ -339,15 +349,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   };
 
   // UI
-
-  // --- submit requirements (inline, no hooks; zero TDZ risk)
-  const isReady = emailValid && dateValid && Boolean(island) && Boolean(locationId || locationName);
-  const missingMsgs: string[] = [];
-  if (!dateValid) missingMsgs.push('Date');
-  if (!emailValid) missingMsgs.push('Email');
-  if (!island) missingMsgs.push('Island');
-  if (!locationId && !locationName) missingMsgs.push('Location');
-
   return (
     <Layout>
 
@@ -527,7 +528,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           </CardContent>
         </Card>
 
-        {/* Footer buttons */}
+        {        {/* Footer buttons */}
         <div className="flex justify-center mt-6 gap-2">
           {isReview ? (
             <>
@@ -540,7 +541,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               <Button
                 data-clean-id="submit-sighting"
                 onClick={handleSubmit}
-                disabled={!isReady}
+                disabled={!(emailValid && dateValid && island && (locationId || locationName))}
               >
                 Submit Sighting
               </Button>

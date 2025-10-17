@@ -527,7 +527,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           </CardContent>
         </Card>
 
-        {/* Footer buttons */}
+        {        {/* Footer buttons */}
         <div className="flex justify-center mt-6 gap-2">
           {isReview ? (
             <>

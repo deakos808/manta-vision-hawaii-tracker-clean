@@ -18,8 +18,7 @@ const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
@@ -193,8 +192,15 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         if(!cancelled && !error && data && data.length){
           const seen = new Set<string>(); const list:LocRec[]=[];
 
-  
-    
+  /* REQUIRED_HINT */
+  const requirements = useMemo(() => {
+    const missing: string[] = [];
+    if (!dateValid) missing.push('Date');
+    if (!emailValid) missing.push('Email');
+    if (!island) missing.push('Island');
+    if (!locationId && !locationName) missing.push('Location');
+    return { ok: missing.length === 0, missing };
+  }, [dateValid, emailValid, island, locationId, locationName]);
           for(const r of data){
             const key = (r.name||"").trim().toLowerCase();
             if(!seen.has(key)){
@@ -339,15 +345,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   };
 
   // UI
-
-  // --- submit requirements (inline, no hooks; zero TDZ risk)
-  const isReady = emailValid && dateValid && Boolean(island) && Boolean(locationId || locationName);
-  const missingMsgs: string[] = [];
-  if (!dateValid) missingMsgs.push('Date');
-  if (!emailValid) missingMsgs.push('Email');
-  if (!island) missingMsgs.push('Island');
-  if (!locationId && !locationName) missingMsgs.push('Location');
-
   return (
     <Layout>
 
@@ -532,33 +529,28 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           {isReview ? (
             <>
               <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
-              <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
-              <Button onClick={handleCommitReview}>Commit Review</Button>
+            <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
+            <Button onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
-            <div className="flex flex-col items-center">
-              <Button
-                data-clean-id="submit-sighting"
-                onClick={handleSubmit}
-                disabled={!isReady}
-              >
-                Submit Sighting
-              </Button>
-              {!(emailValid && dateValid && island && (locationId || locationName)) && (
-                <div data-clean-id="requirements-hint" className="mt-2 text-xs text-red-600 text-center">
-                  {'Missing: ' + [
-                    !dateValid && 'Date',
-                    !emailValid && 'Email',
-                    !island && 'Island',
-                    !(locationId || locationName) && 'Location'
-                  ].filter(Boolean).join(', ')}
-                </div>
-              )}
-            </div>
+            <div className="text-center">
+    <Button
+      data-clean-id="submit-sighting"
+      onClick={handleSubmit}
+      disabled={!requirements.ok}
+      title={!requirements.ok ? ('Missing: ' + requirements.missing.join(', ')) : 'Ready to submit'}
+    >
+      Submit Sighting
+    </Button>
+    {!requirements.ok && (
+      <div className="mt-2 text-xs text-red-600">
+        Missing: {requirements.missing.join(', ')}
+      </div>
+    )}
+  </div>
           )}
         </div>
-
-<div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
+        <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
       </div>
 
       {/* Match modal */}
