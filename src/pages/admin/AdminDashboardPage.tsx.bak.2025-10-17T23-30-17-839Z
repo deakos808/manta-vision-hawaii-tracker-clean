@@ -115,18 +115,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 <div className="mt-8">
   <h2 className="text-lg font-semibold mb-3">Calibration</h2>
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    {/* deprecated duplicate calibration card */}{false && <CalibrationAdminCard /> }
+    <CalibrationAdminCard />
   </div>
 </div>
-
-  {/* Calibration section (dedicated) */}
-  <section aria-labelledby="calibration-heading" className="mt-10">
-    <h2 id="calibration-heading" className="text-lg font-semibold mb-3">Calibration</h2>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <CalibrationAdminCard /* DEDICATED */ />
-    </div>
-  </section>
-  </div>
+</div>
     </section>
   );
 }
