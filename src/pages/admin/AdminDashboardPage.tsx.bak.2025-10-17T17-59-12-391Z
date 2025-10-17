@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
-import CalibrationAdminCard from "../../components/admin/CalibrationAdminCard";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -110,15 +109,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-lg font-semibold pt-2">{title}</h2>
       <div className="bg-gray-50 p-4 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
         {children}
-      
-{/* Calibration section (injected) */}
-<div className="mt-8">
-  <h2 className="text-lg font-semibold mb-3">Calibration</h2>
-  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    <CalibrationAdminCard />
-  </div>
-</div>
-</div>
+      </div>
     </section>
   );
 }
