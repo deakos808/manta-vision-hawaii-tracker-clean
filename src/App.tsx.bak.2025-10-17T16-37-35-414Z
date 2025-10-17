@@ -1,5 +1,3 @@
-import AddCalibrationPage from "./pages/admin/AddCalibrationPage";
-import CalibrationLandingPage from "./pages/admin/CalibrationLandingPage";
 // File: src/App.tsx
 import React from "react";
 
@@ -112,8 +110,6 @@ function App() {
   <Route path="/admin/best-catalog-selector" element={<RequireAuth adminOnly><BestCatalogImageDiagnostics /></RequireAuth>} />
   <Route path="/admin/manta/:id/photos" element={<RequireAuth adminOnly><ChooseBestMantaPhotoPage /></RequireAuth>} />
   <Route path="/admin/review" element={<RequireAuth adminOnly><ReviewListPage /></RequireAuth>} />
-  <Route path="/admin/calibration" element={<RequireAuth adminOnly><CalibrationLandingPage /></RequireAuth>} />
-  <Route path="/admin/calibration/new" element={<RequireAuth adminOnly><AddCalibrationPage /></RequireAuth>} />
   <Route path="/admin/review/sighting/:id" element={<RequireAuth adminOnly><ReviewSightingDetailsPage /></RequireAuth>} />
   <Route path="/admin/diagnostics-csv" element={<RequireAuth adminOnly><CsvDataReviewPage /></RequireAuth>} />
   <Route path="/admin/csv-debug" element={<RequireAuth adminOnly><CsvDebugPage /></RequireAuth>} />
