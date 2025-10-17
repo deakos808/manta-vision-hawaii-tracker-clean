@@ -5,16 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
-import CalibrationAdminCard from "../../components/admin/CalibrationAdminCard";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   return (
     <Layout>
-        {/* Calibration card (injected) */}
-        <CalibrationAdminCard />
-
       {/* Hero */}
       <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
         <div className="max-w-6xl mx-auto text-center">
