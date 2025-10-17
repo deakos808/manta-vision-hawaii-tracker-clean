@@ -22,7 +22,6 @@ import ImportPage from "@/pages/admin/ImportPage";
 
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminRolesPage from "@/pages/admin/AdminRolesPage";
-import AdminReviewNewSightingsPage from "@/pages/admin/AdminReviewNewSightingsPage";
 import ReviewSightingDetailsPage from "@/pages/admin/ReviewSightingDetailsPage";
 
 import DataIntegrityPage from "@/pages/admin/DataIntegrityPage";
@@ -110,7 +109,7 @@ function App() {
   <Route path="/admin/missing-sighting-photos" element={<RequireAuth adminOnly><MissingSightingPhotosPage /></RequireAuth>} />
   <Route path="/admin/best-catalog-selector" element={<RequireAuth adminOnly><BestCatalogImageDiagnostics /></RequireAuth>} />
   <Route path="/admin/manta/:id/photos" element={<RequireAuth adminOnly><ChooseBestMantaPhotoPage /></RequireAuth>} />
-  <Route path="/admin/review" element={<RequireAuth adminOnly><AdminReviewNewSightingsPage /></RequireAuth>} />
+  <Route path="/admin/review" element={<RequireAuth adminOnly><ReviewListPage /></RequireAuth>} />
   <Route path="/admin/review/sighting/:id" element={<RequireAuth adminOnly><ReviewSightingDetailsPage /></RequireAuth>} />
   <Route path="/admin/diagnostics-csv" element={<RequireAuth adminOnly><CsvDataReviewPage /></RequireAuth>} />
   <Route path="/admin/csv-debug" element={<RequireAuth adminOnly><CsvDebugPage /></RequireAuth>} />

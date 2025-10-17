@@ -3,9 +3,6 @@ import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
 
-
-// patch helper: centimeters -> meters for display
-function toMeters(v){ const n = Number(v ?? 0); return (Number.isFinite(n) ? (n/100).toFixed(2) : '0.00'); }
 type View = "ventral" | "dorsal" | "other";
 
 export type Uploaded = {
@@ -24,7 +21,7 @@ id: string;
   name: string;
   gender?: string | null;
   ageClass?: string | null;
-  size?: string | null; // mean DW (m) from dorsal photos
+  size?: string | null; // mean DW(cm) from dorsal photos
   photos: Uploaded[];
   matchedCatalogId?: number | null;
   noMatch?: boolean;
