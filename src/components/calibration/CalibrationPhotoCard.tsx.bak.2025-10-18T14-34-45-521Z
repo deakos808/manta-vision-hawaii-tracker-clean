@@ -50,7 +50,7 @@ export default function CalibrationPhotoCard({
   const [showZoom, setShowZoom] = useState<boolean>(true);
   const [cursor, setCursor] = useState<{x:number;y:number}|null>(null);
   const [zoom, setZoom] = useState<number>(3.0);  // magnification
-  const [loupe, setLoupe] = useState<number>(120);  // diameter (px)
+  const [loupe, setLoupe] = useState<number>(160);  // diameter (px)
 
   useEffect(()=>{
     function recalc(){
@@ -129,7 +129,7 @@ export default function CalibrationPhotoCard({
               {/* loupe magnifier */}
               {showZoom && cursor && (() => {
   // Desired lens origin if placed to the right/bottom of cursor
-  const P = 10; // padding between cursor and lens
+  const P = 16; // padding between cursor and lens
   let left = cursor.x + P;
   let top  = cursor.y + P;
 

@@ -50,7 +50,7 @@ export default function CalibrationPhotoCard({
   const [showZoom, setShowZoom] = useState<boolean>(true);
   const [cursor, setCursor] = useState<{x:number;y:number}|null>(null);
   const [zoom, setZoom] = useState<number>(3.0);  // magnification
-  const [loupe, setLoupe] = useState<number>(120);  // diameter (px)
+  const [loupe, setLoupe] = useState<number>(160);  // diameter (px)
 
   useEffect(()=>{
     function recalc(){
@@ -129,7 +129,7 @@ export default function CalibrationPhotoCard({
               {/* loupe magnifier */}
               {showZoom && cursor && (() => {
   // Desired lens origin if placed to the right/bottom of cursor
-  const P = 10; // padding between cursor and lens
+  const P = 16; // padding between cursor and lens
   let left = cursor.x + P;
   let top  = cursor.y + P;
 
@@ -149,26 +149,11 @@ export default function CalibrationPhotoCard({
         height: loupe,
         left,
         top,
-        backgroundImage: `
-  linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),
-  linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),
-  radial-gradient(circle at center, rgba(255,255,255,1) 0 3px, rgba(0,0,0,0.35) 3px 4px, rgba(255,255,255,0) 4px),
-  url(${photo.url})
-`,
+        backgroundImage: `url(${photo.url})`,
         backgroundRepeat: 'no-repeat',
-        backgroundSize: `
-  1px ${loupe}px,
-  ${loupe}px 1px,
-  6px 6px,
-  ${dispW*zoom}px ${dispH*zoom}px
-`,
+        backgroundSize: `${dispW*zoom}px ${dispH*zoom}px`,
         // Keep the *sample point* at the cursor even if the lens slides
-        backgroundPosition: `
-  ${loupe/2}px 0px,
-  0px ${loupe/2}px,
-  ${loupe/2-3}px ${loupe/2-3}px,
-  ${-cursor.x*zoom + loupe/2}px ${-cursor.y*zoom + loupe/2}px
-`,
+        backgroundPosition: `${-cursor.x*zoom + loupe/2}px ${-cursor.y*zoom + loupe/2}px`,
         boxShadow: "0 0 0 1px rgba(255,255,255,.7) inset"
       }}
     />

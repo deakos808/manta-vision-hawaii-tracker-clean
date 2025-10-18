@@ -376,13 +376,13 @@ async function handleAddFilesImmediate(files: FileList | null){
               <tr>
                 <th className="text-left px-3 py-2">Photo</th>
                 <th className="text-left px-3 py-2">File</th>
-                <th className="text-center px-3 py-2">Scale (px)</th>
-                <th className="text-center px-3 py-2">Object (px)</th>
-                <th className="text-center px-3 py-2">Scale (m)</th>
-                <th className="text-center px-3 py-2">Estimated (m)</th>
-                <th className="text-center px-3 py-2">Actual (m)</th>
-                <th className="text-center px-3 py-2">% error</th>
-                <th className="text-center px-3 py-2">Actions</th>
+                <th className="text-right px-3 py-2">Scale (px)</th>
+                <th className="text-right px-3 py-2">Object (px)</th>
+                <th className="text-right px-3 py-2">Scale (m)</th>
+                <th className="text-right px-3 py-2">Estimated (m)</th>
+                <th className="text-right px-3 py-2">Actual (m)</th>
+                <th className="text-right px-3 py-2">% error</th>
+                <th className="text-right px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -392,13 +392,13 @@ async function handleAddFilesImmediate(files: FileList | null){
                     {p.signed_url ? <img src={p.signed_url} className="w-24 h-16 object-cover rounded border" /> : "-"}
                   </td>
                   <td className="px-3 py-2">{baseName(p.storage_path)}</td>
-                  <td className="px-3 py-2 text-center">{p.m ? Math.round(p.m.scale_px) : "-"}</td>
-                  <td className="px-3 py-2 text-center">{p.m ? Math.round(p.m.object_px) : "-"}</td>
-                  <td className="px-3 py-2 text-center">{p.m ? fmtMeters(p.m.scale_m) : "-"}</td>
-                  <td className="px-3 py-2 text-center">{p.m ? fmtMeters(p.m.est_length_m) : "-"}</td>
-                  <td className="px-3 py-2 text-center">{p.actual_length_m!=null ? fmtMeters(p.actual_length_m) : "-"}</td>
-                  <td className="px-3 py-2 text-center">{p.m ? p.m.error_pct.toFixed(2)+"%" : "-"}</td>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-2 text-right">{p.m ? Math.round(p.m.scale_px) : "-"}</td>
+                  <td className="px-3 py-2 text-right">{p.m ? Math.round(p.m.object_px) : "-"}</td>
+                  <td className="px-3 py-2 text-right">{p.m ? fmtMeters(p.m.scale_m) : "-"}</td>
+                  <td className="px-3 py-2 text-right">{p.m ? fmtMeters(p.m.est_length_m) : "-"}</td>
+                  <td className="px-3 py-2 text-right">{p.actual_length_m!=null ? fmtMeters(p.actual_length_m) : "-"}</td>
+                  <td className="px-3 py-2 text-right">{p.m ? p.m.error_pct.toFixed(2)+"%" : "-"}</td>
+                  <td className="px-3 py-2 text-right">
                     <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2" onClick={()=>openEditModal(p)} title="Edit">
                       <Pencil className="w-4 h-4" /><span className="sr-only">Edit</span>
                     </button>
@@ -426,21 +426,16 @@ async function handleAddFilesImmediate(files: FileList | null){
                 <button className="p-1 rounded hover:bg-slate-100" onClick={closeEditModal} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
               <CalibrationPhotoCard
-  photo={{
-    id: modalTarget.id,
-    url: modalTarget.signed_url || "",
-    width: Math.min(900, modalTarget.width_px || 900),
-    height: Math.round((modalTarget.height_px || 900) * (Math.min(900, modalTarget.width_px || 900) / (modalTarget.width_px || 900))),
-    label: "#"
-  }}
-  defaultScaleM={scaleM}
-  initial={{
-    scale:  modalTarget.m ? { p0: modalTarget.m.scale_p0,  p1: modalTarget.m.scale_p1 }  : undefined,
-    object: modalTarget.m ? { p0: modalTarget.m.object_p0, p1: modalTarget.m.object_p1 } : undefined,
-    actual: modalTarget.actual_length_m ?? null
-  }}
-  onChange={(r)=>setModalResult(r)}
-/>
+                photo={{
+                  id: modalTarget.id,
+                  url: modalTarget.signed_url || "",
+                  width: Math.min(900, modalTarget.width_px || 900),
+                  height: Math.round((modalTarget.height_px || 900) * (Math.min(900, modalTarget.width_px || 900) / (modalTarget.width_px || 900))),
+                  label: "#"
+                }}
+                defaultScaleM={scaleM}
+                onChange={(r)=>setModalResult(r)}
+              />
               <div className="mt-3 flex justify-end gap-2">
                 <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={closeEditModal}>Cancel</button>
                 <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={saveEditModal}>Save</button>

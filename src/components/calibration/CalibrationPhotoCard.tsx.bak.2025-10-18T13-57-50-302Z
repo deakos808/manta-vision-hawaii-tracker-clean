@@ -27,16 +27,10 @@ export default function CalibrationPhotoCard({
   photo,
   defaultScaleM,
   onChange,
-  initial,
 }: {
   photo: PhotoModel;
   defaultScaleM: number;
   onChange?: (r: PhotoResult) => void;
-  initial?: {
-    scale?: { p0: {x:number,y:number} | null; p1: {x:number,y:number} | null };
-    object?: { p0: {x:number,y:number} | null; p1: {x:number,y:number} | null };
-    actual?: number | null;
-  };
 }) {
   const [canvas, setCanvas] = useState<CanvasState>({ scale:{p0:null,p1:null}, object:{p0:null,p1:null}, scalePx:0, objectPx:0 });
   const [actualM, setActualM] = useState<string>("");
@@ -49,8 +43,8 @@ export default function CalibrationPhotoCard({
   // loupe state
   const [showZoom, setShowZoom] = useState<boolean>(true);
   const [cursor, setCursor] = useState<{x:number;y:number}|null>(null);
-  const [zoom, setZoom] = useState<number>(3.0);  // magnification
-  const [loupe, setLoupe] = useState<number>(120);  // diameter (px)
+  const ZOOM = 2.5;           // magnification factor
+  const LOUPE = 120;          // diameter in px
 
   useEffect(()=>{
     function recalc(){
@@ -127,53 +121,21 @@ export default function CalibrationPhotoCard({
                 />
               </div>
               {/* loupe magnifier */}
-              {showZoom && cursor && (() => {
-  // Desired lens origin if placed to the right/bottom of cursor
-  const P = 10; // padding between cursor and lens
-  let left = cursor.x + P;
-  let top  = cursor.y + P;
-
-  // If lens would overflow right/bottom, flip to left/top
-  if (left + loupe > dispW) left = cursor.x - loupe - P;
-  if (top  + loupe > dispH) top  = cursor.y - loupe - P;
-
-  // Clamp to image
-  left = Math.max(0, Math.min(dispW - loupe, left));
-  top  = Math.max(0, Math.min(dispH - loupe, top));
-
-  return (
-    <div
-      className="pointer-events-none absolute rounded-full border border-slate-400 shadow-sm z-30 bg-white/5"
-      style={{
-        width: loupe,
-        height: loupe,
-        left,
-        top,
-        backgroundImage: `
-  linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),
-  linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),
-  radial-gradient(circle at center, rgba(255,255,255,1) 0 3px, rgba(0,0,0,0.35) 3px 4px, rgba(255,255,255,0) 4px),
-  url(${photo.url})
-`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: `
-  1px ${loupe}px,
-  ${loupe}px 1px,
-  6px 6px,
-  ${dispW*zoom}px ${dispH*zoom}px
-`,
-        // Keep the *sample point* at the cursor even if the lens slides
-        backgroundPosition: `
-  ${loupe/2}px 0px,
-  0px ${loupe/2}px,
-  ${loupe/2-3}px ${loupe/2-3}px,
-  ${-cursor.x*zoom + loupe/2}px ${-cursor.y*zoom + loupe/2}px
-`,
-        boxShadow: "0 0 0 1px rgba(255,255,255,.7) inset"
-      }}
-    />
-  );
-})() }
+              {showZoom && cursor && (
+                <div
+                  className="pointer-events-none absolute rounded-full border border-slate-400 shadow-sm"
+                  style={{
+                    width: LOUPE,
+                    height: LOUPE,
+                    left: Math.max(0, Math.min(dispW - LOUPE, cursor.x - LOUPE/2)),
+                    top:  Math.max(0, Math.min(dispH - LOUPE, cursor.y - LOUPE/2)),
+                    backgroundImage: `url(${photo.url})`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: `${dispW*ZOOM}px ${dispH*ZOOM}px`,
+                    backgroundPosition: `${-cursor.x*ZOOM + LOUPE/2}px ${-cursor.y*ZOOM + LOUPE/2}px`,
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
