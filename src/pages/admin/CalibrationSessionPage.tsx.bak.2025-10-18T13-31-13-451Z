@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabaseClient";
 import { fmtMeters } from "../../utils/format";
 import CalibrationPhotoCard, { PhotoResult } from "../../components/calibration/CalibrationPhotoCard";
-import { Pencil, Trash2, X, Plus } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 
 type Session = {
   id: string;
@@ -36,28 +36,6 @@ type PhotoRow = {
   } | null;
 };
 
-type QueueItem = {
-  id: string;
-  file: File;
-  url: string;
-  width: number;
-  height: number;
-  result?: PhotoResult;
-  isDuplicateName?: boolean;
-};
-
-function baseName(p: string){ const i=p.lastIndexOf('/'); return i>=0 ? p.slice(i+1) : p; }
-function safeName(n: string){ return n.replace(/[^a-zA-Z0-9._-]/g,'_'); }
-function useImageDims(file: File): Promise<{url:string;width:number;height:number}> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => resolve({ url, width: img.width, height: img.height });
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
 export default function CalibrationSessionPage(){
   const { id } = useParams();
   const [sess, setSess] = useState<Session | null>(null);
@@ -66,25 +44,22 @@ export default function CalibrationSessionPage(){
   const [editMeta, setEditMeta] = useState(false);
   const [meta, setMeta] = useState<{photographer_name:string;camera_model:string;lens_type:string;laser_setup:string}>({photographer_name:"",camera_model:"",lens_type:"",laser_setup:""});
 
-  // modal: edit one existing photo
+  // modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTarget, setModalTarget] = useState<PhotoRow | null>(null);
   const [modalResult, setModalResult] = useState<PhotoResult | null>(null);
 
-  // modal: add multiple new photos
-  const [addOpen, setAddOpen] = useState(false);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-
   const scaleM = sess?.default_scale_m ?? 0.60;
 
-  // load
   useEffect(()=>{ (async()=>{
     if (!id) return;
     setLoading(true);
     try{
+      // session header
       const { data: srow, error: se } = await supabase.from("calibration_sessions").select("*").eq("id", id).single();
       if (se) throw se;
 
+      // photos
       const { data: prows, error: pe } = await supabase
         .from("calibration_photos")
         .select("id, storage_path, width_px, height_px, actual_length_m")
@@ -92,8 +67,9 @@ export default function CalibrationSessionPage(){
         .order("created_at", { ascending: true });
       if (pe) throw pe;
 
+      // measurements
       const photoIds = (prows||[]).map(p=>p.id);
-      const measMap = new Map<string, any>();
+      let measMap = new Map<string, any>();
       if (photoIds.length){
         const { data: mrows, error: me } = await supabase
           .from("calibration_measurements")
@@ -103,6 +79,7 @@ export default function CalibrationSessionPage(){
         for (const m of (mrows||[])) measMap.set(m.photo_id, m);
       }
 
+      // signed urls
       const withUrls: PhotoRow[] = [];
       for (const p of (prows||[])){
         const { data: u } = await supabase.storage.from("calibration-images").createSignedUrl(p.storage_path, 3600);
@@ -143,7 +120,7 @@ export default function CalibrationSessionPage(){
     setModalResult(null);
     setModalOpen(true);
   }
-  function closeEditModal(){ setModalOpen(false); setModalTarget(null); setModalResult(null); }
+  function closeModal(){ setModalOpen(false); setModalTarget(null); setModalResult(null); }
 
   async function saveEditModal(){
     if(!modalTarget || !modalResult || !sess) return;
@@ -156,6 +133,7 @@ export default function CalibrationSessionPage(){
     if (est == null){ alert("Could not compute estimate."); return; }
     const errPct = Math.abs(est - actual)/actual*100;
 
+    // update DB
     const { error: pErr } = await supabase.from("calibration_photos")
       .update({ actual_length_m: actual })
       .eq("id", modalTarget.id);
@@ -174,6 +152,7 @@ export default function CalibrationSessionPage(){
     }]);
     if (mErr) throw mErr;
 
+    // refresh local
     const { data: u } = await supabase.storage.from("calibration-images").createSignedUrl(modalTarget.storage_path, 3600);
     setPhotos(prev=>prev.map(p=> p.id===modalTarget.id ? ({
       ...p,
@@ -184,120 +163,15 @@ export default function CalibrationSessionPage(){
         scale_p0: r.scale.p0, scale_p1: r.scale.p1, object_p0: r.object.p0, object_p1: r.object.p1
       }
     }) : p));
-    closeEditModal();
+    closeModal();
   }
 
   async function deletePhoto(row: PhotoRow){
-  if(!confirm("Delete this photo and its measurement?")) return;
-  await supabase.storage.from("calibration-images").remove([row.storage_path]);
-  await supabase.from("calibration_measurements").delete().eq("photo_id", row.id);
-  await supabase.from("calibration_photos").delete().eq("id", row.id);
-  setPhotos(prev=>prev.filter(p=>p.id!==row.id));
-}
-
-// Upload files, insert photos (no measurements), append to table
-async function handleAddFilesImmediate(files: FileList | null){
-  if(!files || !sess) return;
-  for(const f of Array.from(files)){
-    if(!f.type.startsWith("image/")) continue;
-    const meta = await useImageDims(f);
-    const filename = safeName(f.name);
-    const storagePath = `calibration/${sess.id}/${filename}`;
-
-    const up = await supabase.storage.from("calibration-images").upload(storagePath, f, { upsert:true });
-    if (up.error) throw up.error;
-
-    const { data: prow, error: pErr } = await supabase
-      .from("calibration_photos")
-      .insert([{
-        session_id: sess.id,
-        storage_path: storagePath,
-        width_px: meta.width,
-        height_px: meta.height,
-        actual_length_m: null
-      }]).select("id").single();
-    if (pErr) throw pErr;
-
-    const { data: u } = await supabase.storage.from("calibration-images").createSignedUrl(storagePath, 3600);
-    setPhotos(prev=>[...prev, {
-      id: prow!.id,
-      storage_path: storagePath,
-      width_px: meta.width,
-      height_px: meta.height,
-      actual_length_m: null,
-      signed_url: u?.signedUrl ?? null,
-      m: null
-    }]);
-  }
-}
-
-  // ----- Add photos modal -----
-  const existingNames = new Set(photos.map(p => baseName(p.storage_path)));
-
-  async function onAddFiles(files: FileList | null){
-    if(!files || !files.length) return;
-    const items: QueueItem[] = [];
-    for(const f of Array.from(files)){
-      if(!f.type.startsWith("image/")) continue;
-      const meta = await useImageDims(f);
-      const dispW = Math.min(900, meta.width);
-      items.push({
-        id: crypto.randomUUID(),
-        file: f,
-        url: meta.url,
-        width: dispW,
-        height: Math.round(meta.height*(dispW/meta.width)),
-        isDuplicateName: existingNames.has(safeName(f.name))
-      });
-    }
-    setQueue(prev => [...prev, ...items]);
-  }
-
-  async function saveAddModal(){
-    if(!sess) return;
-    const good = queue.filter(q => q.result && q.result.scalePx>0 && q.result.objectPx>0 && (q.result.actualLengthM ?? 0) > 0) as Required<QueueItem>[];
-    if(!good.length){ alert("Add at least one fully measured photo."); return; }
-
-    for(const q of good){
-      const filename = safeName(q.file.name);
-      const path = `calibration/${sess.id}/${filename}`;
-      const up = await supabase.storage.from("calibration-images").upload(path, q.file, { upsert:true });
-      if (up.error) throw up.error;
-
-      const { data: prow, error: pErr } = await supabase
-        .from("calibration_photos")
-        .insert([{
-          session_id: sess.id,
-          storage_path: path,
-          width_px: q.width,
-          height_px: q.height,
-          actual_length_m: Number(q.result.actualLengthM),
-        }]).select("id").single();
-      if (pErr) throw pErr;
-
-      const est = q.result.estLengthM != null ? Number(q.result.estLengthM) : (q.result.objectPx/q.result.scalePx)*scaleM;
-      const errPct = Math.abs(est - Number(q.result.actualLengthM))/Number(q.result.actualLengthM)*100;
-
-      const { error: mErr } = await supabase.from("calibration_measurements").insert([{
-        photo_id: prow!.id,
-        scale_px: q.result.scalePx, object_px: q.result.objectPx,
-        scale_p0: q.result.scale.p0, scale_p1: q.result.scale.p1,
-        object_p0: q.result.object.p0, object_p1: q.result.object.p1,
-        scale_m: scaleM, est_length_m: est, error_pct: errPct
-      }]);
-      if (mErr) throw mErr;
-
-      const { data: u } = await supabase.storage.from("calibration-images").createSignedUrl(path, 3600);
-      setPhotos(prev=>[...prev, {
-        id: prow!.id, storage_path: path, width_px: q.width, height_px: q.height, actual_length_m: Number(q.result.actualLengthM),
-        signed_url: u?.signedUrl ?? null,
-        m: { scale_px: q.result.scalePx, object_px: q.result.objectPx, scale_m: scaleM, est_length_m: est, error_pct: errPct,
-             scale_p0: q.result.scale.p0, scale_p1: q.result.scale.p1, object_p0: q.result.object.p0, object_p1: q.result.object.p1 }
-      }]);
-    }
-
-    setQueue([]);
-    setAddOpen(false);
+    if(!confirm("Delete this photo and its measurement?")) return;
+    await supabase.storage.from("calibration-images").remove([row.storage_path]);
+    await supabase.from("calibration_measurements").delete().eq("photo_id", row.id);
+    await supabase.from("calibration_photos").delete().eq("id", row.id);
+    setPhotos(prev=>prev.filter(p=>p.id!==row.id));
   }
 
   if (!id) return <Layout><div className="p-6">Missing session id.</div></Layout>;
@@ -333,9 +207,8 @@ async function handleAddFilesImmediate(files: FileList | null){
                 <span className="mr-4">Measured: {measured.length}</span>
                 <span>Mean error: {meanErrTxt}</span>
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3">
                 <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={()=>setEditMeta(true)}>Edit</button>
-                
               </div>
             </>
           ) : (
@@ -375,7 +248,6 @@ async function handleAddFilesImmediate(files: FileList | null){
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="text-left px-3 py-2">Photo</th>
-                <th className="text-left px-3 py-2">File</th>
                 <th className="text-right px-3 py-2">Scale (px)</th>
                 <th className="text-right px-3 py-2">Object (px)</th>
                 <th className="text-right px-3 py-2">Scale (m)</th>
@@ -391,7 +263,6 @@ async function handleAddFilesImmediate(files: FileList | null){
                   <td className="px-3 py-2">
                     {p.signed_url ? <img src={p.signed_url} className="w-24 h-16 object-cover rounded border" /> : "-"}
                   </td>
-                  <td className="px-3 py-2">{baseName(p.storage_path)}</td>
                   <td className="px-3 py-2 text-right">{p.m ? Math.round(p.m.scale_px) : "-"}</td>
                   <td className="px-3 py-2 text-right">{p.m ? Math.round(p.m.object_px) : "-"}</td>
                   <td className="px-3 py-2 text-right">{p.m ? fmtMeters(p.m.scale_m) : "-"}</td>
@@ -410,7 +281,7 @@ async function handleAddFilesImmediate(files: FileList | null){
               ))}
               {photos.length===0 && (
                 <tr>
-                  <td className="px-3 py-6 text-center text-slate-500" colSpan={9}>No photos.</td>
+                  <td className="px-3 py-6 text-center text-slate-500" colSpan={8}>No photos.</td>
                 </tr>
               )}
             </tbody>
@@ -422,8 +293,8 @@ async function handleAddFilesImmediate(files: FileList | null){
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="bg-white rounded-lg border shadow-lg max-w-5xl w-[95vw] max-h-[90vh] overflow-auto p-4">
               <div className="flex items-center justify-between mb-2">
-                <div className="font-medium">Edit measurement — {baseName(modalTarget.storage_path)}</div>
-                <button className="p-1 rounded hover:bg-slate-100" onClick={closeEditModal} aria-label="Close"><X className="w-4 h-4" /></button>
+                <div className="font-medium">Edit measurement</div>
+                <button className="p-1 rounded hover:bg-slate-100" onClick={closeModal} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
               <CalibrationPhotoCard
                 photo={{
@@ -437,57 +308,9 @@ async function handleAddFilesImmediate(files: FileList | null){
                 onChange={(r)=>setModalResult(r)}
               />
               <div className="mt-3 flex justify-end gap-2">
-                <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={closeEditModal}>Cancel</button>
+                <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={closeModal}>Cancel</button>
                 <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={saveEditModal}>Save</button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add photos modal */}
-        { false && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg border shadow-lg max-w-6xl w-[96vw] max-h-[92vh] overflow-auto p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-medium">Add photos</div>
-                <button className="p-1 rounded hover:bg-slate-100" onClick={()=>{ setAddOpen(false); setQueue([]); }} aria-label="Close"><X className="w-4 h-4" /></button>
-              </div>
-
-              <div
-                className="rounded-lg border border-dashed p-6 bg-white text-center"
-                onDragOver={(e)=>e.preventDefault()}
-                onDrop={(e)=>{ e.preventDefault(); onAddFiles(e.dataTransfer.files); }}
-              >
-                <div className="text-sm text-slate-600 mb-3">Drag &amp; drop photos here, or</div>
-                <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-slate-50">
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={(e)=>onAddFiles(e.target.files)} />
-                  <span>Select images</span>
-                </label>
-              </div>
-
-              {queue.length>0 ? (
-                <div className="mt-4 space-y-6">
-                  {queue.map((q,idx)=>(
-                    <div key={q.id} className="rounded-lg border bg-white p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-medium">New photo #{idx+1} — <span className={q.isDuplicateName ? "text-rose-700" : ""}>{safeName(q.file.name)}</span>{q.isDuplicateName ? " (duplicate filename)" : ""}</div>
-                        <button className="rounded-md border px-2 py-1 text-sm hover:bg-slate-50" onClick={()=>setQueue(prev=>prev.filter(x=>x.id!==q.id))}>Remove</button>
-                      </div>
-                      <CalibrationPhotoCard
-                        photo={{ id:q.id, url:q.url, width:q.width, height:q.height, label:"#"}}
-                        defaultScaleM={scaleM}
-                        onChange={(r)=>setQueue(prev=>prev.map(x=>x.id===q.id ? {...x, result:r} : x))}
-                      />
-                    </div>
-                  ))}
-                  <div className="flex justify-end gap-2">
-                    <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={()=>{ setAddOpen(false); setQueue([]); }}>Cancel</button>
-                    <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={saveAddModal}>Save</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500 mt-4">No files in queue yet.</div>
-              )}
             </div>
           </div>
         )}

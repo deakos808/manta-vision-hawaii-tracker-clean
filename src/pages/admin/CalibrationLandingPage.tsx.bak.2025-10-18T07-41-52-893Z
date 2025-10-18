@@ -6,8 +6,8 @@ import { Pencil, Trash2 } from "lucide-react";
 
 type Row = {
   session_id: string;
-  n_measurements: number | null;
-  mean_error_pct: number | null;
+  n_measurements: number | null;   // rows in calibration_measurements
+  mean_error_pct: number | null;   // from view
   photographer_name?: string | null;
   camera_model?: string | null;
   laser_setup?: string | null;
@@ -23,28 +23,35 @@ export default function CalibrationLandingPage(){
   useEffect(()=>{ (async ()=>{
     setLoading(true);
     try{
-      const { data: stats, error: e1 } = await supabase.from("calibration_session_stats").select("*");
+      // Stats view
+      const { data: stats, error: e1 } = await supabase
+        .from("calibration_session_stats")
+        .select("*");
       if (e1) throw e1;
 
+      // Headers (names/model/laser/timestamp)
       const { data: heads, error: e2 } = await supabase
         .from("calibration_sessions")
         .select("id, photographer_name, camera_model, laser_setup, created_at");
       if (e2) throw e2;
 
-      const ids = (heads||[]).map(h=>h.id);
-      const cMap: Record<string, number> = {};
-      if (ids.length){
+      // Build photos count map
+      const ids = (heads || []).map(h => h.id);
+      const countMap: Record<string, number> = {};
+      if (ids.length) {
         const { data: ph, error: e3 } = await supabase
           .from("calibration_photos")
           .select("id, session_id")
           .in("session_id", ids);
         if (e3) throw e3;
-        for (const p of (ph||[])) cMap[p.session_id] = (cMap[p.session_id]||0) + 1;
+        for (const p of (ph || [])) {
+          countMap[p.session_id] = (countMap[p.session_id] || 0) + 1;
+        }
       }
-      setPhotosCount(cMap);
+      setPhotosCount(countMap);
 
-      const hmap = new Map((heads||[]).map(h => [h.id, h]));
-      const merged: Row[] = (stats||[]).map(s => ({
+      const hmap = new Map((heads || []).map(h => [h.id, h]));
+      const merged: Row[] = (stats || []).map(s => ({
         session_id: s.session_id,
         n_measurements: s.n_measurements,
         mean_error_pct: s.mean_error_pct,
@@ -52,9 +59,11 @@ export default function CalibrationLandingPage(){
         camera_model:     hmap.get(s.session_id)?.camera_model ?? null,
         laser_setup:      hmap.get(s.session_id)?.laser_setup ?? null,
         created_at:       hmap.get(s.session_id)?.created_at ?? null,
-      })).sort((a,b)=> (b.created_at||"").localeCompare(a.created_at||""));
+      })).sort((a,b)=> (b.created_at || "").localeCompare(a.created_at || ""));
       setRows(merged);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   })(); },[]);
 
   async function deleteSession(sessionId: string){
@@ -65,7 +74,10 @@ export default function CalibrationLandingPage(){
         const paths = list.map(it => `${base}/${it.name}`);
         await supabase.storage.from("calibration-images").remove(paths);
       }
-      const { error: delErr } = await supabase.from("calibration_sessions").delete().eq("id", sessionId);
+      const { error: delErr } = await supabase
+        .from("calibration_sessions")
+        .delete()
+        .eq("id", sessionId);
       if (delErr) throw delErr;
       setRows(prev => prev.filter(r => r.session_id !== sessionId));
     } catch (e:any) {
@@ -76,6 +88,7 @@ export default function CalibrationLandingPage(){
 
   return (
     <Layout>
+      <div className="min-h-full">
       {/* Hero */}
       <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
         <div className="max-w-6xl mx-auto text-center">
@@ -156,6 +169,6 @@ export default function CalibrationLandingPage(){
           </table>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }
