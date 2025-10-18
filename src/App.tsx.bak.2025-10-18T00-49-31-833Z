@@ -1,5 +1,3 @@
-import CalibrationLandingPage from "./pages/admin/CalibrationLandingPage";
-import AddCalibrationPage from "./pages/admin/AddCalibrationPage";
 // File: src/App.tsx
 import React from "react";
 
@@ -119,8 +117,6 @@ function App() {
   <Route path="/admin/finding_duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
 
   {/* 404 Fallback */}
-  <Route path="/admin/calibration/new" element={<RequireAuth adminOnly><AddCalibrationPage /></RequireAuth>} />
-  <Route path="/admin/calibration" element={<RequireAuth adminOnly><CalibrationLandingPage /></RequireAuth>} />
   <Route path="*" element={<NotFoundPage />} />
 </Routes>
   );

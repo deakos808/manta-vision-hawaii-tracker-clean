@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
+import CalibrationAdminCard from "../../components/admin/CalibrationAdminCard";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -34,15 +35,6 @@ export default function AdminDashboardPage() {
           </Card>
         </Section>
 
-        {/* Photogrammetry */}
-        <Section title="Photogrammetry">
-          <AdminCard
-            title="📐 Paired-Laser Calibration"
-            desc="Create a camera/laser calibration session and evaluate percent error by photo."
-            btn={{ label: "Start calibration", onClick: () => navigate("/admin/calibration/new") }}
-          />
-        </Section>
-
         {/* Admin & Access */}
         <Section title="Admin & Access">
           <AdminCard
@@ -55,7 +47,7 @@ export default function AdminDashboardPage() {
         {/* Data Integrity */}
         <Section title="Data Integrity">
           <AdminCard
-            title="�� Data Integrity Check"
+            title="🦮 Data Integrity Check"
             desc="Run consistency checks across catalog, mantas, sightings, and photos."
             btn={{ label: "Run Checks", onClick: () => navigate("/admin/data-integrity") }}
           />
@@ -118,7 +110,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-lg font-semibold pt-2">{title}</h2>
       <div className="bg-gray-50 p-4 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
         {children}
-      </div>
+      
+{/* deprecated injected calibration section */}{false && (<div className="mt-8">
+  <h2 className="text-lg font-semibold mb-3">Calibration</h2>
+  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {/* deprecated duplicate calibration card */}{false && <CalibrationAdminCard /> }
+  </div>)}</div>
+
+  {/* Calibration section (dedicated) */}
+  <section aria-labelledby="calibration-heading" className="mt-10">
+    <h2 id="calibration-heading" className="text-lg font-semibold mb-3">Calibration</h2>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* duplicate calibration card */}{false && <CalibrationAdminCard /* DEDICATED */ />}
+    </div>
+  </section>
+  </div>
     </section>
   );
 }
