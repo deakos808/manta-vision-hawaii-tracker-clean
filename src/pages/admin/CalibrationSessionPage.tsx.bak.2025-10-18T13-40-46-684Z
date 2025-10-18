@@ -188,48 +188,12 @@ export default function CalibrationSessionPage(){
   }
 
   async function deletePhoto(row: PhotoRow){
-  if(!confirm("Delete this photo and its measurement?")) return;
-  await supabase.storage.from("calibration-images").remove([row.storage_path]);
-  await supabase.from("calibration_measurements").delete().eq("photo_id", row.id);
-  await supabase.from("calibration_photos").delete().eq("id", row.id);
-  setPhotos(prev=>prev.filter(p=>p.id!==row.id));
-}
-
-// Upload files, insert photos (no measurements), append to table
-async function handleAddFilesImmediate(files: FileList | null){
-  if(!files || !sess) return;
-  for(const f of Array.from(files)){
-    if(!f.type.startsWith("image/")) continue;
-    const meta = await useImageDims(f);
-    const filename = safeName(f.name);
-    const storagePath = `calibration/${sess.id}/${filename}`;
-
-    const up = await supabase.storage.from("calibration-images").upload(storagePath, f, { upsert:true });
-    if (up.error) throw up.error;
-
-    const { data: prow, error: pErr } = await supabase
-      .from("calibration_photos")
-      .insert([{
-        session_id: sess.id,
-        storage_path: storagePath,
-        width_px: meta.width,
-        height_px: meta.height,
-        actual_length_m: null
-      }]).select("id").single();
-    if (pErr) throw pErr;
-
-    const { data: u } = await supabase.storage.from("calibration-images").createSignedUrl(storagePath, 3600);
-    setPhotos(prev=>[...prev, {
-      id: prow!.id,
-      storage_path: storagePath,
-      width_px: meta.width,
-      height_px: meta.height,
-      actual_length_m: null,
-      signed_url: u?.signedUrl ?? null,
-      m: null
-    }]);
+    if(!confirm("Delete this photo and its measurement?")) return;
+    await supabase.storage.from("calibration-images").remove([row.storage_path]);
+    await supabase.from("calibration_measurements").delete().eq("photo_id", row.id);
+    await supabase.from("calibration_photos").delete().eq("id", row.id);
+    setPhotos(prev=>prev.filter(p=>p.id!==row.id));
   }
-}
 
   // ----- Add photos modal -----
   const existingNames = new Set(photos.map(p => baseName(p.storage_path)));
@@ -335,7 +299,9 @@ async function handleAddFilesImmediate(files: FileList | null){
               </div>
               <div className="mt-3 flex gap-2">
                 <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={()=>setEditMeta(true)}>Edit</button>
-                
+                <button className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={()=>{ setAddOpen(true); setQueue([]); }}>
+                  <Plus className="w-4 h-4" /> Add photos
+                </button>
               </div>
             </>
           ) : (
@@ -445,7 +411,7 @@ async function handleAddFilesImmediate(files: FileList | null){
         )}
 
         {/* Add photos modal */}
-        { false && (
+        {addOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="bg-white rounded-lg border shadow-lg max-w-6xl w-[96vw] max-h-[92vh] overflow-auto p-4">
               <div className="flex items-center justify-between mb-2">
