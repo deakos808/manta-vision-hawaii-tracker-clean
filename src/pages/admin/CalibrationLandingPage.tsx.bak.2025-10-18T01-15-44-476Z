@@ -75,7 +75,7 @@ export default function CalibrationLandingPage(){
                 <td className="px-3 py-2 text-right">{r.n_measurements ?? 0}</td>
                 <td className="px-3 py-2 text-right">{r.mean_error_pct != null ? r.mean_error_pct.toFixed(2) : "-"}</td>
                 <td className="px-3 py-2 text-right">
-                  <span className="text-sky-700 underline cursor-pointer" onClick={()=>window.location.href = `/admin/calibration/${r.session_id}` }>Open</span>
+                  <span className="text-sky-700 underline cursor-pointer" onClick={()=>alert("Session view/edit page coming next.")}>Open</span>
                 </td>
               </tr>
             ))}
