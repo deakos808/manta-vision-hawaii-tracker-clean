@@ -117,10 +117,10 @@ function App() {
   <Route path="/admin/csv-debug" element={<RequireAuth adminOnly><CsvDebugPage /></RequireAuth>} />
   <Route path="/admin/finding-duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
   <Route path="/admin/finding_duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
+  <Route path="/admin/calibration/new" element={<AddCalibrationPage />} />
+  <Route path="/admin/calibration" element={<CalibrationLandingPage />} />
 
   {/* 404 Fallback */}
-  <Route path="/admin/calibration/new" element={<RequireAuth adminOnly><AddCalibrationPage /></RequireAuth>} />
-  <Route path="/admin/calibration" element={<RequireAuth adminOnly><CalibrationLandingPage /></RequireAuth>} />
   <Route path="*" element={<NotFoundPage />} />
 </Routes>
   );
