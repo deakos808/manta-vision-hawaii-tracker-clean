@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient";
-import { Ruler } from "lucide-react";
+import { RulerSquare } from "lucide-react";
 
 export default function CalibrationTile(){
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function CalibrationTile(){
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold flex items-center gap-2">
-            <Ruler className="w-4 h-4 text-blue-600" />
+            <RulerSquare className="w-4 h-4 text-blue-600" />
             Paired-Laser Calibration
           </h3>
           {count != null && (
