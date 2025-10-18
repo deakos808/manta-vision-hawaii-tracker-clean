@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabaseClient";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -87,8 +86,7 @@ export default function CalibrationLandingPage(){
   }
 
   return (
-    <Layout>
-      <div className="min-h-full">
+    <div className="min-h-full">
       {/* Hero */}
       <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
         <div className="max-w-6xl mx-auto text-center">

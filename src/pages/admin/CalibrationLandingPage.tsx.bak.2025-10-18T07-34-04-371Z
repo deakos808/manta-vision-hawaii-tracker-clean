@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabaseClient";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -10,7 +9,6 @@ type Row = {
   mean_error_pct: number | null;   // from view
   photographer_name?: string | null;
   camera_model?: string | null;
-  laser_setup?: string | null;
   created_at?: string | null;
 };
 
@@ -29,10 +27,10 @@ export default function CalibrationLandingPage(){
         .select("*");
       if (e1) throw e1;
 
-      // Headers (names/model/laser/timestamp)
+      // Headers (names/model/timestamp)
       const { data: heads, error: e2 } = await supabase
         .from("calibration_sessions")
-        .select("id, photographer_name, camera_model, laser_setup, created_at");
+        .select("id, photographer_name, camera_model, created_at");
       if (e2) throw e2;
 
       // Build photos count map
@@ -56,9 +54,8 @@ export default function CalibrationLandingPage(){
         n_measurements: s.n_measurements,
         mean_error_pct: s.mean_error_pct,
         photographer_name: hmap.get(s.session_id)?.photographer_name ?? null,
-        camera_model:     hmap.get(s.session_id)?.camera_model ?? null,
-        laser_setup:      hmap.get(s.session_id)?.laser_setup ?? null,
-        created_at:       hmap.get(s.session_id)?.created_at ?? null,
+        camera_model: hmap.get(s.session_id)?.camera_model ?? null,
+        created_at: hmap.get(s.session_id)?.created_at ?? null,
       })).sort((a,b)=> (b.created_at || "").localeCompare(a.created_at || ""));
       setRows(merged);
     } finally {
@@ -79,6 +76,8 @@ export default function CalibrationLandingPage(){
         .delete()
         .eq("id", sessionId);
       if (delErr) throw delErr;
+
+      // remove from local state without full reload
       setRows(prev => prev.filter(r => r.session_id !== sessionId));
     } catch (e:any) {
       console.error("[calibration] deleteSession", e);
@@ -87,8 +86,7 @@ export default function CalibrationLandingPage(){
   }
 
   return (
-    <Layout>
-      <div className="min-h-full">
+    <div className="min-h-full">
       {/* Hero */}
       <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
         <div className="max-w-6xl mx-auto text-center">
@@ -118,25 +116,23 @@ export default function CalibrationLandingPage(){
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="text-left   px-3 py-2">Created</th>
-                <th className="text-center px-3 py-2">Photographer</th>
-                <th className="text-center px-3 py-2">Camera</th>
-                <th className="text-center px-3 py-2">Laser setup</th>
-                <th className="text-center px-3 py-2">Photos</th>
-                <th className="text-center px-3 py-2">Mean error (%)</th>
-                <th className="text-center px-3 py-2">Actions</th>
+                <th className="text-left px-3 py-2">Created</th>
+                <th className="text-left px-3 py-2">Photographer</th>
+                <th className="text-left px-3 py-2">Camera</th>
+                <th className="text-right px-3 py-2">Photos</th>
+                <th className="text-right px-3 py-2">Mean error (%)</th>
+                <th className="text-right px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.session_id} className="border-t">
                   <td className="px-3 py-2">{r.created_at ? new Date(r.created_at).toLocaleString() : "-"}</td>
-                  <td className="px-3 py-2 text-center">{r.photographer_name || "-"}</td>
-                  <td className="px-3 py-2 text-center">{r.camera_model || "-"}</td>
-                  <td className="px-3 py-2 text-center">{r.laser_setup || "-"}</td>
-                  <td className="px-3 py-2 text-center">{photosCount[r.session_id] ?? 0}</td>
-                  <td className="px-3 py-2 text-center">{r.mean_error_pct != null ? r.mean_error_pct.toFixed(2) : "-"}</td>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-2">{r.photographer_name || "-"}</td>
+                  <td className="px-3 py-2">{r.camera_model || "-"}</td>
+                  <td className="px-3 py-2 text-right">{photosCount[r.session_id] ?? 0}</td>
+                  <td className="px-3 py-2 text-right">{r.mean_error_pct != null ? r.mean_error_pct.toFixed(2) : "-"}</td>
+                  <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
@@ -162,7 +158,7 @@ export default function CalibrationLandingPage(){
               ))}
               {(!rows.length && !loading) && (
                 <tr>
-                  <td className="px-3 py-6 text-center text-slate-500" colSpan={7}>No sessions yet.</td>
+                  <td className="px-3 py-6 text-center text-slate-500" colSpan={6}>No sessions yet.</td>
                 </tr>
               )}
             </tbody>
