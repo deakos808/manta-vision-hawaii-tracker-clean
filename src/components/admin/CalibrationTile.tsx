@@ -1,0 +1,38 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function CalibrationTile(){
+  const navigate = useNavigate();
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(()=>{ (async()=>{
+    // exact count without fetching rows
+    const { count, error } = await supabase
+      .from("calibration_sessions")
+      .select("id", { count: "exact", head: true });
+    if (!error) setCount(count ?? 0);
+  })(); },[]);
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-sm bg-slate-200" />
+            Paired-Laser Calibration
+          </h3>
+          {count != null && (
+            <div className="text-xs text-slate-600">Sessions: <span className="font-medium">{count}</span></div>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Create a camera/laser calibration session and evaluate percent error by photo.
+        </p>
+        <Button variant="outline" onClick={()=>navigate("/admin/calibration")}>View Calibrations</Button>
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { Pencil, Trash2 } from "lucide-react";
+
 type Row = {
   session_id: string;
   n_measurements: number | null;
@@ -90,72 +91,32 @@ export default function CalibrationLandingPage(){
                 <td className="px-3 py-2">{r.created_at ? new Date(r.created_at).toLocaleString() : "-"}</td>
                 <td className="px-3 py-2">{r.photographer_name || "-"}</td>
                 <td className="px-3 py-2">{r.camera_model || "-"}</td>
+                <td className="px-3 py-2 text-right">{r.n_measurements ?? 0}</td>
+                <td className="px-3 py-2 text-right">{r.mean_error_pct != null ? r.mean_error_pct.toFixed(2) : "-"}</td>
                 <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
-                <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
-                <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
+                  <span className="text-sky-700 underline cursor-pointer" onClick={()=>window.location.href = `/admin/calibration/${r.session_id}` }>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
+                      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
+                      aria-label="Edit session"
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span className="sr-only">Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
+                      onClick={() => { if(confirm("Delete this calibration session? This will remove its photos/measurements. Continue?")) deleteSession(r.session_id); }}
+                      aria-label="Delete session"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Delete</span>
+                    </button>
+                  </td>
+                </td>
               </tr>
             ))}
             {(!rows.length && !loading) && (

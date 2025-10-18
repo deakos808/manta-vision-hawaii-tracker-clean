@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
-import CalibrationTile from "@/components/admin/CalibrationTile";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -37,7 +36,11 @@ export default function AdminDashboardPage() {
 
         {/* Photogrammetry */}
         <Section title="Photogrammetry">
-          <CalibrationTile />
+          <AdminCard
+            title="📐 Paired-Laser Calibration"
+            desc="Create a camera/laser calibration session and evaluate percent error by photo."
+            btn={{ label: "Start calibration", onClick: () => navigate("/admin/calibration/new") }}
+          />
         </Section>
 
         {/* Admin & Access */}
