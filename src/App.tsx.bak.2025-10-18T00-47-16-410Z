@@ -48,8 +48,6 @@ import Photos from "@/pages/browse_data/Photos";
 import Mantas from "@/pages/browse_data/Mantas";
 import Catalog from "@/pages/browse_data/Catalog";
 import Sightings from "@/pages/browse_data/Sightings";
-import CalibrationLandingPage from "pages/admin/CalibrationLandingPage";
-import AddCalibrationPage from "pages/admin/AddCalibrationPage";
 
 // NEW: non-admin Add Sighting pages
 
@@ -116,11 +114,7 @@ function App() {
   <Route path="/admin/diagnostics-csv" element={<RequireAuth adminOnly><CsvDataReviewPage /></RequireAuth>} />
   <Route path="/admin/csv-debug" element={<RequireAuth adminOnly><CsvDebugPage /></RequireAuth>} />
   <Route path="/admin/finding-duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
-  <Rou
-        {/* calibration (absolute, injected) */}
-        <Route path="/admin/calibration" element={<CalibrationLandingPage />} />
-        <Route path="/admin/calibration/new" element={<AddCalibrationPage />} />
-        te path="/admin/finding_duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
+  <Route path="/admin/finding_duplicates" element={<RequireAuth adminOnly><FindingDuplicatesPage /></RequireAuth>} />
 
   {/* 404 Fallback */}
   <Route path="*" element={<NotFoundPage />} />
