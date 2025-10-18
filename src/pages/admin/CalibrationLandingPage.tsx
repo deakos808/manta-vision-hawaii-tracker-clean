@@ -13,53 +13,56 @@ type Row = {
 
 export default function CalibrationLandingPage(){
   const navigate = useNavigate();
-
-  async function deleteSession(sessionId: string){
-    try{
-      // 1) Attempt to delete storage files under calibration/<sessionId>/
-      const base = `calibration/${sessionId}`;
-      const { data: list, error: listErr } = await supabase.storage.from("calibration-images").list(base, { limit: 100 });
-      if (!listErr && list && list.length){
-        const paths = list.map(it => `${base}/${it.name}`);
-        await supabase.storage.from("calibration-images").remove(paths);
-      }
-      // 2) Delete DB row (photos + measurements cascade)
-      const { error: delErr } = await supabase.from("calibration_sessions").delete().eq("id", sessionId);
-      if (delErr) throw delErr;
-      // soft refresh
-      window.location.reload();
-    } catch(e){ console.error("[calibration] deleteSession error", e); alert("Delete failed: " + (e as any)?.message ?? e); }
-  }
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
+  const [photosCount, setPhotosCount] = useState<Record<string, number>>({});
 
   useEffect(()=>{ (async ()=>{
     setLoading(true);
     try{
-      const { data: stats, error: e1 } = await supabase
-        .from("calibration_session_stats")
-        .select("*");
+      const { data: stats, error: e1 } = await supabase.from("calibration_session_stats").select("*");
       if (e1) throw e1;
-
-      const { data: heads, error: e2 } = await supabase
-        .from("calibration_sessions")
-        .select("id, photographer_name, camera_model, created_at");
+      const { data: heads, error: e2 } = await supabase.from("calibration_sessions").select("id, photographer_name, camera_model, created_at");
       if (e2) throw e2;
 
-      const map = new Map((heads||[]).map(h => [h.id, h]));
-      const merged: Row[] = (stats||[]).map(s => ({
-        session_id: s.session_id,
-        n_measurements: s.n_measurements,
-        mean_error_pct: s.mean_error_pct,
+      const ids=(heads||[]).map(h=>h.id);
+      const cMap: Record<string, number> = {};
+      if(ids.length){
+        const { data: ph, error: e3 } = await supabase.from("calibration_photos").select("id, session_id").in("session_id", ids);
+        if (e3) throw e3;
+        for (const p of (ph||[])) cMap[p.session_id]=(cMap[p.session_id]||0)+1;
+      }
+      setPhotosCount(cMap);
+
+      const map=new Map((heads||[]).map(h=>[h.id,h]));
+      const merged: Row[] = (stats||[]).map(s=>({
+        session_id:s.session_id,
+        n_measurements:s.n_measurements,
+        mean_error_pct:s.mean_error_pct,
         photographer_name: map.get(s.session_id)?.photographer_name ?? null,
         camera_model: map.get(s.session_id)?.camera_model ?? null,
         created_at: map.get(s.session_id)?.created_at ?? null,
-      })).sort((a,b)=> (b.created_at||'').localeCompare(a.created_at||''));
+      })).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
       setRows(merged);
     } finally { setLoading(false); }
   })(); },[]);
 
   return (
+    <div className="min-h-full">
+      {/* Hero */}
+      <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold">Calibration Sessions</h1>
+        </div>
+      </div>
+
+      {/* Breadcrumb (below hero) */}
+      <div className="max-w-6xl mx-auto px-4 py-2">
+        <a href="/admin" className="text-sm text-blue-700 underline">Admin</a>
+        <span className="text-sm text-slate-600"> / Calibration</span>
+      </div>
+
+      <div className="max-w-6xl mx-auto p-6">
     <div className="p-6">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold">Calibration Sessions</h1>
@@ -90,72 +93,9 @@ export default function CalibrationLandingPage(){
                 <td className="px-3 py-2">{r.created_at ? new Date(r.created_at).toLocaleString() : "-"}</td>
                 <td className="px-3 py-2">{r.photographer_name || "-"}</td>
                 <td className="px-3 py-2">{r.camera_model || "-"}</td>
-                <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
-                <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
-                <td className="px-3 py-2 text-right">
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
-      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
-      aria-label="Edit session"
-      title="Edit"
-    >
-      <Pencil className="w-4 h-4" />
-      <span className="sr-only">Edit</span>
-    </button>
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
-      onClick={() => { if (confirm("Delete this calibration session? This will remove its photos/measurements.")) deleteSession(r.session_id); }}
-      aria-label="Delete session"
-      title="Delete"
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="sr-only">Delete</span>
-    </button>
-  </td>
+                <td className="px-3 py-2 text-right">{/* actions cell remains later */}</td>
+                <td className="px-3 py-2 text-right">{/* actions cell remains later */}</td>
+                <td className="px-3 py-2 text-right">{/* actions cell remains later */}</td>
               </tr>
             ))}
             {(!rows.length && !loading) && (
