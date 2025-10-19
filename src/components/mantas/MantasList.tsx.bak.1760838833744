@@ -93,51 +93,46 @@ export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Prop
 
           return (
             <div key={String(m?.id ?? idx)} className={`${GRID} px-6 py-3 overflow-hidden pr-3`}>
-                              {/* Ventral column with baseline-aligned pill */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={ventUrl} placeholder="ventral" />
-                  {/* 3 compact rows below the tile */}
-                  <div className="mt-2 grid gap-1 w-[128px]">
-                    <div className="flex items-center justify-center">
-                      {matchedId !== null ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Matched</span>
-                      ) : noMatch ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-slate-100 text-slate-600">No matches</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
-                          onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        >
-                          Match
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-center text-slate-600 font-mono">{matchedId !== null ? `Catalog #${matchedId}` : ""}</div>
-                    <div className="flex items-center justify-center">
-                      <button
-                        type="button"
-                        aria-label="Change match"
-                        className="p-[3px] rounded hover:bg-slate-100 text-slate-600"
-                        onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        title="Edit match"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                          <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
-                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+              {/* Ventral column with baseline-aligned pill */}
+              <div className="h-[136px] flex flex-col items-center justify-end">
+                <ImgTile url={ventUrl} placeholder="ventral" />
+                <div className="mt-2 flex items-center gap-2 max-w-[128px]">
+                  {matchedId !== null ? (
+                    <>
+                      <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Matched <span className="ml-1 font-mono">#{m?.pk_catalog_id ?? m?.fk_catalog_id ?? m?.catalog_id ?? ""}</span></span>
+                      <span className="text-[10px] text-slate-500  whitespace-nowrap max-w-none">pk_catalog_id: {matchedId}</span>
+                    </>
+                  ) : noMatch ? (
+                    <span className="text-[11px] px-2 py-[3px] rounded-full bg-slate-100 text-slate-600">No matches found</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
+                      onClick={()=>openMatch(m, ventUrl)}
+                    >
+                      Match
+                    </button>
+                  )}
+                  {/* change match pencil */}
+                  <button
+                    type="button"
+                    aria-label="Change match"
+                    className="p-[3px] rounded hover:bg-slate-100 text-slate-600"
+                    onClick={()=>openMatch(m, ventUrl)}
+                    title="Edit match"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
+                      <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
                 </div>
+              </div>
 
-                
-                {/* Dorsal column – always dorsal or placeholder */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={dorUrl} placeholder="dorsal" />
-                  <div className="mt-2 min-h-[64px]" />
-                </div>
-
+              {/* Dorsal column – always dorsal or placeholder */}
+              <div className="h-[136px] flex items-end justify-center">
+                <ImgTile url={dorUrl} placeholder="dorsal" />
+              </div>
 
               <div className={`${TD} text-center`}>{count}</div>
               <div className={TD}>{tempName(m)}</div>

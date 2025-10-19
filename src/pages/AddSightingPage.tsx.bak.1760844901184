@@ -10,7 +10,13 @@ import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 
-function genId(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+function uuid(){ try { return (
+      <>
+        <style id="manta-review-styles">{`
+          /* Hide any legacy sticky Save floating button entirely */
+          button[data-action="review-save-sticky"]{ display:none !important; }
+        `}</style>
+      </>crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
 
@@ -24,29 +30,29 @@ export default function AddSightingPage() {
   const isReview = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).has('review'); } catch { return false; }
   }, []);
-  const reviewIdParam = React.useMemo(() => {
+  const reviewId = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).get('review'); } catch { return null; }
   }, []);
 
   const saveReviewDraft = React.useCallback(() => {
-    if (!reviewIdParam) { alert("No review id"); return; }
+    if (!reviewId) { alert("No review id"); return; }
     try {
       const ta = document.querySelector('textarea[placeholder*="notes" i]') as HTMLTextAreaElement | null;
       const notes = ta?.value ?? '';
       const mantas = (window as any).__mantas ?? [];
       const payload = { notes, mantas, editedAt: new Date().toISOString() };
-      localStorage.setItem('__reviewDraft:' + reviewIdParam, JSON.stringify(payload));
+      localStorage.setItem('__reviewDraft:' + reviewId, JSON.stringify(payload));
       alert('Draft saved');
     } catch (e) {
       console.warn('[review save] error', e);
       alert('Could not save draft');
     }
-  }, [reviewIdParam]);
+  }, [reviewId]);
 
   React.useEffect(() => {
-    if (!reviewIdParam) return;
+    if (!reviewId) return;
     try {
-      const raw = localStorage.getItem('__reviewDraft:' + reviewIdParam);
+      const raw = localStorage.getItem('__reviewDraft:' + reviewId);
       if (!raw) return;
       const payload = JSON.parse(raw);
       // hydrate notes field if available
@@ -54,11 +60,11 @@ export default function AddSightingPage() {
       if (ta && typeof payload?.notes === 'string') ta.value = payload.notes;
       // hydrate mantas "source of truth" used by summary components
       if (Array.isArray(payload?.mantas)) (window as any).__mantas = payload.mantas;
-      console.log('[AddSighting][review] hydrated draft for', reviewIdParam);
+      console.log('[AddSighting][review] hydrated draft for', reviewId);
     } catch (e) {
       console.warn('[review load] error', e);
     }
-  }, [reviewIdParam]);
+  }, [reviewId]);
 
   // Floating Save button (review draft)
   React.useEffect(() => {
@@ -82,30 +88,7 @@ export default function AddSightingPage() {
         };
         document.body.appendChild(btn);
       }
-      
-  // ---- review-only helpers (safe) ----
-  const isReview = React.useMemo(() => {
-    try { return new URLSearchParams(window.location.search).has('review'); } catch { return false; }
-  }, []);
-  const reviewIdParam = React.useMemo(() => {
-    try { return new URLSearchParams(window.location.search).get('review'); } catch { return null; }
-  }, []);
-  const saveReviewDraftInline = React.useCallback(() => {
-    if (!reviewIdParam) { alert('No review id'); return; }
-    try {
-      const ta = document.querySelector('textarea[placeholder*="notes" i]') as HTMLTextAreaElement | null;
-      const notes = ta?.value ?? '';
-      const mantas = (window as any).__mantas ?? [];
-      const payload = { notes, mantas, editedAt: new Date().toISOString() };
-      localStorage.setItem('__reviewDraft:' + reviewIdParam, JSON.stringify(payload));
-      alert('Draft saved');
-    } catch (e) {
-      console.warn('[review save] error', e);
-      alert('Could not save draft');
-    }
-  }, [reviewIdParam]);
-  // ------------------------------------
-return () => { const el = document.getElementById(id); if (el) el.remove(); };
+      return () => { const el = document.getElementById(id); if (el) el.remove(); };
     } catch {}
   }, []);
 
@@ -115,7 +98,30 @@ return () => { const el = document.getElementById(id); if (el) el.remove(); };
   function safePick<T>(getter: () => T | undefined | null): T | undefined {
     try { return getter(); } catch { return undefined; }
   }
-    // ----------------------------------------------------------------
+  function saveReviewDraft() {
+    // Avoid crashes if some names differ; we best-effort pick common ones.
+    const payload: any = {
+      notes:          safePick(() => notes),
+      mantas:         safePick(() => mantas),
+      pageMatchMeta:  safePick(() => pageMatchMeta),
+      formState:      safePick(() => formState),
+    };
+    const sid = safePick(() => sightingId) ?? safePick(() => reviewId) ?? 'new';
+    const key = 'review-draft:' + String(sid);
+    try {
+      localStorage.setItem(key, JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
+      setDraftSavedAt(new Date().toISOString());
+      console.log('[review] draft saved locally under', key, payload);
+      // keep UI simple; no toasts dependency:
+      // @ts-ignore
+      if (typeof window !== 'undefined') alert('Draft saved locally.');
+    } catch (err) {
+      console.error('saveReviewDraft failed', err);
+      // @ts-ignore
+      if (typeof window !== 'undefined') alert('Unable to save draft');
+    }
+  }
+  // ----------------------------------------------------------------
 
 
 const navigate = useNavigate();
@@ -123,6 +129,7 @@ const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [reviewId, setReviewId] = useState<string | null>(null);
+  const isReview = !!reviewId;
 
   // return path (Admin review queue by default)
   const returnPath = useMemo(() => {
@@ -198,7 +205,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [coordSource, setCoordSource] = useState<string>("");
 
   const [mapOpen, setMapOpen] = useState(false);
-  const formSightingId = useMemo(()=>genId(),[]);
+  const formSightingId = useMemo(()=>uuid(),[]);
   const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
@@ -242,7 +249,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         if (p.longitude != null) setLng(String(p.longitude));
         if (Array.isArray(p.mantas)) {
           setMantas(p.mantas.map((m:any) => ({
-            id: m.id || genId(),
+            id: m.id || uuid(),
             name: m.name || "",
             gender: m.gender ?? null,
             ageClass: m.ageClass ?? null,
@@ -380,7 +387,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     setMantas(prev => {
       const incomingId = (m as any).id ? String((m as any).id) : "";
       const exists = incomingId && prev.some(p => String(p.id) === incomingId);
-      const id = exists || !incomingId ? genId() : incomingId;
+      const id = exists || !incomingId ? uuid() : incomingId;
       return [...prev, { ...(m as any), id }];
     });
   };
@@ -448,7 +455,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   return (
     <Layout>
-          <style data-id="review-save-sticky-style">{`button[data-action="review-save-sticky"]{display:none !important}`}</style>
 
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
 <UnifiedMantaModal
@@ -629,14 +635,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         {/* Footer buttons */}
         <div className="flex justify-center mt-6 gap-2">
           {isReview ? (
-<>
-<Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
+            <>
+              <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
               <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
               <button type="button" data-clean-id="review-inline-save" className="ml-2 px-3 py-2 rounded border" onClick={saveReviewDraft}>Save</button>
     <Button onClick={handleCommitReview}>Commit Review</Button>
-
-</>
-) : (
+            </>
+          ) : (
             <div className="flex flex-col items-center">
               <Button
                 data-clean-id="submit-sighting"

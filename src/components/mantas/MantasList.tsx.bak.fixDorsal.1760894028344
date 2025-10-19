@@ -107,7 +107,7 @@ export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Prop
                         <button
                           type="button"
                           className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
-                          onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
+                          onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventralUrl); }}
                         >
                           Match
                         </button>
@@ -131,13 +131,13 @@ export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Prop
                   </div>
                 </div>
 
-                
                 {/* Dorsal column – always dorsal or placeholder */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={dorUrl} placeholder="dorsal" />
-                  <div className="mt-2 min-h-[64px]" />
-                </div>
-
+}
+              <div className="h-[136px] flex flex-col items-center justify-end">
+  <ImgTile url={dorUrl} placeholder="dorsal" />
+                  <div className="mt-2 min-h-[64px]" /></ImgTile>
+  <div className="mt-2" style={{height:56}} />
+</div>
 
               <div className={`${TD} text-center`}>{count}</div>
               <div className={TD}>{tempName(m)}</div>

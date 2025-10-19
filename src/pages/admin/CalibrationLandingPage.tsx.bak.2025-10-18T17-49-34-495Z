@@ -85,7 +85,7 @@ export default function CalibrationLandingPage(){
 
       {/* Breadcrumb (below hero) */}
       <div className="max-w-6xl mx-auto px-4 py-2">
-        <Link to="/admin" className="text-sm text-blue-700 underline">Admin</Link>
+        <a href="/admin" className="text-sm text-blue-700 underline">Admin</a>
         <span className="text-sm text-slate-600"> / Calibration</span>
       </div>
 

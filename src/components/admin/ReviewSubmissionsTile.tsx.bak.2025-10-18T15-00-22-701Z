@@ -10,18 +10,33 @@ export default function ReviewSubmissionsTile(){
   const [pending, setPending] = React.useState<number | null>(null);
 
   React.useEffect(() => { (async () => {
-  try {
-    const { count, error } = await supabase
-      .from("sighting_submissions")
-      .select("id", { count: "exact" })   // body SELECT (no HEAD)
-      .eq("status", "pending")
-      .limit(1);
-    if (error) throw error;
-    setPending(count ?? 0);
-  } catch (e) {
-    console.debug("[ReviewTile] sighting_submissions status=pending error:", (e as any)?.message || e);
-    setPending(0);
+  async function countFrom(table: string, filter: (q: any)=>any): Promise<number|null> {
+    try {
+      let q = supabase.from(table).select('id', { count: 'exact' }).limit(1);
+      q = filter(q);
+      const { count, error } = await q;
+      if (error) return null;
+      return typeof count === 'number' ? count : null;
+    } catch { return null; }
   }
+
+  // Try staging first (most common for "submitted" items):
+  const tries: Array<() => Promise<number|null>> = [
+    // temp_sightings where processed = false
+    () => countFrom('temp_sightings', (q:any) => q.is('processed', false)),
+    // temp_sightings where status = 'submitted'
+    () => countFrom('temp_sightings', (q:any) => q.eq('status','submitted')),
+    // sightings where review_state = 'pending'
+    () => countFrom('sightings', (q:any) => q.eq('review_state','pending')),
+    // sightings where status = 'pending'
+    () => countFrom('sightings', (q:any) => q.eq('status','pending')),
+  ];
+
+  for (const fn of tries) {
+    const n = await fn();
+    if (n !== null) { setPending(n); return; }
+  }
+  setPending(0);
 })(); }, []);return (
     <Card>
       <CardContent className="p-4 space-y-2">

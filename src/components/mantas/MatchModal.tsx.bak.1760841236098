@@ -3,9 +3,23 @@ import { supabase } from '@/lib/supabase';
 import CatalogFilterBox, { type FiltersState } from '@/components/catalog/CatalogFilterBox';
 
 function normStr(v?: string | null): string {
+
+  // Jump to a provided start catalog id (set by list before opening the modal).
+  function idxByCatalogId(list:any[], id:any){
+    const target = Number(id);
+    if (!Array.isArray(list) || !Number.isFinite(target)) return -1;
+    const keys = ['pk_catalog_id','pk_catalog','catalog_id','id'];
+    return list.findIndex((r:any) => keys.some(k => Number((r||{})[k]) === target));
+  }
+  React.useEffect(() => {
+    const start = (typeof window!=='undefined' && (window as any).__matchStartCatalogId) ?? null;
+    if (!start) return;
+    const list:any[] = rows;
+    const i = idxByCatalogId(list, start);
+    if (i >= 0) { setIdx(i); }
+  }, [rows]);
   return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
 }
-
 function arrHas(active: string[], arr?: (string | null)[] | null, single?: string | null) {
   if (active.length === 0) return true;
   const want = active.map(normStr);
@@ -83,21 +97,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [sortAsc, setSortAsc] = useState(true);
   const [idx, setIdx] = useState(0);
-  // Jump to provided start catalog id (set via window.__matchStartCatalogId) when rows are ready.
-  useEffect(() => {
-    try {
-      if (!open) return;
-      const start = (typeof window !== 'undefined' && (window as any).__matchStartCatalogId) ?? null;
-      if (start == null) return;
-      const target = Number(start);
-      if (!Number.isFinite(target)) return;
-      const list: any[] = Array.isArray(rows) ? rows : [];
-      const keys = ['pk_catalog_id','pk_catalog','catalog_id','id'] as const;
-      const pos = list.findIndex((r:any) => keys.some(k => Number((r||{})[k]) === target));
-      if (pos >= 0) setIdx(pos);
-    } catch {}
-  }, [open, rows]);
-
   const filteredSummaryClean = useMemo(() => {
     const parts:string[]=[];
     if (filters.species.length) parts.push(filters.species.join(', '));
