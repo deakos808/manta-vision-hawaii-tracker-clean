@@ -1,0 +1,63 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardList } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function ReviewSubmissionsTile(){
+  const navigate = useNavigate();
+  const [pending, setPending] = React.useState<number | null>(null);
+
+  React.useEffect(() => { (async () => {
+  // Helper: safe count
+  async function tryCount(table: string, filters?: Array<["eq"|"is", string, any]>): Promise<number | null> {
+    try {
+      let q = supabase.from(table).select("id", { count: "exact", head: true });
+      if (filters && filters.length) {
+        for (const [op, col, val] of filters) {
+          if (op === "eq") q = q.eq(col, val);
+          if (op === "is") q = q.is(col, val);
+        }
+      }
+      const { count, error } = await q;
+      if (error) return null;
+      if (typeof count === "number") return count;
+      return null;
+    } catch { return null; }
+  }
+
+  // Try canonical sightings with review flags
+  const attempts: Array<() => Promise<number | null>> = [
+    () => tryCount("sightings", [["eq","review_state","pending"]]),
+    () => tryCount("sightings", [["eq","status","pending"]]),
+    // common staging flows
+    () => tryCount("temp_sightings", [["is","processed",false]]),
+    () => tryCount("temp_sightings", [["eq","status","submitted"]]),
+    // common admin views
+    () => tryCount("review_queue"),
+    () => tryCount("admin_review_queue"),
+  ];
+
+  for (const fn of attempts) {
+    const n = await fn();
+    if (typeof n === "number") { setPending(n); return; }
+  }
+  setPending(0);
+})(); }, []);return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-600" />
+            Manage Submitted Sightings{typeof pending === 'number' ? ' (' + pending + ')' : ''}
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Review and decide on submitted sightings, mantas, and photos.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/admin/review")}>Review</Button>
+      </CardContent>
+    </Card>
+  );
+}

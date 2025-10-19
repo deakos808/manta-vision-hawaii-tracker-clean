@@ -1,0 +1,57 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardList } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function ReviewSubmissionsTile(){
+  const navigate = useNavigate();
+  const [pending, setPending] = React.useState<number | null>(null);
+
+  React.useEffect(() => { (async () => {
+  const TAG = "[ReviewTile]";
+  async function countFrom(label: string, table: string, filter: (q: any)=>any): Promise<number|null> {
+    try {
+      let q = supabase.from(table).select('id', { count: 'exact' }).limit(1);
+      q = filter(q);
+      const { count, error } = await q;
+      if (error) { console.debug(TAG, label, "error:", error.message || error); return null; }
+      console.debug(TAG, label, "count:", count);
+      return typeof count === 'number' ? count : null;
+    } catch (e:any) {
+      console.debug(TAG, label, "exception:", e?.message || e);
+      return null;
+    }
+  }
+
+  const tries: Array<() => Promise<[string, number|null]>> = [
+    () => countFrom("temp_sightings.processed=false", "temp_sightings", (q:any)=>q.is("processed", false)).then(n=>["temp_sightings.processed=false", n]),
+    () => countFrom("temp_sightings.status='submitted'", "temp_sightings", (q:any)=>q.eq("status","submitted")).then(n=>["temp_sightings.status=submitted", n]),
+    () => countFrom("sightings.review_state='pending'", "sightings", (q:any)=>q.eq("review_state","pending")).then(n=>["sightings.review_state=pending", n]),
+    () => countFrom("sightings.status='pending'", "sightings", (q:any)=>q.eq("status","pending")).then(n=>["sightings.status=pending", n]),
+  ];
+
+  for (const fn of tries) {
+    const [label, n] = await fn();
+    if (n !== null) { setPending(n); console.debug(TAG, "selected:", label, "→", n); return; }
+  }
+  setPending(0);
+  console.debug(TAG, "no source matched; defaulting to 0");
+})(); }, []);return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-600" />
+            Manage Submitted Sightings{typeof pending === 'number' ? ' (' + pending + ')' : ''}
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Review and decide on submitted sightings, mantas, and photos.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/admin/review")}>Review</Button>
+      </CardContent>
+    </Card>
+  );
+}

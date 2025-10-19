@@ -10,19 +10,20 @@ export default function ReviewSubmissionsTile(){
   const [pending, setPending] = React.useState<number | null>(null);
 
   React.useEffect(() => { (async () => {
-  try {
-    const { count, error } = await supabase
-      .from("sighting_submissions")
-      .select("id", { count: "exact" })   // body SELECT (no HEAD)
-      .eq("status", "pending")
-      .limit(1);
-    if (error) throw error;
-    setPending(count ?? 0);
-  } catch (e) {
-    console.debug("[ReviewTile] sighting_submissions status=pending error:", (e as any)?.message || e);
+    // Try a few likely sources; first one that returns a count wins.
+    const attempts: Array<() => Promise<number | null>> = [
+      async () => { const { count, error } = await supabase.from("review_submissions").select("id", { count: "exact", head: true }); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("submitted_sightings").select("id", { count: "exact", head: true }); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("sightings").select("id", { count: "exact", head: true }).eq("status","pending"); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("sightings").select("id", { count: "exact", head: true }).eq("review_state","pending"); if (error) throw error; return count ?? 0; },
+    ];
+    for (const fn of attempts) {
+      try { const n = await fn(); if (typeof n === "number") { setPending(n); return; } } catch {}
+    }
     setPending(0);
-  }
-})(); }, []);return (
+  })(); }, []);
+
+  return (
     <Card>
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between">
