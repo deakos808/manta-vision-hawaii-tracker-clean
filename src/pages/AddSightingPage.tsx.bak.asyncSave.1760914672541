@@ -31,7 +31,7 @@ export default function AddSightingPage() {
     try { return new URLSearchParams(window.location.search).get('review'); } catch { return null; }
   }, []);
 
-  const saveReviewDraft = React.useCallback(async () => {
+  const saveReviewDraft = React.useCallback(() => {
     if (!reviewIdParam) { alert("No review id"); return; }
     try {
       const ta = document.querySelector('textarea[placeholder*="notes" i]') as HTMLTextAreaElement | null;

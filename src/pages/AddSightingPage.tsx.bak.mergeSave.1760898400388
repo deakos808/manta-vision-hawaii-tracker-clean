@@ -19,9 +19,6 @@ const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-  // Non-destructive "Save Changes" for review drafts
-  
-
 
   // --- review-draft helpers (in-review only) ---
   const isReview = React.useMemo(() => {
@@ -31,7 +28,7 @@ export default function AddSightingPage() {
     try { return new URLSearchParams(window.location.search).get('review'); } catch { return null; }
   }, []);
 
-  const saveReviewDraft = React.useCallback(async () => {
+  const saveReviewDraft = React.useCallback(() => {
     if (!reviewIdParam) { alert("No review id"); return; }
     try {
       const ta = document.querySelector('textarea[placeholder*="notes" i]') as HTMLTextAreaElement | null;
@@ -64,7 +61,11 @@ export default function AddSightingPage() {
   }, [reviewIdParam]);
 
   // ---- local draft save (temporary; server wiring comes next) ----
-        // Collect notes from the page and mantas from global state (summary components populate this)
+  async function saveReviewServer(){
+    try {
+      const rid = (typeof reviewId !== 'undefined' ? reviewId : (new URLSearchParams(window.location.search).get('review'))) || null;
+      if (!rid) { alert("No review id in URL"); return; }
+      // Collect notes from the page and mantas from global state (summary components populate this)
       const ta = document.querySelector('textarea[placeholder*="notes" i]') as HTMLTextAreaElement | null;
       const notes = ta?.value ?? '';
       const mantas = (window as any).__mantas ?? [];
@@ -149,57 +150,7 @@ useEffect(() => {
       setIslandsError(e?.message || String(e)); setIslandsLoading(false);
     }
   })();
-  
-  // Review draft: non-destructive merge save
-  const saveReviewServer = async () => {
-    try {
-      const rid = (typeof reviewId !== 'undefined' && reviewId) ? reviewId
-                 : new URLSearchParams(window.location.search).get('review');
-      if (!rid) { alert("No review id in URL"); return; }
-
-      // Fetch prior payload
-      const { data: cur, error: fetchErr } = await supabase
-        .from('sighting_submissions')
-        .select('payload')
-        .eq('id', rid)
-        .limit(1);
-      if (fetchErr) { console.warn('[review save] fetch error:', fetchErr.message); alert('Save failed (fetch)'); return; }
-      const prior = Array.isArray(cur) && cur[0]?.payload ? cur[0].payload : {};
-
-      // Collect current UI state safely
-      const getVal = (sel) => { const el = document.querySelector(sel); return (el && 'value' in el) ? String(el.value) : undefined; };
-      const notes  = getVal('textarea[placeholder*="notes" i]') ?? prior.notes ?? '';
-
-      const island = getVal('select[name="island"], select[data-field="island"]') ?? prior?.location?.island;
-      const site   = getVal('select[name="sitelocation"], select[data-field="sitelocation"]') ?? prior?.location?.sitelocation;
-      const latS   = getVal('input[name="latitude"], input[placeholder*="Latitude" i], input[data-field="lat"]');
-      const lngS   = getVal('input[name="longitude"], input[placeholder*="Longitude" i], input[data-field="lng"]');
-      const latitude  = latS !== undefined ? Number(latS) : prior?.location?.latitude;
-      const longitude = lngS !== undefined ? Number(lngS) : prior?.location?.longitude;
-
-      const mantas = (window as any).__mantas ?? prior.mantas ?? [];
-
-      const payload = {
-        ...prior,
-        notes,
-        location: { ...(prior.location ?? {}), island, sitelocation: site, latitude, longitude },
-        mantas,
-        editedAt: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('sighting_submissions')
-        .update({ payload })
-        .eq('id', rid);
-      if (error) { console.warn('[review save] update error:', error.message); alert('Save failed'); return; }
-
-      alert('Draft saved');
-    } catch (e:any) {
-      console.warn('[review save] exception:', e?.message || e);
-      alert('Save errored');
-    }
-  };
-return ()=>{ alive=false; };
+  return ()=>{ alive=false; };
 }, []);
 
 const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
