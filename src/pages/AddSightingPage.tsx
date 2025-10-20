@@ -32,9 +32,8 @@ type LocRec = { id: string; name: string; island?: string; latitude?: number|nul
 export default function AddSightingPage() {
   // REVIEW FLAGS HOOK (minimal)
   const [searchParams] = useSearchParams();
-  const reviewId = searchParams.get('review') ?? undefined;
-  const isReview = !!reviewId;
-  const returnTo = searchParams.get('return') ?? undefined;
+
+
 
   async function handleSave(e?: any) {
     try { e?.preventDefault?.(); } catch {}
