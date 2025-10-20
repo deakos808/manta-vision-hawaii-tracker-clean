@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from "react-router-dom";
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -9,17 +9,6 @@ import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedM
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
-import { useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// ---- Supabase client fallback (module-local) ----
-declare global { interface Window { supabase?: any; __mantas?: any[] } }
-const supabase: any = (globalThis as any).supabase ?? createClient(
-  (import.meta as any).env.VITE_SUPABASE_URL as string,
-  (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string
-);
-// -----------------------------------------------
-
 
 function genId(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -30,61 +19,12 @@ const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-  async function handleSave(e?: any) {
-    try { e?.preventDefault?.(); } catch {}
-    if (!isReview || !reviewId) { alert('Not in review mode'); return; }
-    try {
-      await saveReviewServer(reviewId as string);
-      console.info('[Save Changes] payload persisted for review', reviewId);
-      if (typeof window !== 'undefined' && (window as any).toast?.success) (window as any).toast.success('Saved!');
-      else alert('Saved ✓');
-    } catch (err) {
-      console.error('Save failed', err);
-      if (typeof window !== 'undefined' && (window as any).toast?.error) (window as any).toast.error('Save failed');
-      else alert('Save failed');
-    }
-  }
-
-  // Wire up "Save Changes" click if JSX isn't already bound (idempotent)
-  useEffect(() => {
-    if (!isReview) return;
-    const handler = (ev: Event) => { ev.preventDefault(); handleSave(); };
-    const sel = ['button', '[role="button"]'];
-    const isSave = (el: Element) => /save\s*changes/i.test(el.textContent || '');
-    const attach = () => {
-      const candidates = Array.from(document.querySelectorAll(sel.join(','))).filter(isSave) as HTMLElement[];
-      for (const btn of candidates) {
-        if ((btn as any).__saveHooked) continue;
-        btn.addEventListener('click', handler, { capture: true });
-        (btn as any).__saveHooked = true;
-      }
-    };
-    const mo = new MutationObserver(attach);
-    attach();
-    mo.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      mo.disconnect();
-      const candidates = Array.from(document.querySelectorAll(sel.join(','))).filter(isSave) as HTMLElement[];
-      for (const btn of candidates) {
-        if ((btn as any).__saveHooked) {
-          btn.removeEventListener('click', handler, { capture: true } as any);
-          delete (btn as any).__saveHooked;
-        }
-      }
-    };
-  }, [isReview, reviewId]); // SAVE_CHANGES_WIRING
-
-  // REVIEW FLAGS HOOK (idempotent)
-  const [searchParams] = useSearchParams();
-  const reviewId = searchParams.get('review') ?? undefined;
-  const isReview = !!reviewId;
-  const returnTo = searchParams.get('return') ?? undefined;
-
   // Non-destructive "Save Changes" for review drafts
   
 
 
   // --- review-draft helpers (in-review only) ---
+  const isReview = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).has('review'); } catch { return false; }
   }, []);
   const reviewIdParam = React.useMemo(() => {
@@ -784,90 +724,4 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       )}
     </Layout>
   );
-}
-
-
-// ---- merge + UI readers (idempotent) ----
-function deepMerge(target: any, ...sources: any[]): any {
-  const isObj = (o: any) => o && typeof o === 'object' && !Array.isArray(o);
-  const out: any = Array.isArray(target) ? [...target] : isObj(target) ? { ...target } : {};
-  for (const src of sources) {
-    if (src == null) continue;
-    if (Array.isArray(src)) return src.slice(); // replace arrays entirely
-    for (const [k, v] of Object.entries(src)) {
-      if (Array.isArray(v)) out[k] = v.slice();
-      else if (isObj(v)) out[k] = deepMerge(out[k] ?? {}, v as any);
-      else if (v !== undefined) out[k] = v;
-    }
-  }
-  return out;
-}
-
-function readValue(selectors: string[]): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  for (const sel of selectors) {
-    const el = document.querySelector(sel) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
-    if (el && 'value' in el) {
-      const val = (el as any).value;
-      if (val !== undefined && String(val).length) return String(val);
-    }
-  }
-  return undefined;
-}
-
-function readNumber(selectors: string[]): number | undefined {
-  const v = readValue(selectors);
-  const n = v != null ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function getUiState() {
-  const notes = readValue(['textarea[name="notes"]', '#notes', 'textarea[data-field="notes"]']);
-  const island = readValue(['[name="island"]', '#island', '[data-field="island"]']);
-  const siteLocation = readValue(['[name="site"]', '[name="sitelocation"]', '#site', '#sitelocation', '[data-field="site"]', '[data-field="sitelocation"]']);
-  const lat = readNumber(['[name="lat"]', '[name="latitude"]', '#lat', '#latitude', '[data-field="lat"]']);
-  const lng = readNumber(['[name="lng"]', '[name="longitude"]', '#lng', '#longitude', '[data-field="lng"]']);
-  let mantas: any = undefined;
-  if (typeof window !== 'undefined' && Array.isArray((window as any).__mantas)) {
-    mantas = (window as any).__mantas;
-  } else {
-    const nodes = Array.from(document.querySelectorAll('[data-manta]'));
-    if (nodes.length) {
-      mantas = nodes.map((n: any) => {
-        try { return JSON.parse(n.getAttribute('data-manta')!); } catch { return n.textContent?.trim(); }
-      });
-    }
-  }
-  const location = deepMerge({}, 
-    island ? { island } : {},
-    siteLocation ? { sitelocation: siteLocation, site: siteLocation } : {},
-    lat !== undefined ? { lat } : {},
-    lng !== undefined ? { lng } : {},
-  );
-  const out: any = {};
-  if (notes !== undefined) out.notes = notes;
-  if (Object.keys(location).length) out.location = location;
-  if (mantas !== undefined) out.mantas = mantas;
-  return out;
-}
-// --------------------------------
-
-
-export async function saveReviewServer(reviewId: string, partial?: any) {
-  if (!reviewId) throw new Error('saveReviewServer: missing reviewId');
-  const { data, error } = await supabase
-    .from('sighting_submissions')
-    .select('payload')
-    .eq('id', reviewId)
-    .single();
-  if (error) throw error;
-  const existing = (data && (data as any).payload) || {};
-  const ui = getUiState();
-  const merged = deepMerge({}, existing, ui, partial ?? {});
-  const { error: uerr } = await supabase
-    .from('sighting_submissions')
-    .update({ payload: merged })
-    .eq('id', reviewId);
-  if (uerr) throw uerr;
-  return { ok: true, payload: merged };
 }
