@@ -138,11 +138,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
         const p = (anyd.payload || {}) as any;
-        if (p.startTime) setStartTime(String(p.startTime));
-        if (p.stopTime) setStopTime(String(p.stopTime));
-        if (p.locationId) setLocationId(String(p.locationId));
-        if (p.locationName) setLocationName(String(p.locationName));
-        if (p.notes) setNotes(p.notes);
         if (p.photographer) setPhotographer(p.photographer);
         if (p.phone) setPhone(p.phone);
         if (p.island) setIsland(p.island);
@@ -222,17 +217,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     })();
     return ()=>{ cancelled=true; };
   },[island]);
-  // AUTO_ADD_SAVED_LOCATION: make sure saved locationId is present in options
-  useEffect(() => {
-    try {
-      if (!island || !locationId) return;
-      const found = (locList || []).some(l => String(l.id) === String(locationId));
-      if (!found) {
-        setLocList(prev => [{ id: String(locationId), name: locationName || String(locationId), island }, ...(prev || [])]);
-      }
-    } catch {}
-  }, [island, locationId, locationName, locList]);
-
 
   async function fetchEarliestCoords(isl: string, loc: string): Promise<{lat:number; lon:number} | null> {
     try{
