@@ -1,8 +1,7 @@
-import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-
+import { Link, useSearchParams } from 'react-router-dom';
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
-
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedM
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
-
+import { useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // ---- Supabase client fallback (module-local) ----
