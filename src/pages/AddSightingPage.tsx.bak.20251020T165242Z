@@ -8,7 +8,6 @@ import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedM
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
-import { saveReviewServer } from "@/utils/reviewSave";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -57,7 +56,6 @@ export default function AddSightingPage() {
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
   const dateValid  = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
   const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState<string>("");
 
   // Location
   const [island, setIsland] = useState("");
@@ -298,25 +296,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     });
     setEditingManta(null);
   };
-  async function handleSaveReview() {
-    if (!reviewId) { window.alert("Not in review mode"); return; }
-    const payload:any = {
-      date, startTime, stopTime,
-      photographer, email, phone,
-      island, locationId, locationName,
-      latitude: lat, longitude: lng,
-      mantas,
-      notes
-    };
-    try {
-      await saveReviewServer(reviewId, payload);
-      window.alert("Saved ✓");
-    } catch (e) {
-      console.error("[SaveReview] failed", e);
-      window.alert("Save failed");
-    }
-  }
-
 
   // Review actions
   async function handleCommitReview() {
@@ -513,7 +492,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <Card>
           <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
           <CardContent>
-            <textarea className="w-full min-h-[120px] border rounded px-3 py-2" placeholder="Enter notes about this sighting..."  value={notes} onChange={(e)=>setNotes(e.target.value)} />
+            <textarea className="w-full min-h-[120px] border rounded px-3 py-2" placeholder="Enter notes about this sighting..." />
           </CardContent>
         </Card>
 
@@ -541,8 +520,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             <>
               <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
             <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
-            <Button variant="secondary" onClick={handleSaveReview}>Save Changes</Button>
-                        <Button onClick={handleCommitReview}>Commit Review</Button>
+            <Button onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
             <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
