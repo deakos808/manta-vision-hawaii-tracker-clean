@@ -30,12 +30,6 @@ const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
 
 export default function AddSightingPage() {
-  // REVIEW FLAGS HOOK (minimal)
-  const [searchParams] = useSearchParams();
-  const reviewId = searchParams.get('review') ?? undefined;
-  const isReview = !!reviewId;
-  const returnTo = searchParams.get('return') ?? undefined;
-
   async function handleSave(e?: any) {
     try { e?.preventDefault?.(); } catch {}
     if (!isReview || !reviewId) { alert('Not in review mode'); return; }
@@ -82,15 +76,20 @@ export default function AddSightingPage() {
 
   // REVIEW FLAGS HOOK (idempotent)
   const [searchParams] = useSearchParams();
-
-
+  const reviewId = searchParams.get('review') ?? undefined;
+  const isReview = !!reviewId;
+  const returnTo = searchParams.get('return') ?? undefined;
 
   // Non-destructive "Save Changes" for review drafts
   
 
 
   // --- review-draft helpers (in-review only) ---
-}, []);
+    try { return new URLSearchParams(window.location.search).has('review'); } catch { return false; }
+  }, []);
+  const reviewIdParam = React.useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get('review'); } catch { return null; }
+  }, []);
 
   const saveReviewDraft = React.useCallback(async () => {
     if (!reviewIdParam) { alert("No review id"); return; }
