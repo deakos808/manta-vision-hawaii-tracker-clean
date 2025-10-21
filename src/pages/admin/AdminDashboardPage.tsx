@@ -1,19 +1,42 @@
+import { Link } from "react-router-dom";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
+import ReviewSubmissionsTile from "@/components/admin/ReviewSubmissionsTile";
+import CalibrationTile from "@/components/admin/CalibrationTile";
+
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   return (
     <Layout>
+      {/* Hero */}
+      <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold">Admin Dashboard</h1>
+        </div>
+      </div>
+
+      {/* Breadcrumb (below hero) */}
+      <div className="max-w-6xl mx-auto px-4 py-2">
+        <Link to="/dashboard" className="text-sm text-blue-700 underline">Dashboard</Link>
+        <span className="text-sm text-slate-600"> / Admin</span>
+      </div>
+
       <div className="p-6 space-y-8">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Use the links below to access admin tools.
-        </p>
+        {/* Sighting Submissions */}
+        <Section title="Sighting Submissions">
+  <ReviewSubmissionsTile />
+</Section>
+
+        {/* Photogrammetry */}
+        <Section title="Photogrammetry">
+          <CalibrationTile />
+        </Section>
 
         {/* Admin & Access */}
         <Section title="Admin & Access">
@@ -27,7 +50,7 @@ export default function AdminDashboardPage() {
         {/* Data Integrity */}
         <Section title="Data Integrity">
           <AdminCard
-            title="🦮 Data Integrity Check"
+            title="�� Data Integrity Check"
             desc="Run consistency checks across catalog, mantas, sightings, and photos."
             btn={{ label: "Run Checks", onClick: () => navigate("/admin/data-integrity") }}
           />
@@ -55,7 +78,6 @@ export default function AdminDashboardPage() {
             desc="Find catalog entries missing best photo assignment and repair."
             btn={{ label: "Open Missing List", onClick: () => navigate("/admin/missing-catalog-photos") }}
           />
-          {/* NEW: Finding Duplicates */}
           <AdminCard
             title="🧭 Finding Duplicates"
             desc="Compare two catalog individuals side-by-side to spot duplicates."
@@ -96,28 +118,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-interface CardBtn {
-  label: string;
-  onClick: () => void;
-}
-
-function AdminCard({
-  title,
-  desc,
-  btn,
-}: {
-  title: string;
-  desc: string;
-  btn: CardBtn;
-}) {
+interface CardBtn { label: string; onClick: () => void; }
+function AdminCard({ title, desc, btn }: { title: string; desc: string; btn: CardBtn; }) {
   return (
     <Card>
       <CardContent className="p-4 space-y-2">
         <h3 className="font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{desc}</p>
-        <Button variant="outline" onClick={btn.onClick}>
-          {btn.label}
-        </Button>
+        <Button variant="outline" onClick={btn.onClick}>{btn.label}</Button>
       </CardContent>
     </Card>
   );

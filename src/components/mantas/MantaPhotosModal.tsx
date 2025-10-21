@@ -1,181 +1,194 @@
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+type View = "ventral" | "dorsal" | "other";
+export type Uploaded = {
+  id: string;
+  name: string;
+  url: string;
+  path: string;
+  view: View;
+  isBestVentral?: boolean;
+  isBestDorsal?: boolean;
+};
 
 type Props = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mantaId: number | null;
-  sightingId?: number | undefined;
+  onClose: () => void;
+  sightingId: string;
+  onAddManta: (m: { id: string; name: string; photos: Uploaded[] }) => void;
+  initialTempName?: string;
+
+  existingManta?: { id: string; name: string; photos: Uploaded[] };
 };
 
-type PhotoBasic = {
-  pk_photo_id: number;
-  photo_view?: string | null;
-  thumbnail_url?: string | null;
-  is_best_manta_ventral_photo?: boolean | null;
-  is_best_catalog_ventral_photo?: boolean | null;
-  is_best_manta_dorsal_photo?: boolean | null;
-  is_best_catalog_dorsal_photo?: boolean | null;
-};
+function uuid() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return (crypto as any).randomUUID();
+  return Math.random().toString(36).slice(2);
+}
 
-export default function MantaPhotosModal({ open, onOpenChange, mantaId, sightingId }: Props) {
-  const [rows, setRows] = useState<PhotoBasic[]>([]);
-  const [loading, setLoading] = useState(false);
+export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta, initialTempName, existingManta }: Props) {
+  const [dbg, setDbg] = useState({ over: 0, drop: 0, browse: 0 });
+
+  function onDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDbg(d=>({...d, over:d.over+1}));
+    if ((e as any).dataTransfer) (e as any).dataTransfer.dropEffect = "copy";
+    console.log("[PhotosModal] dragover");
+  }
+  function triggerHiddenBrowse() {
+    console.log("[PhotosModal] trigger hidden browse");
+    setDbg(d=>({...d, browse:d.browse+1}));
+    inputRef.current?.click();
+  }
+
+  const [tempName, setTempName] = useState("");
+  const [photos, setPhotos] = useState<Uploaded[]>([]);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const tempMantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
-    if (!open || !mantaId) return;
+  if (open) console.log("[PhotosModal] mounted for", sightingId, tempMantaId);
+  if (open) setTempName((initialTempName || "").trim());
+}, [open, sightingId, tempMantaId, initialTempName]);
 
-    let active = true;
-    (async () => {
-      setLoading(true);
+async function listStorage(prefix: string) {
+  const segs = prefix.split("/").filter(Boolean);
+  const folder = segs.join("/");
+  const { data, error } = await supabase.storage.from("temp-images").list(folder, { limit: 100, offset: 0 });
+  if (error) {
+    console.warn("[PhotosModal] verify list error:", error.message, "for", folder);
+  } else {
+    console.log("[PhotosModal] verify list ok:", folder, "->", (data||[]).map(d=>d.name));
+  }
+}
 
-      // 1) All photos for manta (optional sighting scope), include thumbnails
-      let qView = supabase
-        .from("photos_with_photo_view")
-        .select("pk_photo_id, photo_view, fk_manta_id, fk_sighting_id, thumbnail_url")
-        .eq("fk_manta_id", mantaId);
-      if (sightingId) qView = qView.eq("fk_sighting_id", sightingId);
+  if (!open) return null;
 
-      const { data: viewRows, error: viewErr } = await qView;
-      if (!active) return;
+  async function handleFiles(files: File[]) {
+  if (!files.length) { console.log("[PhotosModal] handleFiles: none"); return; }
+  setBusy(true);
+  const allow=["image/jpeg","image/png","image/webp"];
+  const added: Uploaded[] = [];
+  for (const f of files) {
+    if(!allow.includes(f.type)) { console.warn("[PhotosModal] skip type", f.type, f.name); continue; }
+    const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
+    const id=(typeof crypto!=="undefined" && "randomUUID" in crypto)?crypto.randomUUID():Math.random().toString(36).slice(2);
+    const path=`${sightingId}/${tempMantaId}/${id}.${ext}`;
+    console.log("[PhotosModal] upload ->", path);
+    const { error } = await supabase.storage.from("temp-images").upload(path, f, { cacheControl: "3600", upsert: false });
+    if(error){ console.warn("[PhotosModal] upload error", error.message); continue; }
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
+    added.push({ id, name:f.name, url:data?.publicUrl||"", path, view:"other" });
+  }
+  if(added.length){ setPhotos(prev=>[...prev,...added]); console.log("[PhotosModal] uploaded ok:", added.length); }
+  setBusy(false);
+}function onDrop(e: React.DragEvent<HTMLDivElement>) {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log("[PhotosModal] drop:", Array.from(e.dataTransfer.files||[]).map(f=>f.name));
+  handleFiles(Array.from(e.dataTransfer.files || []));
+}
 
-      if (viewErr) {
-        console.error("photos_with_photo_view error:", viewErr);
-        setRows([]);
-        setLoading(false);
-        return;
-      }
+  function onBrowse(e: React.ChangeEvent<HTMLInputElement>) {
+  const files = Array.from(e.target.files || []);
+  console.log("[PhotosModal] browse selected:", files.map(f=>f.name));
+  handleFiles(files);
+  e.currentTarget.value = "";
+}
 
-      const ids = (viewRows ?? []).map((r: any) => r.pk_photo_id);
-      if (ids.length === 0) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
+  function setView(id: string, view: View) {
+    setPhotos(prev => prev.map(p => p.id === id ? { ...p, view } : p));
+  }
+  function setBestVentral(id: string) {
+    setPhotos(prev => prev.map(p => p.view !== "ventral" ? { ...p, isBestVentral: false } : { ...p, isBestVentral: p.id === id }));
+  }
+  function setBestDorsal(id: string) {
+    setPhotos(prev => prev.map(p => p.view !== "dorsal" ? { ...p, isBestDorsal: false } : { ...p, isBestDorsal: p.id === id }));
+  }
 
-      // 2) Best flags from base table
-      const { data: flagRows, error: flagErr } = await supabase
-        .from("photos")
-        .select(
-          "pk_photo_id, is_best_manta_ventral_photo, is_best_catalog_ventral_photo, is_best_manta_dorsal_photo, is_best_catalog_dorsal_photo"
-        )
-        .in("pk_photo_id", ids);
-
-      if (flagErr) console.error("photos flags error:", flagErr);
-
-      const flagsById = new Map<number, any>();
-      for (const r of flagRows ?? []) flagsById.set(r.pk_photo_id, r);
-
-      const merged: PhotoBasic[] =
-        (viewRows ?? [])
-          .map((r: any) => {
-            const f = flagsById.get(r.pk_photo_id) ?? {};
-            return {
-              pk_photo_id: r.pk_photo_id,
-              photo_view: r.photo_view,
-              thumbnail_url: r.thumbnail_url ?? null,
-              is_best_manta_ventral_photo: f.is_best_manta_ventral_photo ?? null,
-              is_best_catalog_ventral_photo: f.is_best_catalog_ventral_photo ?? null,
-              is_best_manta_dorsal_photo: f.is_best_manta_dorsal_photo ?? null,
-              is_best_catalog_dorsal_photo: f.is_best_catalog_dorsal_photo ?? null,
-            };
-          })
-          .sort((a, b) => a.pk_photo_id - b.pk_photo_id) ?? [];
-
-      setRows(merged);
-      setLoading(false);
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [open, mantaId, sightingId]);
+  function submitManta() {
+  const name = (tempName || "").trim() || `Manta ${photos.length ? photos[0].id.slice(0,4) : ""}`;
+  const manta = { id: tempMantaId, name, photos };
+  console.log("[PhotosModal] submitManta ->", manta);
+  try { onAddManta(manta); } catch (e) { console.warn("[PhotosModal] onAddManta error", e); }
+  try { window.dispatchEvent(new CustomEvent("manta-added", { detail: { sightingId, manta } })); } catch {}
+  listStorage(`${sightingId}/${tempMantaId}`);
+  setTempName(""); setPhotos([]);
+  onClose();
+}
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Photos for manta #{mantaId ?? "—"}</DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
+      <div className="bg-white rounded-lg border w-full max-w-3xl p-4 pointer-events-auto relative">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-medium">Add Manta & Photos</h3>
+{existingManta ? <div data-edit-badge className="ml-3 inline-block align-middle text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">EDIT MODE</div> : null}
+<div data-debug-ribbon className="absolute -top-3 -left-3 rotate-[-12deg] bg-fuchsia-600 text-white text-[10px] px-2 py-0.5 rounded shadow">{open ? 'open:true' : 'open:false'} · {existingManta ? 'editing' : 'new'}</div>
+<div className="text-[11px] text-muted-foreground">last event: probe-mounted · dbg: <span data-dbg-over>{dbg.over}</span>/<span data-dbg-drop>{dbg.drop}</span>/<span data-dbg-browse>{dbg.browse}</span></div>
+          <button type="button" onClick={(e)=>{console.log("[PhotosModal] Close click"); e.stopPropagation(); onClose();}} className="px-2 py-1 border rounded">Close</button>
+        </div>
 
-        <div className="rounded-md border">
-          <ScrollArea className="h-80">
-            {loading ? (
-              <div className="p-3 text-sm text-muted-foreground">Loading…</div>
-            ) : rows.length === 0 ? (
-              <div className="p-3 text-sm text-muted-foreground">No photos found.</div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm block mb-1">Temporary Name</label>
+            <input className="w-full border rounded px-3 py-2" placeholder="e.g., A, B, C" value={tempName} onChange={(e)=>setTempName(e.target.value)} />
+            <div onDrop={e=>{setDbg(d=>({...d, drop:d.drop+1})); onDrop(e);}} onDragOver={onDragOver} className="mt-3 border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center">
+              <div>Drag & drop photos here</div>
+              <div className="my-2">or</div>
+              <button type="button" onClick={()=>inputRef.current?.click()} className="px-3 py-1 border rounded" disabled={busy}>Browse…</button>
+              <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={onBrowse} />
+              <div className="mt-2">
+  <input data-visible-file type="file" multiple accept="image/*" onChange={onBrowse} />
+  <div className="text-[11px] text-gray-500">If “Browse…” doesn’t open, use this chooser.</div>
+  <button data-debug-browse type="button" className="mt-1 border rounded px-2 py-1 text-xs" onClick={triggerHiddenBrowse}>Debug: Hidden Browse</button>
+  <div className="text-[11px] text-gray-500">Allowed: JPG/PNG/WebP · uploads to temp-images</div>
+</div>
+              <div className="mt-2 text-xs">JPG/PNG/WebP • uploads to temp-images</div>
+            </div>
+          </div>
+
+          <div className="max-h-72 overflow-auto pr-1">
+            {photos.length === 0 ? (
+              <div className="text-sm text-gray-600">No photos added yet.</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-background">
-                  <tr className="text-left">
-                    <th className="px-3 py-2 w-[72px]">Thumb</th>
-                    <th className="px-3 py-2 w-[120px]">Photo ID</th>
-                    <th className="px-3 py-2 w-[120px]">View</th>
-                    <th className="px-3 py-2">Best Flags</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const flags: string[] = [];
-                    if (r.is_best_manta_ventral_photo) flags.push("best manta ventral");
-                    if (r.is_best_catalog_ventral_photo) flags.push("best catalog ventral");
-                    if (r.is_best_manta_dorsal_photo) flags.push("best manta dorsal");
-                    if (r.is_best_catalog_dorsal_photo) flags.push("best catalog dorsal");
-
-                    return (
-                      <tr key={r.pk_photo_id} className="border-t">
-                        <td className="px-3 py-2">
-                          <div className="h-12 w-12 overflow-hidden rounded border bg-muted">
-                            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                            <img
-                              src={r.thumbnail_url || "/manta-logo.svg"}
-                              className="h-full w-full object-cover"
-                              onError={(e) =>
-                                ((e.target as HTMLImageElement).src = "/manta-logo.svg")
-                              }
-                            />
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 font-mono">{r.pk_photo_id}</td>
-                        <td className="px-3 py-2">{r.photo_view ?? "—"}</td>
-                        <td className="px-3 py-2">
-                          {flags.length === 0 ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {flags.map((f, i) => (
-                                <Badge key={i} variant="secondary">
-                                  {f}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="grid grid-cols-2 gap-3">
+                {photos.map(p=>(
+                  <div key={p.id} className="border rounded p-2">
+                    <img src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
+                    <div className="text-xs break-all mb-2">{p.name}</div>
+                    <div className="text-xs mb-1">View</div>
+                    <select className="w-full border rounded px-2 py-1 text-sm mb-2" value={p.view} onChange={(e)=>setView(p.id, e.target.value as View)}>
+                      <option value="ventral">ventral</option>
+                      <option value="dorsal">dorsal</option>
+                      <option value="other">other</option>
+                    </select>
+                    {p.view === "ventral" && (
+                      <label className="text-xs flex items-center gap-2 mb-1">
+                        <input type="radio" name="best-ventral" checked={!!p.isBestVentral} onChange={()=>setBestVentral(p.id)} />
+                        Best ventral
+                      </label>
+                    )}
+                    {p.view === "dorsal" && (
+                      <label className="text-xs flex items-center gap-2 mb-1">
+                        <input type="radio" name="best-dorsal" checked={!!p.isBestDorsal} onChange={()=>setBestDorsal(p.id)} />
+                        Best dorsal
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
 
-        <div className="mt-3 flex justify-end">
-          <a
-            href="#"
-            className="text-primary text-sm hover:underline underline-offset-2"
-            onClick={(e) => {
-              e.preventDefault();
-              onOpenChange(false);
-            }}
-          >
-            Close
-          </a>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={(e)=>{console.log("[PhotosModal] Close click"); e.stopPropagation(); onClose();}} className="px-3 py-2 rounded border" disabled={busy}>Cancel</button>
+          <button type="button" onClick={(e)=>{e.stopPropagation(); submitManta();}} className="px-3 py-2 rounded bg-sky-600 text-white" disabled={busy || photos.length===0}>Save Manta</button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

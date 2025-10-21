@@ -1,0 +1,5 @@
+island,region,sitelocation,lat_found,lon_found,lat_offshore,lon_offshore,geocoder_note
+"Maui","South Maui","Ahihi Kina'u Reserve",20.587200,-156.442200,20.586438,-156.442710,"manual 100m offshore"
+"Maui","South Maui","La Perouse",20.588900,-156.430700,20.588122,-156.431182,"manual 100m offshore"
+"Oʻahu","Leeward Oahu","Electric Beach",21.345300,-158.129000,21.344674,-158.129693,"manual 100m offshore"
+"Oʻahu","Honolulu","Magic Island",21.283900,-157.846100,21.283141,-157.845582,"manual 100m offshore"

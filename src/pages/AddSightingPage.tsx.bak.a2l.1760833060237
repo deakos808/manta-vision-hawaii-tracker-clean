@@ -1,0 +1,611 @@
+import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import Layout from "@/components/layout/Layout";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import MatchModal from "@/components/mantas/MatchModal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import MantasList from "@/components/mantas/MantasList";
+import { supabase } from "@/lib/supabase";
+import TempSightingMap from "@/components/map/TempSightingMap";
+
+function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
+function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
+const TIME_OPTIONS = buildTimes(5);
+
+// helpers
+const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (Array.isArray(m?.photos) ? m.photos.length : 0), 0);
+type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
+
+export default function AddSightingPage() {
+
+const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const isReview = !!reviewId;
+
+  // return path (Admin review queue by default)
+  const returnPath = useMemo(() => {
+    try {
+      const sp = new URLSearchParams(location.search);
+      return sp.get("return") || "/admin/review";
+    } catch { return "/admin/review"; }
+  }, [location.search]);
+
+  // Match modal state
+  const [pageMatchOpen, setPageMatchOpen] = useState(false);
+  const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
+  const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
+  const [pageMatchFor, setPageMatchFor] = useState<string | null>(null);
+
+  // Mantas
+  const [mantas, setMantas] = useState<MantaDraft[]>([]);
+  const totalPhotos = useMemo(() => useTotalPhotos(mantas as any), [mantas]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
+
+  // Sighting details
+  const [date, setDate] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [stopTime, setStopTime] = useState<string>("");
+
+  // Contact
+  const [photographer, setPhotographer] = useState("");
+  const [email, setEmail] = useState("");
+  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
+  const dateValid  = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
+  const [phone, setPhone] = useState("");
+
+  // Location
+  const [island, setIsland] = useState("");
+  const [islands, setIslands] = useState<string[]>([]);
+
+useEffect(() => {
+  let alive = true;
+  (async () => {
+    try {
+      setIslandsLoading(true); setIslandsError(null);
+      const { data, error } = await supabase
+        .from('islands_distinct')
+        .select('island')
+        .order('island', { ascending: true });
+      if (!alive) return;
+      if (error) { setIslandsError(error.message); setIslandsLoading(false); return; }
+      const list = (data ?? []).map((r:any)=> String(r.island).trim()).filter(Boolean);
+      const uniq = Array.from(new Set(list));
+      setIslands(uniq);
+      setIslandsLoading(false);
+      console.info('[IslandsSelect][fetch] from view:', uniq);
+    } catch(e:any) {
+      if (!alive) return;
+      setIslandsError(e?.message || String(e)); setIslandsLoading(false);
+    }
+  })();
+  return ()=>{ alive=false; };
+}, []);
+
+const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
+  const [islandsError, setIslandsError] = useState<string|null>(null);
+
+  const [locList, setLocList] = useState<LocRec[]>([]);
+  const [locationId, setLocationId] = useState<string>("");
+  const [locationName, setLocationName] = useState<string>("");
+  const [addingLoc, setAddingLoc] = useState(false);
+  const [newLoc, setNewLoc] = useState("");
+
+  const [lat, setLat] = useState<string>("");
+  const [lng, setLng] = useState<string>("");
+  const [coordSource, setCoordSource] = useState<string>("");
+
+  const [mapOpen, setMapOpen] = useState(false);
+  const formSightingId = useMemo(()=>uuid(),[]);
+  const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
+
+  useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
+
+  // Hydrate reviewId from state/query/window (robust)
+  useEffect(() => {
+    if (reviewId) return;
+    let rid: string | null = null;
+    try {
+      const stateRid = (location as any)?.state?.reviewId ?? null;
+      const queryRid = searchParams.get("review") || searchParams.get("reviewId");
+      const winRid = (() => {
+        try { const sp = new URLSearchParams(window.location.search); return sp.get("review") || sp.get("reviewId"); }
+        catch { return null; }
+      })();
+      rid = (stateRid as any) || (queryRid as any) || (winRid as any) || null;
+    } catch {}
+    if (rid) { console.info("[AddSighting][review] init rid", rid); setReviewId(String(rid)); }
+  }, [reviewId, location.state, location.search, searchParams]);
+
+  // Fetch review payload
+  useEffect(() => {
+    if (!reviewId) return;
+    (async () => {
+      console.info("[AddSighting][review] fetch start", reviewId);
+      try {
+        const { data, error } = await supabase
+          .from("sighting_submissions")
+          .select("id,email,sighting_date,submitted_at,status,payload")
+          .eq("id", reviewId)
+          .single();
+        if (error || !data) { console.warn("[AddSighting][review] fetch error", error?.message); return; }
+        const anyd: any = data;
+        setEmail(anyd.email || "");
+        if (anyd.sighting_date) setDate(String(anyd.sighting_date));
+        const p = (anyd.payload || {}) as any;
+        if (p.photographer) setPhotographer(p.photographer);
+        if (p.phone) setPhone(p.phone);
+        if (p.island) setIsland(p.island);
+        if (p.latitude != null) setLat(String(p.latitude));
+        if (p.longitude != null) setLng(String(p.longitude));
+        if (Array.isArray(p.mantas)) {
+          setMantas(p.mantas.map((m:any) => ({
+            id: m.id || uuid(),
+            name: m.name || "",
+            gender: m.gender ?? null,
+            ageClass: m.ageClass ?? null,
+            size: m.size ?? null,
+            photos: Array.isArray(m.photos) ? m.photos : [],
+            matchedCatalogId: m.matchedCatalogId ?? m.potentialCatalogId ?? null,
+            noMatch: !!(m.noMatch ?? m.potentialNoMatch),
+            noPhotos: !!m.noPhotos,
+          })));
+        }
+        console.info("[AddSighting][review] hydrated", anyd.email, anyd.sighting_date);
+      } catch (e:any) {
+        console.warn("[AddSighting][review] exception", e?.message || e);
+      }
+    })();
+  }, [reviewId]);
+
+  // Secondary loaders for reviewId (state/search)
+  useEffect(() => {
+    try {
+      const st = (location as any)?.state as any;
+      const rid = st?.reviewId;
+      if (rid && rid !== reviewId) setReviewId(String(rid));
+    } catch {}
+  }, [location.state]);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(location.search);
+      const rv = sp.get("review") || sp.get("reviewId");
+      if (rv && rv !== reviewId) setReviewId(rv);
+    } catch {}
+  }, [location.search]);
+
+  // Load islands (distinct from sightings)
+  // Load locations for selected island (location_defaults, fallback to sightings)
+  useEffect(()=>{
+    let cancelled=false;
+    (async ()=>{
+      const isl = island?.trim();
+      if(!isl){ setLocList([]); setLocationId(""); setLocationName(""); return; }
+      try{
+        const { data, error } = await supabase
+          .from("location_defaults")
+          .select("name,island,latitude,longitude")
+          .eq("island", isl).order("name",{ascending:true});
+        if(!cancelled && !error && data && data.length){
+          const seen = new Set<string>(); const list:LocRec[]=[];
+
+  
+    
+          for(const r of data){
+            const key = (r.name||"").trim().toLowerCase();
+            if(!seen.has(key)){
+              seen.add(key);
+              list.push({ id: String(r.name), name: String(r.name), island: r.island, latitude: r.latitude ?? null, longitude: r.longitude ?? null });
+            }
+          }
+          setLocList(list);
+          return;
+        }
+      }catch(e){ console.warn("[AddSighting] location_defaults failed", e); }
+      try{
+        const { data: srows, error: serr } = await supabase
+          .from("sightings").select("sitelocation").eq("island", isl).not("sitelocation","is", null);
+        if(!cancelled && !serr && srows){
+          const names = Array.from(new Set(srows.map((r:any)=>(r.sitelocation||"").toString().trim()).filter((n:string)=>n.length>0))).sort((a,b)=>a.localeCompare(b));
+          setLocList(names.map((n:string)=>({ id:n, name:n, island:isl })));
+          return;
+        }
+      }catch(e){ console.warn("[AddSighting] fallback distinct sights failed", e); }
+      setLocList(["Keauhou Bay","Kailua Pier","Māʻalaea Harbor","Honokōwai"].map(n=>({id:n,name:n,island:isl})));
+    })();
+    return ()=>{ cancelled=true; };
+  },[island]);
+
+  async function fetchEarliestCoords(isl: string, loc: string): Promise<{lat:number; lon:number} | null> {
+    try{
+      const { data, error } = await supabase
+        .from("sightings")
+        .select("latitude,longitude,sighting_date,pk_sighting_id")
+        .eq("island", isl).ilike("sitelocation", loc)
+        .not("latitude","is", null).not("longitude","is", null)
+        .order("sighting_date", { ascending: true }).order("pk_sighting_id", { ascending: true }).limit(1);
+      if(error || !data || !data.length) return null;
+      const r = data[0]; const la = Number(r.latitude), lo = Number(r.longitude);
+      if(!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+      return { lat: la, lon: lo };
+    }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
+  }
+
+  // On location change, autofill coords
+  useEffect(()=>{
+    if(!locationId) return;
+    const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
+    const displayName = rec?.name ?? locationName ?? locationId;
+    if (rec && rec.name) setLocationName(rec.name);
+    const apply = (la:number, lo:number, src?:string) => {
+      setLat(String(Number(la).toFixed(5)));
+      setLng(String(Number(lo).toFixed(5)));
+      if (src) setCoordSource(src);
+      console.log("[Location autofill]", displayName, src, la, lo);
+    };
+    if (rec && rec.latitude != null && rec.longitude != null) { apply(Number(rec.latitude), Number(rec.longitude), "location defaults"); return; }
+    if (!island || !displayName) return;
+    fetchEarliestCoords(island, displayName).then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
+  },[locationId, locList, island]);
+
+  // Submit (user mode)
+  const handleSubmit = async () => {
+    if (!dateValid) { window.alert("Date is required."); return; }
+    if (!emailValid) return;
+    const payload = {
+      date, startTime, stopTime, photographer, email, phone,
+      island, locationId, locationName,
+      latitude: lat, longitude: lng,
+      mantas
+    };
+    try {
+      await supabase.from("sighting_submissions").insert({
+        email: email || null,
+        sighting_date: date || null,
+        manta_count: mantas.length,
+        photo_count: totalPhotos,
+        payload,
+        status: "pending"
+      });
+    } catch {}
+    window.alert(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
+    navigate("/");
+  };
+
+  // Save handlers for Add/Edit manta
+  const onAddSave = (m: MantaDraft) => {
+    setAddOpen(false);
+    setMantas(prev => {
+      const incomingId = (m as any).id ? String((m as any).id) : "";
+      const exists = incomingId && prev.some(p => String(p.id) === incomingId);
+      const id = exists || !incomingId ? uuid() : incomingId;
+      return [...prev, { ...(m as any), id }];
+    });
+  };
+  const onEditSave = (m:MantaDraft) => {
+    setMantas(prev=>{
+      const i=prev.findIndex(x=>x.id===m.id);
+      if(i>=0){
+        const keep:any = prev[i] as any;
+        const merged:any = { ...(m as any) };
+        if (keep.matchedCatalogId != null && merged.matchedCatalogId == null) merged.matchedCatalogId = keep.matchedCatalogId;
+        if (typeof keep.noMatch === "boolean" && typeof merged.noMatch !== "boolean") merged.noMatch = keep.noMatch;
+        const c=[...prev]; c[i]=merged as any; return c;
+      }
+      return [...prev, m];
+    });
+    setEditingManta(null);
+  };
+
+  // Review actions
+  async function handleCommitReview() {
+    if (!reviewId) return;
+    if (!window.confirm("Commit this submission to final tables?")) return;
+    try {
+      const { error } = await supabase.rpc("commit_sighting_submission", { sub_id: reviewId });
+      if (error) { throw error; }
+      window.alert("Committed.");
+    } catch (e) {
+      console.warn("[CommitReview] RPC not available or failed; falling back to status update.", (e && (e.message||e)) || e);
+      await supabase.from("sighting_submissions")
+        .update({ status: "committed", committed_at: new Date().toISOString() })
+        .eq("id", reviewId);
+      window.alert("Marked committed.");
+    }
+    navigate(returnPath);
+  }
+  async function handleRejectReview() {
+    if (!reviewId) return;
+    if (!window.confirm("Are you sure you want to reject this submission?")) return;
+    await supabase.from("sighting_submissions")
+      .update({ status: "rejected", rejected_at: new Date().toISOString() })
+      .eq("id", reviewId);
+    window.alert("Submission rejected.");
+    navigate(returnPath);
+  }
+
+  // MantasList hooks
+  const onEdit = (m: MantaDraft) => setEditingManta(m);
+  const onRemove = (id: string) => setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
+  const openMatch = (m: MantaDraft, ventralUrl?: string) => {
+    setPageMatchMeta({ name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
+    setPageMatchUrl(ventralUrl || "");
+    setPageMatchFor(String(m.id));
+    setPageMatchOpen(true);
+  };
+
+  // UI
+
+  // --- submit requirements (inline, no hooks; zero TDZ risk)
+  const isReady = emailValid && dateValid && Boolean(island) && Boolean(locationId || locationName);
+  const missingMsgs: string[] = [];
+  if (!dateValid) missingMsgs.push('Date');
+  if (!emailValid) missingMsgs.push('Email');
+  if (!island) missingMsgs.push('Island');
+  if (!locationId && !locationName) missingMsgs.push('Location');
+
+  return (
+    <Layout>
+
+{/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
+<UnifiedMantaModal
+  open={addOpen}
+  onClose={()=>setAddOpen(false)}
+  sightingId={formSightingId}
+  onSave={onAddSave}
+/>
+<UnifiedMantaModal
+  open={!!editingManta}
+  onClose={()=>setEditingManta(null)}
+  sightingId={formSightingId}
+  existingManta={editingManta || undefined}
+  onSave={onEditSave}
+/>
+
+
+{isReview && (
+  <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm" data-clean-id="review-crumb">
+    <Link to="/admin" className="text-sky-700 hover:underline">Admin</Link>
+    <span className="mx-1 text-slate-400">/</span>
+    <a href={returnPath} className="text-sky-700 hover:underline">Review</a>
+  </div>
+)}
+
+      {/* Hero */}
+      <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-8 text-white text-center">
+        <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
+        <div className="text-xs opacity-90 mt-1">sighting: {formSightingId.slice(0,8)}</div>
+      </div>
+
+      {/* Sighting Details */}
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <Card>
+          <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-3">
+            <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="border rounded px-3 py-2" />
+            <select value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="border rounded px-3 py-2">
+              <option value="">Start Time</option>
+              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={stopTime} onChange={(e)=>setStopTime(e.target.value)} className="border rounded px-3 py-2">
+              <option value="">Stop Time</option>
+              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </CardContent>
+        </Card>
+
+        {/* Photographer & Contact */}
+        <Card>
+          <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-3">
+            <input placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className="border rounded px-3 py-2" />
+            <input id="contact-email-field" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className={"border rounded px-3 py-2 " + (email && !emailValid ? "border-red-500" : "")} />
+            <input placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} className="border rounded px-3 py-2" />
+            {!emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader><CardTitle>Location</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+  <div className="grid md:grid-cols-2 gap-3">
+    {/* Island select */}
+    <select value={island} onChange={(e)=>setIsland(e.target.value)} className="border rounded px-3 py-2">
+  <option value="">{islandsLoading ? 'Loading islands…' : 'Select island'}</option>
+  {islands.map(isl => (<option key={isl} value={isl}>{isl}</option>))}
+</select>
+
+    {/* Location select + small link underneath */}
+    <div className="space-y-1">
+  <select
+    value={locationId}
+    onChange={(e)=>setLocationId(e.target.value)}
+    className="border rounded px-3 py-2"
+  >
+    <option value="">{island ? 'Select location' : 'Select island first'}</option>
+    {locList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+  </select>
+  {!addingLoc ? (
+    <button
+      type="button"
+      data-clean-id="add-location-link"
+      className="block mt-1 text-sky-700 text-xs underline"
+      onClick={()=>setAddingLoc(true)}
+    >
+      + Add new location
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="block mt-1 text-slate-600 text-xs underline"
+      onClick={()=>setAddingLoc(false)}
+    >
+      Cancel
+    </button>
+  )}
+</div>
+  </div>
+
+  {addingLoc && (
+    <div className="grid md:grid-cols-3 gap-2">
+      <input
+        placeholder="New location name"
+        value={newLoc}
+        onChange={(e)=>setNewLoc(e.target.value)}
+        className="border rounded px-3 py-2 md:col-span-2"
+      />
+      <button
+        type="button"
+        className="px-2 py-1 border rounded"
+        onClick={()=>{
+          const name = newLoc.trim();
+          if (!name) return;
+          setLocationId(name);
+          setLocationName(name);
+          setAddingLoc(false);
+        }}
+      >
+        Use this name
+      </button>
+    </div>
+  )}
+
+  <div className="grid md:grid-cols-2 gap-3">
+    <input
+      placeholder="Latitude"
+      value={lat}
+      onChange={(e)=>setLat(e.target.value)}
+      className="border rounded px-3 py-2"
+    />
+    <input
+      placeholder="Longitude"
+      value={lng}
+      onChange={(e)=>setLng(e.target.value)}
+      className="border rounded px-3 py-2"
+    />
+  </div>
+
+  <div className="text-xs text-slate-500">coords source: {coordSource || "—"}</div>
+  <button
+    type="button"
+    className="px-3 py-2 border rounded"
+    onClick={()=>setMapOpen(true)}
+  >
+    Use Map for Location
+  </button>
+</CardContent>
+        </Card>
+
+        {/* Notes (placeholder) */}
+        <Card>
+          <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+          <CardContent>
+            <textarea className="w-full min-h-[120px] border rounded px-3 py-2" placeholder="Enter notes about this sighting..." />
+          </CardContent>
+        </Card>
+
+        {/* Mantas Added */}
+        <Card>
+          <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
+          <CardContent>
+            <MantasList
+              mantas={mantas}
+              setMantas={setMantas}
+              onEdit={onEdit}
+              onRemove={onRemove}
+              openMatch={openMatch}
+              totalPhotosAll={totalPhotosAll}
+            />
+            <div className="mt-3">
+              <Button type="button" data-clean-id="add-mantas" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer buttons */}
+        <div className="flex justify-center mt-6 gap-2">
+          {isReview ? (
+            <>
+              <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
+              <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
+              <Button onClick={handleCommitReview}>Commit Review</Button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center">
+              <Button
+                data-clean-id="submit-sighting"
+                onClick={handleSubmit}
+                disabled={!isReady}
+              >
+                Submit Sighting
+              </Button>
+              {!(emailValid && dateValid && island && (locationId || locationName)) && (
+                <div data-clean-id="requirements-hint" className="mt-2 text-xs text-red-600 text-center">
+                  {'Missing: ' + [
+                    !dateValid && 'Date',
+                    !emailValid && 'Email',
+                    !island && 'Island',
+                    !(locationId || locationName) && 'Location'
+                  ].filter(Boolean).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+<div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
+      </div>
+
+      {/* Match modal */}
+      <MatchModal
+        open={pageMatchOpen}
+        onClose={() => setPageMatchOpen(false)}
+        tempUrl={pageMatchUrl}
+        aMeta={pageMatchMeta}
+        onChoose={(catalogId) => {
+          if (!pageMatchFor) { setPageMatchOpen(false); return; }
+          setMantas(prev =>
+            prev.map(mm =>
+              String(mm.id) === String(pageMatchFor)
+                ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false } as any)
+                : mm
+            )
+          );
+          setPageMatchOpen(false);
+        }}
+        onNoMatch={() => {
+          if (!pageMatchFor) { setPageMatchOpen(false); return; }
+          setMantas(prev =>
+            prev.map(mm =>
+              String(mm.id) === String(pageMatchFor)
+                ? ({ ...mm, matchedCatalogId: null, noMatch: true } as any)
+                : mm
+            )
+          );
+          setPageMatchOpen(false);
+        }}
+      />
+
+      {/* Map modal */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
+          <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
+            <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
+            <h3 className="text-lg font-medium mb-3">Pick Location</h3>
+            <TempSightingMap
+              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
+              lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
+              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); setCoordSource("map pick"); }}
+            />
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+}

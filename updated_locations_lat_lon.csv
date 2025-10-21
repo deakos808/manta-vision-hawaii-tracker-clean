@@ -1,0 +1,1444 @@
+pk_sighting_id,sighting_date,island,region,sitelocation,lat,lon,source_flag
+5416,12/8/10,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5417,12/9/10,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5418,12/11/10,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5422,9/5/12,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5424,6/23/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5425,6/24/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5457,6/25/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5458,6/26/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5471,6/26/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5460,10/24/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5461,10/25/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5462,10/25/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5463,10/25/15,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5474,8/9/20,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5477,8/10/20,Big Island,Kona,Keahou Bay,19.55915,-155.96781,original
+5473,8/8/20,Big Island,Kona,Mauna Kea Hotel,20.00548,-155.82605,original
+5419,12/12/10,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5420,9/2/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5421,9/3/12,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5423,6/22/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5459,10/23/15,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5472,8/7/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5475,8/9/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+5478,8/10/20,Big Island,Kona,Pu'Ukala Point,19.77257,-156.05110,original
+215,12/23/08,Kahoolawe,North Kahoolawe,Ahupu Bay,20.58100,-156.62100,original
+5412,1/26/20,Kauai,East Kauai,Ahukini,21.99266,-159.33085,modified
+5626,1/26/20,Kauai,Kauai Unknown,null,null,null,missing
+5601,2/1/17,Kauai,South Kauai,Alertons Beach,21.88395,-159.49987,modified
+5628,9/30/20,Kauai,South Kauai,Fathom Rock,21.88110,-159.49350,modified
+5605,8/5/20,Kauai,South Kauai,Koloa Landing,21.87580,-159.46636,modified
+5603,12/28/20,Kauai,South Kauai,Koloa Landing,21.87580,-159.46636,modified
+5555,11/30/20,Kauai,South Kauai,Poipu,21.87580,-159.45419,modified
+5556,1/9/21,Kauai,South Kauai,Poipu,21.87580,-159.45419,modified
+5669,2/5/21,Kauai,South Kauai,Sheraton Caverns,21.87170,-159.46150,modified
+5554,1/9/21,Kauai,South Kauai,Stone House,21.87230,-159.46320,missing
+5550,1/13/19,Kauai,South Kauai,null,null,null,missing
+5676,1/19/22,Kauai,South Kauai,null,20.87125,-159.46368,modified
+213,12/19/08,Lanai,North Lanai,Shipwreck Beach,20.92300,-156.90700,original
+5624,7/29/19,Lanai,North Lanai,Shipwreck Beach,20.92232,-156.90008,original
+5162,8/16/19,Lanai,South Lanai,Manele Bay,20.74191,-156.88528,modified
+5235,1/7/03,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5241,1/3/04,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5238,12/4/04,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5239,12/4/04,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5240,12/4/04,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5236,12/6/04,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5237,1/11/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5266,2/1/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5265,3/1/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5264,5/29/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5311,9/27/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5319,12/1/06,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5324,10/4/08,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5325,2/25/10,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5326,3/21/10,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5330,2/8/14,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5343,4/25/17,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5353,3/7/18,Maui,Molokini,Molokini,20.63022,-156.49598,original
+5029,1/29/18,Maui,South Maui,,null,null,missing
+5031,2/13/18,Maui,South Maui,,null,null,missing
+5115,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.61326,-156.43905,modified
+5357,10/31/18,Maui,South Maui,Ahihi Kina'u Reserve,20.61326,-156.43905,modified
+5359,9/14/18,Maui,South Maui,Five Caves,20.65640,-156.44394,modified
+5625,11/21/21,Maui,South Maui,Kalepolepo Fish Pond,20.76370,-156.46011,modified
+5043,2/12/18,Maui,South Maui,Kam1,20.72170,-156.44896,modifed
+5638,11/1/20,Maui,South Maui,Kam Beach,20.72170,-156.44896,modifed
+5159,4/19/20,Maui,South Maui,Keawakapu,20.70400,-156.44774,original
+5915,11/2/23,Maui,South Maui,Keawakapu,20.70400,-156.44774,original
+5358,11/6/18,Maui,South Maui,Kihei,null,null,missing
+5007,1/5/18,Maui,South Maui,La Perouse,20.78974,-156.33692,original
+5047,3/27/18,Maui,South Maui,La Perouse,20.78974,-156.33692,original
+563,11/11/15,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+564,11/13/15,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+566,12/3/15,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+568,12/5/15,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+620,1/3/16,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+575,1/30/16,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+5673,11/20/21,Maui,South Maui,Maalaea Harbor,20.79160,-156.51064,original
+5042,7/5/17,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5005,12/28/17,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5040,1/2/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5012,1/21/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5048,3/31/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5059,4/12/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5067,6/10/18,Maui,South Maui,Makena Landing,20.65289,-156.44240,modifed
+5171,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5172,2/19/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5177,4/8/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5403,4/16/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5181,4/24/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5539,7/27/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5540,7/30/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5546,8/15/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5547,8/29/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5548,10/3/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5633,10/17/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5639,11/3/20,Maui,South Maui,Makena Landing,20.65289,-156.44240,original
+5317,12/28/06,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5338,10/1/15,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5337,2/28/16,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5345,3/9/17,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5351,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5352,1/19/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5355,3/3/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5356,3/7/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5354,3/14/18,Maui,South Maui,Makena Reef,20.65289,-156.44240,modifed
+5183,3/9/20,Maui,South Maui,Malakai Point,20.65527,-156.44445,modified
+5348,8/2/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+668,12/16/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5046,12/17/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5004,12/27/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+673,12/30/17,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5053,3/25/18,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5054,3/29/18,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5056,4/10/18,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5360,6/20/20,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5413,7/2/20,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5543,7/20/20,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5541,7/30/20,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5632,10/14/20,Maui,South Maui,Maluaka,20.64808,-156.44824,modified
+5635,10/21/20,Maui,South Maui,Mana Kai,20.70493,-156.44743,modified
+5174,3/6/20,Maui,South Maui,Molokini,20.63022,-156.49598,original
+5340,9/17/16,Maui,South Maui,One'uli Beach,20.64018,-156.44791,modified
+5328,7/14/13,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5341,12/9/16,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5349,8/3/17,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5049,12/30/17,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5179,4/13/20,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5234,5/15/20,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5634,10/21/20,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5636,10/27/20,Maui,South Maui,Palauea,20.66958,-156.44374,modified
+5680,3/26/22,Maui,South Maui,Pinnacles,20.63238,-156.44992,modified
+5335,4/10/15,Maui,South Maui,Po'olennalena,20.66195,-156.44386,modified
+5323,4/20/08,Maui,South Maui,St. Anthony's Wreck,20.70100,-156.45786,modified
+5137,2/4/19,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
+5645,1/29/21,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
+5671,9/20/21,Maui,South Maui,Sugar Beach,20.78435,-156.46873,original
+5329,7/17/13,Maui,South Maui,Tank and Landing Craft,20.64620,-156.45076,modified
+5000,1/6/18,Maui,South Maui,Turtle Arches,20.65370,-156.44596,modified
+672,12/30/17,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+674,12/31/17,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+676,1/1/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5083,1/8/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5052,2/10/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5050,2/11/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5060,4/13/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5063,5/27/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5084,6/15/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5128,6/18/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5118,11/15/18,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5163,8/25/19,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5165,8/26/19,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5166,9/3/19,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5168,10/10/19,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5169,12/11/19,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5170,1/20/20,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5479,9/22/20,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5629,10/1/20,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5631,10/2/20,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5640,12/6/20,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5776,11/28/22,Maui,South Maui,Ulua Point,20.68614,-156.44562,original
+5606,11/26/08,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5607,5/9/09,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5608,5/26/09,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5609,5/31/09,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5610,5/31/09,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5611,7/2/09,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5612,3/10/10,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5613,3/14/11,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5614,3/25/11,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5615,1/24/13,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5616,5/9/13,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5617,5/13/14,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5618,3/8/15,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5619,3/9/15,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5620,3/22/15,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5621,10/13/16,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5622,1/5/17,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5051,11/23/17,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5002,12/24/17,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5038,12/31/17,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5039,12/31/17,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5009,1/19/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5011,1/21/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5013,1/24/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5016,1/28/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5027,1/30/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5028,1/31/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5026,2/11/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5030,2/12/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5034,2/19/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5035,2/20/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5036,3/10/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5623,3/10/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5045,3/13/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5021,3/14/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5022,3/27/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5024,4/1/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5057,4/11/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5058,4/12/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5061,4/15/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5062,5/12/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5070,6/16/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5096,8/5/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5104,8/11/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5111,8/19/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5123,11/24/18,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5215,2/23/19,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5173,3/5/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5175,3/6/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5220,3/14/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5176,4/8/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5178,4/9/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5405,4/10/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5401,6/9/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5549,10/8/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5637,11/1/20,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5574,4/23/21,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5672,11/13/21,Maui,South Maui,Wailea point,20.67584,-156.44512,original
+5327,11/17/11,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5331,4/11/14,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5342,1/7/17,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5344,5/6/17,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5041,8/7/17,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5001,12/17/17,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5003,12/29/17,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5006,1/5/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5044,2/10/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5032,2/14/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5033,2/17/18,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5627,8/16/20,Maui,South Maui,Wailea Point,20.67584,-156.44512,original
+5818,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.44280,original
+5819,1/10/23,Maui,South Maui,White Rock Beach,20.66386,-156.44280,original
+5575,4/24/21,Maui,South Maui,null,null,null,missing
+5112,5/20/12,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5114,7/12/13,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+441,3/25/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+443,3/28/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+444,4/4/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+448,4/18/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+449,4/19/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5113,7/9/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+461,7/11/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+462,8/3/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+465,8/13/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+467,8/22/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+468,8/30/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+469,9/1/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+474,10/6/14,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+513,4/7/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5332,6/25/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5334,7/7/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5333,7/11/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+541,7/12/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+542,7/18/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+549,8/3/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+550,8/6/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5336,8/9/15,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5339,6/1/16,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+627,4/3/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+628,4/4/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5346,5/30/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5347,6/19/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+641,7/6/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+643,7/16/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+644,7/21/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+646,7/23/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+647,7/25/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+648,7/29/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+649,7/30/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+650,8/7/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+654,8/27/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+656,8/31/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+657,9/2/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+658,9/4/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+666,9/6/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+663,10/7/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+662,10/9/17,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5082,6/8/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5066,6/9/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5071,6/19/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5073,6/22/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5129,6/23/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5075,6/24/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5076,6/25/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5077,6/27/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5086,6/27/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5078,7/1/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5079,7/2/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5080,7/4/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5081,7/4/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5087,7/6/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5088,7/9/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5089,7/9/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5090,7/10/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5091,7/13/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5092,7/13/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5093,7/14/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5094,7/16/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5097,7/19/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5098,7/26/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5150,7/27/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5099,7/29/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5100,7/31/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5101,8/4/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5102,8/6/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5105,8/13/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5106,8/14/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5107,8/14/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5108,8/15/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5109,8/15/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5110,8/16/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5152,8/29/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5153,8/30/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5130,9/3/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5131,9/5/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5132,9/8/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5133,9/10/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5134,9/11/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5122,11/23/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5135,4/25/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5136,4/27/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5138,4/28/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5139,5/3/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5140,5/7/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5141,5/8/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5142,5/14/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5143,5/15/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5144,5/25/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5145,5/28/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5146,5/30/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5147,6/16/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5148,6/19/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5149,6/29/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5154,7/10/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5161,7/26/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5151,8/28/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5167,10/6/19,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5402,5/14/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5233,5/15/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5232,5/19/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5231,5/29/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5566,8/16/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5572,8/17/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5573,8/18/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5415,8/19/20,Maui,West Maui,Honolua Bay,21.01597,-156.64084,original
+5074,6/23/18,Maui,West Maui,Honolua Bay,21.01597,-156.64084,modified
+5674,12/15/21,Maui,West Maui,Lahaina,20.87074,-156.68169,modified
+587,4/2/16,Maui,West Maui,Mala,20.88647,-156.68731,original
+5037,3/16/18,Maui,West Maui,Mala,20.88647,-156.68731,original
+5160,1/13/19,Maui,West Maui,Mala,20.88647,-156.68731,original
+5322,3/3/08,Maui,South Maui,Marty's Reef,20.65590,-156.44576,modified
+5320,4/6/07,Maui,West Maui,Maui West Side,null,null,missing
+5182,4/18/20,Maui,West Maui,Maui West Side,null,null,missing
+2,2/14/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+3,2/18/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+4,3/6/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5,4/10/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+6,4/13/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+7,4/14/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+8,4/15/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+9,4/18/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+10,5/4/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+11,7/11/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+12,7/13/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+13,7/17/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+14,7/24/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+15,7/25/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+16,7/27/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+17,7/30/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+18,8/4/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+19,8/6/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+20,8/7/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+21,8/10/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+22,8/13/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+23,8/20/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+24,8/25/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+25,8/26/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+26,8/29/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+27,8/30/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+28,9/11/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+29,9/20/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+30,9/21/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+31,9/22/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+32,9/23/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+33,12/3/05,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+34,1/31/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+35,3/5/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+36,4/10/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+37,4/24/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+38,5/5/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+39,5/17/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+40,5/20/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+41,6/18/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+42,6/27/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+43,6/28/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+44,6/29/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+45,7/5/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+46,7/6/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+47,7/17/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+48,7/19/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+49,7/24/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+50,9/14/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+51,9/15/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+52,9/26/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+53,9/27/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+54,9/28/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+55,10/11/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+56,11/16/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+57,11/17/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+58,11/18/06,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+59,3/3/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+60,4/3/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+61,4/14/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+62,6/21/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+63,7/11/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+64,7/13/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+65,7/18/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+66,7/19/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+67,7/24/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+68,7/25/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+69,9/7/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+70,9/9/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+71,9/9/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+72,9/11/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+73,9/11/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+74,9/14/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+75,9/14/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+76,9/17/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+77,9/18/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+78,9/18/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+79,9/20/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+80,9/20/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+81,9/22/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+82,9/22/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+83,9/24/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+84,10/15/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+85,10/15/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+86,10/15/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+87,10/17/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+88,10/17/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+89,10/18/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+90,10/18/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+91,10/19/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+92,10/22/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+93,10/22/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+94,10/24/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+95,10/24/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+96,10/29/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+97,10/30/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+98,10/31/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+99,10/31/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+100,11/2/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+101,11/8/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+102,11/8/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+103,11/12/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+104,11/12/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+105,11/17/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+106,11/19/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+107,11/19/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+108,11/26/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+109,11/27/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+110,11/27/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+111,12/19/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+112,12/20/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+113,12/20/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+114,12/23/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+115,12/23/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+116,12/27/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+117,12/29/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+118,12/30/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+119,12/30/07,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+128,1/8/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+129,1/17/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+130,1/18/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+131,1/19/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+132,1/19/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+133,1/19/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+127,1/24/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+120,1/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+121,1/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+122,1/31/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+123,2/4/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+124,2/4/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+125,2/6/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+126,2/6/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+148,2/22/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+149,2/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+150,2/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+151,2/29/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+134,4/8/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+135,4/9/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+136,4/10/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+137,4/14/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+138,4/16/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+139,4/21/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+140,4/22/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+141,4/23/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+142,4/24/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+143,4/26/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+144,4/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+145,5/6/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+146,5/8/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+147,5/9/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+152,5/13/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+153,5/15/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+154,5/18/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+155,5/19/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+156,5/20/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+157,5/21/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+158,5/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+159,5/30/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+160,5/31/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+161,6/1/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+162,6/3/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+163,6/4/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+164,6/11/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+165,6/12/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+166,6/16/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+167,6/24/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+168,6/26/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+169,6/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+170,6/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+171,6/29/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+172,6/30/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+173,7/2/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+174,7/7/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+175,7/9/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+176,7/10/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+177,7/12/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+178,7/13/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+179,8/10/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+180,8/11/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+181,8/12/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+182,8/13/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+183,8/14/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+184,8/15/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+185,8/16/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+186,9/21/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+187,9/22/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+188,9/24/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+189,9/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+190,9/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+191,10/1/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+192,10/5/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+193,10/6/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+194,10/7/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+195,10/8/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+196,10/9/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+197,10/10/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+198,10/27/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+199,10/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+200,10/29/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+201,10/30/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+202,11/1/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+203,11/4/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+204,11/7/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+205,11/21/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+206,12/3/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+207,12/3/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+208,12/5/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+209,12/8/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+210,12/10/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+211,12/12/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+212,12/16/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+214,12/28/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+216,12/29/08,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+217,1/9/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+218,1/20/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+219,1/22/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+220,1/30/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+221,2/8/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+222,2/9/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+223,2/10/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+224,2/12/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+225,3/3/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+226,3/5/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+227,3/12/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+228,3/13/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+229,3/21/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+230,3/23/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+231,3/26/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+232,4/2/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+233,4/7/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+234,4/9/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+235,4/25/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+236,4/29/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+239,5/13/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+240,5/16/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+241,5/20/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+243,5/30/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+244,6/14/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+245,7/7/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+246,7/9/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+248,8/3/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+249,8/5/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+250,8/6/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+251,8/18/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+252,8/21/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+253,8/24/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+254,9/2/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+255,9/14/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+256,9/16/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+257,9/24/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+258,10/21/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+259,10/27/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+260,10/28/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+261,11/2/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+262,11/4/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+263,11/6/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+264,11/12/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+265,12/3/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+266,12/14/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+267,12/29/09,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+268,1/10/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+269,3/11/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+270,3/12/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+271,3/13/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+272,3/22/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+273,3/24/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+274,3/29/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+275,4/4/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+276,4/5/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+277,4/7/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+278,4/14/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+279,4/26/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+280,5/5/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+281,5/6/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+282,5/23/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+283,6/30/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+284,7/2/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+285,7/7/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+286,7/13/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+287,7/20/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+288,7/21/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+289,8/9/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+290,8/11/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+291,8/16/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+292,9/17/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+293,9/23/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+294,9/29/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+295,11/3/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+296,11/17/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+297,11/21/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+298,11/25/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+299,12/22/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+300,12/26/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+301,12/29/10,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+302,1/5/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+303,1/8/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+304,2/21/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+305,3/30/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+306,4/6/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+307,5/1/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+308,5/4/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+309,5/12/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+310,5/14/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+311,6/15/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+312,6/16/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+313,6/18/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+314,6/18/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+315,6/20/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+316,6/24/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+317,6/27/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+318,7/6/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+319,7/12/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+320,7/15/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+321,7/18/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+322,8/5/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+323,8/8/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+324,8/10/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+325,8/13/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+326,8/14/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+327,8/16/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+328,10/10/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+329,10/11/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+330,10/12/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+331,10/14/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+332,12/5/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+333,12/31/11,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+334,2/1/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+335,2/3/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+336,2/22/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+337,2/25/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+338,2/26/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+339,4/2/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+340,4/4/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+341,5/19/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+342,5/20/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+343,7/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+344,7/15/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+345,7/16/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+346,7/18/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+347,7/18/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+348,7/19/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+349,7/19/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+350,7/20/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+351,7/22/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+352,7/22/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+353,7/24/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+354,7/25/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+355,7/26/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+356,7/27/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+357,7/30/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+358,7/30/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+359,8/1/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+360,8/1/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+361,8/6/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+362,8/8/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+363,8/9/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+364,8/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+365,8/12/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+366,8/14/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+367,8/20/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+368,8/23/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+369,8/28/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+370,8/29/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+371,9/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+372,9/12/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+373,9/20/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+374,9/22/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+375,9/24/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+376,10/5/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+377,10/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+378,10/15/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+379,10/17/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+380,10/19/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+381,11/2/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+382,11/5/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+384,11/5/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+506,11/7/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+507,11/7/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+385,11/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+386,11/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+387,11/12/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+389,11/20/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+390,12/1/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+391,12/10/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+392,12/12/12,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+393,1/10/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+394,1/30/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+578,2/5/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+396,2/6/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+397,2/13/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+399,2/25/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+398,3/2/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+400,3/4/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+401,3/6/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+402,3/15/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+403,3/26/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+404,4/1/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+405,4/14/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+406,4/18/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+407,4/21/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+408,4/25/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+410,4/30/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+411,5/1/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+505,5/29/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+412,6/1/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+413,6/3/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+414,8/2/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+415,8/2/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+418,8/2/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+416,9/12/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+417,9/25/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+419,10/5/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+420,10/8/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+421,10/9/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+422,10/12/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+423,10/22/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+424,10/24/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+425,10/26/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+426,11/2/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+427,11/15/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+428,11/22/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+429,12/21/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+430,12/24/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+431,12/27/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+432,12/29/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+434,12/30/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+504,12/30/13,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+435,1/8/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+591,1/11/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+437,3/5/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+438,3/9/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+439,3/12/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+440,3/21/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+442,3/27/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+445,4/6/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+446,4/10/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+447,4/16/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+450,4/24/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+451,4/28/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+452,5/2/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+453,5/3/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+454,5/4/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+455,5/30/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+456,6/4/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+457,6/7/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+458,6/13/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+459,6/22/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+460,6/30/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+463,8/4/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+464,8/10/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+466,8/17/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+470,9/5/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+471,9/26/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+472,9/30/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+473,10/1/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+475,10/7/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+476,10/10/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+477,10/13/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+478,10/25/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+479,10/30/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+480,11/5/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+481,11/10/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+482,11/13/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+580,11/16/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+485,11/25/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+486,12/11/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+487,12/12/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+488,12/18/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+489,12/21/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+490,12/22/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+491,12/27/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+503,12/29/14,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+493,2/24/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+494,3/16/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+495,3/17/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+496,3/18/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+497,3/20/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+498,3/21/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+499,3/23/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+500,3/31/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+501,4/1/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+502,4/4/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+512,4/10/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+511,4/24/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+510,4/30/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+517,4/30/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+515,5/1/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+518,5/1/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+519,5/2/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+520,5/2/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+521,5/3/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+522,5/5/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+523,5/8/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+524,5/9/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+525,5/12/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+526,5/17/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+527,5/23/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+528,5/30/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+529,6/2/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+530,6/3/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+531,6/6/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+532,6/7/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+533,6/11/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+534,6/13/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+535,6/14/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+536,6/16/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+537,6/18/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+538,6/30/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+539,7/8/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+540,7/9/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+543,7/19/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+1,7/21/15,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+544,7/21/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+545,7/22/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+546,7/26/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+547,7/31/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+548,8/2/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+551,8/12/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+552,8/19/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+553,8/28/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+554,9/1/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+555,9/17/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+556,9/25/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+557,9/30/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+558,10/7/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+559,10/9/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+560,10/19/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+561,10/22/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+562,11/6/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+565,11/16/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+567,12/3/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+577,12/5/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+569,12/10/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+570,12/22/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+571,12/23/15,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+572,1/10/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+574,1/13/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+576,2/3/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+581,3/1/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+582,3/4/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+583,3/6/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+584,3/9/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+585,3/25/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+586,3/31/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+588,4/5/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+589,4/15/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+590,4/22/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+592,4/26/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+593,5/8/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+594,5/12/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+595,5/15/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+596,5/18/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+597,5/20/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+598,5/22/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+599,7/29/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+600,7/31/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+601,8/3/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+602,8/5/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+604,8/22/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+605,8/26/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+606,8/28/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+607,9/7/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+608,9/9/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+609,9/11/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+610,10/7/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+611,10/16/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+612,10/18/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+613,11/5/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+615,12/6/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+616,12/20/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+617,12/21/16,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+618,1/7/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+621,2/8/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+622,2/10/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+623,2/22/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+624,3/8/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+625,3/9/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+626,3/13/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+629,4/6/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+630,4/7/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+631,4/11/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+632,4/12/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+633,4/20/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+634,5/12/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+635,5/13/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+636,6/3/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+637,6/7/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+638,6/10/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+639,6/18/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+640,6/29/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+642,7/10/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+651,8/8/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+653,8/11/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+655,8/28/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+665,10/4/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+664,10/6/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+661,10/13/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+660,11/8/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+659,11/11/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+670,11/18/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+669,11/22/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+667,12/16/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+671,12/19/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+675,12/31/17,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5014,1/25/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5015,1/26/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5017,3/2/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5019,3/3/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5020,3/13/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5023,3/31/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5025,4/4/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5055,4/10/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5064,5/30/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5065,6/6/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5068,6/12/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5069,6/13/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5072,6/20/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5095,7/18/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5103,8/10/18,Maui,West Maui,Olowalu,20.79149,-156.58545,original
+5156,6/6/19,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5157,6/8/19,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5230,6/20/19,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5158,6/21/19,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5155,6/23/19,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5180,4/18/20,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5704,7/27/22,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5914,5/2/24,Maui,West Maui,Olowalu,20.79121,-156.58507,original
+5008,1/9/18,Maui,West Maui,Pali Lookout,20.77618,-156.52419,modified
+5630,10/1/20,Maui,South Maui,Sugar Beach,20.78435,-156.46873,modified
+5243,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5244,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5246,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5247,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5248,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5250,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5252,1/6/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5242,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5245,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5249,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5253,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5254,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5258,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5261,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5263,10/20/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5251,10/27/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5255,10/27/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5256,10/27/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5259,10/27/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5260,10/27/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5257,11/13/05,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5315,3/1/06,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5313,3/3/06,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5314,3/3/06,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5312,11/28/06,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5316,1/16/07,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5262,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5267,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5268,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5269,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5270,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5271,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5272,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5274,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5275,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5276,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5277,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5278,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5279,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5280,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5281,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5282,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5283,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5284,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5286,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5287,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5288,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5289,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5290,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5291,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5292,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5293,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5294,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5296,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5297,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5298,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5299,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5300,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5301,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5302,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5303,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5304,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5305,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5306,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5307,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5308,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5309,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5310,null,Maui,West Maui,Ukumehame,20.80142,-156.58499,original
+5642,1/6/21,Maui,West Maui,null,null,null,missing
+5321,2/21/08,Maui,null,null,null,null,missing
+5350,12/9/17,Maui,null,null,null,null,missing
+237,4/21/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+238,5/6/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+242,5/28/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+247,7/10/09,Molokai,South Molokai,Kamalo,21.04000,-156.88000,original
+5558,null,Niihau,Lehua,Kaula Rock,21.65833,-160.54263,modified
+5602,1/2/18,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5604,6/17/20,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5551,5/29/17,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5552,6/24/20,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5553,8/25/20,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5557,10/11/20,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5668,8/30/21,Niihau,Lehua,Lehua,22.01213,-160.09501,modified
+5939,7/20/24,Niihau,Lehua/Niihau,Lehua,22.01213,-160.09501,modified
+5802,12/22/22,Oahu,East Oahu,Hanauma Bay,21.26849,-157.69429,original
+5911,1/13/24,Oahu,East Oahu,Hanauma Bay,21.26849,-157.69429,original
+5910,2/14/24,Oahu,East Oahu,Hanauma Bay,21.26849,-157.69429,original
+5906,1/23/24,Oahu,East Oahu,Rabbit Island Makapu,21.33167,-157.65876,modified
+5904,1/26/24,Oahu,East Oahu,Rabbit Island Makapu,21.33167,-157.65876,modified
+5929,4/13/24,Oahu,East Oahu,Rabbit Island Makapu,21.33167,-157.65876,modified
+5372,9/24/16,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5411,9/24/16,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5373,10/1/16,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5410,1/20/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5409,7/4/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5408,9/28/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5407,10/19/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5492,11/8/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5916,11/8/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5493,11/12/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5406,4/6/20,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5404,4/11/20,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5600,7/11/20,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5691,10/14/20,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5643,1/9/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5805,1/12/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5644,1/17/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5576,3/23/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5833,4/17/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5647,11/21/21,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5675,1/15/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5693,3/20/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5700,5/30/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5701,6/16/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5754,7/21/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5759,8/14/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5761,8/16/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5767,10/8/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5768,10/9/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5771,10/9/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5780,11/27/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5781,11/27/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5800,11/27/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5779,12/5/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5806,1/14/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5811,1/16/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5812,1/16/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5813,1/17/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5836,3/23/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5838,4/1/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5855,5/21/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5872,9/7/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5871,9/16/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5874,10/2/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5873,10/4/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5875,10/6/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5879,11/1/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5881,12/8/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5882,12/9/23,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5927,4/16/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5933,4/27/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5954,9/11/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5953,9/16/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5955,9/27/24,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,original
+5361,9/30/04,Oahu,Northeast Oahu,Mokumanu Islet,21.46970,-157.71934,modified
+5913,11/19/23,Oahu,Northeast Oahu,null,null,null,missing
+5367,5/13/12,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
+5378,8/13/18,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
+5773,8/30/22,Oahu,Northwest Oahu,Kea'au Beach Park,21.49639,-158.23402,modified
+5491,8/1/18,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5495,6/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5496,6/20/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5497,6/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5498,7/3/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5501,7/4/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5499,7/7/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5500,7/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5503,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5512,8/9/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5505,8/10/20,Oahu,Northwest Oahu,Pupukea,21.64702,-158.06592,modified
+5504,8/18/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5502,8/19/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5490,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5489,8/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5488,8/24/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5487,8/25/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5486,8/26/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5485,8/27/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5483,8/30/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5533,9/8/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5481,9/11/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5482,9/11/20,Oahu,Northwest Oahu,Pupukea,21.64381,-158.06695,original
+5480,9/22/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5484,9/23/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5534,10/10/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5655,6/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5657,7/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5658,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5659,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5660,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5661,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5662,7/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5663,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5664,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5577,7/27/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5578,8/3/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5580,8/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5579,8/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5666,8/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5667,8/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5582,8/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5583,8/10/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5584,8/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5585,8/21/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5586,8/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5587,8/26/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5588,9/2/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5589,9/4/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5590,9/5/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5592,9/6/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5597,9/7/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5598,9/8/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5599,9/9/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5593,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5596,9/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5670,9/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5594,9/18/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5595,9/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5720,5/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5721,5/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5722,5/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5723,6/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5724,6/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5725,6/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5726,6/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5727,6/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5728,6/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5729,7/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5730,7/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5731,7/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5732,7/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5733,7/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5734,7/11/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5735,7/12/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5736,7/13/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5738,7/23/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5739,7/24/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5741,7/26/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5742,7/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5743,8/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5744,8/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5745,8/6/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5746,8/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5747,8/10/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5748,8/20/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5749,8/27/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5750,8/28/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5751,9/1/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5752,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5762,9/2/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,original
+5519,8/23/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
+5526,8/28/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
+5520,8/29/20,Oahu,Northwest Oahu,Waimea Bay,21.64060,-158.06487,modified
+5777,2/24/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5699,3/2/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5937,7/11/24,Oahu,Northwest Oahu,Hale'iwa,21.59432,-158.11172,modified
+5763,11/8/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
+5764,11/8/19,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
+5757,8/6/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
+5758,8/10/22,Oahu,Northeast Oahu,Kaneohe Bay,21.47555,-157.82286,modified
+5753,8/21/20,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5737,7/22/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5755,7/25/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5756,8/3/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5775,9/9/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5783,11/8/22,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5840,5/10/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5826,5/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5827,5/24/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5828,5/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5829,5/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5830,6/2/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5831,6/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5832,6/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5843,6/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5844,6/16/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5845,6/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5856,6/25/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5846,7/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5857,7/4/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5848,7/5/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5850,7/6/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5851,7/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5852,7/15/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5853,7/18/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5854,7/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5883,7/23/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5887,7/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5888,8/1/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5889,8/3/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5890,8/7/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5891,8/9/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5892,8/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5893,8/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5894,8/27/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5895,8/29/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5896,8/30/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5898,9/12/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5899,9/13/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5900,9/20/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5901,9/21/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5902,9/22/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5903,9/26/23,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5917,5/8/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5918,5/26/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5919,5/28/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5920,6/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5934,6/29/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5922,8/2/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5943,8/4/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5923,8/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5924,8/19/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5950,9/18/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5951,9/20/24,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5710,5/15/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5711,5/16/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5712,7/14/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5713,7/17/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5714,7/19/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5715,7/20/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5717,7/22/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5718,7/23/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5719,7/24/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5709,7/25/21,Oahu,Northwest Oahu,Pupukea,21.65150,-158.06260,modified
+5690,2/26/17,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
+5694,3/22/22,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
+5794,12/27/22,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
+5837,3/26/23,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
+5841,5/16/23,Oahu,South Oahu,Ala Wai,21.28761,-157.84066,modified
+5936,7/1/24,Oahu,South Oahu,Angler's Reef,21.26915,-157.73456,modified
+5814,1/7/23,Oahu,South Oahu,Electric Beach,21.33790,-158.13356,modified
+5931,4/21/24,Oahu,South Oahu,Electric Beach,21.33790,-158.13356,modified
+5932,4/21/24,Oahu,South Oahu,Electric Beach,21.33790,-158.13356,modified
+5375,12/26/16,Oahu,South Oahu,Ewa Beach,21.30521,-158.01052,modified
+5379,2/11/18,Oahu,South Oahu,Ewa Pinnacles,21.29561,-158.03301,modified
+5799,12/26/22,Oahu,South Oahu,Halona Beach Cove,21.28078,-157.67715,modified
+5880,11/4/23,Oahu,South Oahu,Halona Beach Cove,21.28078,-157.67715,modified
+5365,8/16/06,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5362,12/24/06,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5366,12/31/06,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5508,12/5/19,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5509,12/6/19,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5791,1/18/20,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5510,1/29/20,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5511,3/9/20,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5507,12/3/20,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5506,1/7/21,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5646,2/11/21,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5797,12/28/22,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5798,12/31/22,Oahu,South Oahu,Hanauma Bay,21.26849,-157.69429,original
+5702,4/26/22,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5792,11/29/22,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5793,11/30/22,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5839,4/26/23,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5907,1/17/24,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5926,2/17/24,Oahu,South Oahu,Horeshoe Reef Waikiki,21.28709,-157.86284,modified
+5677,1/20/22,Oahu,South Oahu,Kewalo Pipe,21.28783,-157.86546,modified
+5376,4/7/17,Oahu,South Oahu,Kewalos Horshoe Reef,21.28799,-157.86380,modified
+5537,2/19/10,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5369,1/1/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5370,2/15/15,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5374,11/6/16,Oahu,East Oahu,Lanai Lookout,21.28140,-157.67020,modified
+5380,11/4/16,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5688,3/4/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5785,11/25/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5788,11/29/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5787,12/2/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5786,12/16/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5789,12/18/22,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5790,1/3/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5834,1/17/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5835,3/19/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5868,8/28/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5878,10/16/23,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5909,1/14/24,Oahu,South Oahu,Magic Island,21.28190,-157.84980,modified
+5678,2/3/22,Oahu,South Oahu,Nautilus Dive Site,21.28713,-157.86012,modified
+5364,3/11/18,Oahu,South Oahu,Navy Tug,21.27306,-157.98745,modified
+5816,2/1/22,Oahu,South Oahu,Pearl Harbor,21.31121,-157.96417,modified
+5817,10/7/22,Oahu,South Oahu,Pearl Harbor,21.31121,-157.96417,modified
+5538,12/18/20,Oahu,South Oahu,Point Panic,21.28961,-157.86216,modified
+5928,1/14/24,Oahu,South Oahu,Point Panic,21.28961,-157.86216,modified
+5912,2/17/24,Oahu,South Oahu,Point Panic,21.28961,-157.86216,modified
+5930,3/16/24,Oahu,South Oahu,Point Panic,21.28961,-157.86216,modified
+5689,1/20/20,Oahu,South Oahu,Turtle Canyon,21.27093,-157.83793,modified
+5513,8/21/20,Oahu,South Oahu,Turtle Canyon,21.27093,-157.83793,modified
+5521,8/21/20,Oahu,South Oahu,Turtle Canyon,21.27093,-157.83793,modified
+5530,9/18/20,Oahu,South Oahu,Turtle Canyon,21.27093,-157.83793,modified
+5371,9/5/15,Oahu,South Oahu,YO-257 Shipwreck,21.27100,-157.86696,modified
+5877,10/27/23,Oahu,South Oahu,null,null,null,missing
+5494,11/23/19,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5531,4/28/20,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5842,5/5/20,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5528,5/20/20,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5527,5/22/20,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5648,2/25/21,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5649,3/2/21,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5650,3/3/21,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5654,4/2/21,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5656,6/26/21,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5772,10/19/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5774,10/22/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5784,12/5/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5795,12/11/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5796,12/14/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5801,12/14/22,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5808,1/6/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5807,1/7/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5809,1/10/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5810,1/13/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5804,1/17/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5815,2/11/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5849,6/30/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5847,7/1/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5864,7/20/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5858,7/21/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5862,7/21/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5860,7/22/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5863,7/23/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5885,7/26/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5861,7/27/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5886,7/27/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5870,8/26/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5866,8/30/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5869,8/31/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5897,8/31/23,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5925,4/10/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5952,4/21/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5935,7/6/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5944,7/14/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5945,7/14/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5921,7/16/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5940,7/29/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5941,7/30/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5942,7/30/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5946,8/9/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5947,8/13/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5948,8/14/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5949,8/16/24,Oahu,West Oahu,Electric Beach,21.33790,-158.13356,modified
+5363,3/17/18,Oahu,West Oahu,Ewa Pinnacles,21.29273,-158.03061,modified
+5765,7/18/17,Oahu,West Oahu,Makaha,21.46690,-158.22066,modified
+5766,11/11/19,Oahu,West Oahu,Makaha,21.46690,-158.22066,modified
+5770,4/28/22,Oahu,West Oahu,Makaha,21.46690,-158.22066,modified
+5778,11/10/22,Oahu,West Oahu,Makaha,21.46690,-158.22066,modified
+5876,10/16/23,Oahu,West Oahu,Makaha,21.46690,-158.22066,modified
+5536,9/16/17,Oahu,West Oahu,Makua Beach,21.52666,-158.23008,modified
+5368,1/7/14,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5377,6/10/18,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5535,7/23/19,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5516,7/22/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5514,7/23/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5517,8/13/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5518,8/15/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5532,8/23/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5515,8/25/20,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5769,10/6/22,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5865,8/4/23,Oahu,West Oahu,Pokai Bay,21.43815,-158.18817,original
+5782,8/7/22,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5820,4/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5821,5/6/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5822,5/7/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5823,5/9/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5824,5/10/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5825,5/22/23,Oahu,West Oahu,Pupukea,21.65150,-158.06260,original
+5529,9/18/19,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
+5522,4/2/20,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
+5523,4/2/20,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
+5653,3/6/21,Oahu,West Oahu,Tracks Beach,21.36333,-158.13569,modified
+5414,7/22/20,Oahu,null,null,null,null,missing
+5692,2/11/22,null,Northeast Oahu,Kaneohe Bay,21.45900,-157.80396,modified
+5859,null,null,null,null,null,null,missing
