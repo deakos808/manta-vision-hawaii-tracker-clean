@@ -284,7 +284,7 @@ export default function Sightings() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-4 pb-12">
-        {{/* Optional 'Return to Catalog' link */}
+        {/* Optional 'Return to Catalog' link */}
         {catalogIdParam && (
           <div className="mt-2 text-sm">
             <Link
