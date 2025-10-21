@@ -284,8 +284,25 @@ export default function Sightings() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-4 pb-12">
-        {/* Breadcrumb */}
-        <div className="mt-4">
+        {{/* Optional 'Return to Catalog' link */}
+        {catalogIdParam && (
+          <div className="mt-2 text-sm">
+            <Link
+              to={`/browse/catalog?catalogId=${Number(catalogIdParam)}`}
+              className="text-blue-600 hover:underline"
+            >
+              ← Return to Catalog {catalogIdParam}
+            </Link>
+          </div>
+        )}
+
+        {/* Hero (full-width) */}
+        <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
+          <h1 className="text-4xl font-bold">Sightings</h1>
+        </div>
+
+        {/* Breadcrumb (below hero, left-justified) */}
+        <div className="px-4 sm:px-8 lg:px-16 py-2">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -299,25 +316,6 @@ export default function Sightings() {
           </Breadcrumb>
         </div>
 
-        {/* Optional 'Return to Catalog' link */}
-        {catalogIdParam && (
-          <div className="mt-2 text-sm">
-            <Link
-              to={`/browse/catalog?catalogId=${Number(catalogIdParam)}`}
-              className="text-blue-600 hover:underline"
-            >
-              ← Return to Catalog {catalogIdParam}
-            </Link>
-          </div>
-        )}
-
-        {/* Hero */}
-        <div className="mt-3 text-center">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-2xl py-6">
-            Sightings
-          </h1>
-        </div>
-
         {/* Quick search */}
         <input
           className="mb-4 mt-4 border rounded px-3 py-2 w-full sm:w-64 text-sm"
@@ -327,7 +325,20 @@ export default function Sightings() {
         />
 
         {/* Filters */}
-        <div className="bg-blue-50 rounded-lg p-4 mb-2">
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm font-medium">Filter Sighting Records by:</div>
+            <Button variant="link" size="sm" onClick={onClear} className="text-blue-700">Clear All Filters</Button>
+          </div>
+
+          {/* Left-justified search */}
+          <input
+            className="mb-3 border rounded px-3 py-2 w-full sm:w-64 text-sm"
+            placeholder="Search location, photographer…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
           <SightingFilterBox
             island={island}
             setIsland={setIsland}
@@ -367,6 +378,29 @@ export default function Sightings() {
           </Button>
         </div>
 
+          {/* Sort row (Catalog style) */}
+          <div className="flex items-center text-sm text-gray-700 mt-1 gap-2">
+            <span>Sort by Sighting&nbsp;ID</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "" : "text-blue-600"}
+              onClick={() => setSortAsc(false)}
+              title="Newest first"
+            >
+              ▲
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "text-blue-600" : ""}
+              onClick={() => setSortAsc(true)}
+              title="Oldest first"
+            >
+              ▼
+            </Button>
+          </div>
+
         </div>
 
         {/* Summary */}
@@ -399,6 +433,9 @@ export default function Sightings() {
                     <p>
                       <strong className="text-blue-600">Date:</strong>{" "}
                       {s.sighting_date ?? "unknown"}
+                    </p>
+                    <p>
+                      <strong>Sighting ID:</strong> {s.pk_sighting_id}
                     </p>
                     <p>
                       <strong>Time:</strong> {s.start_time || "—"} –{" "}
