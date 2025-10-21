@@ -1,47 +1,46 @@
-// src/hooks/useUserRole.ts
-import { useState, useEffect } from 'react';
-import { useUser } from '@supabase/auth-helpers-react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-type Role = 'user' | 'admin';
+export type AppRole = "admin" | "user" | "unknown";
 
-interface UseUserRole {
-  role: Role;
-  loading: boolean;
-}
-
-export function useUserRole(): UseUserRole {
-  const user = useUser();
-  const [role, setRole] = useState<Role>('user');
-  const [loading, setLoading] = useState<boolean>(true);
+export function useUserRole(): { role: AppRole } {
+  const [role, setRole] = useState<AppRole>("unknown");
 
   useEffect(() => {
-    if (!user) {
-      setRole('user');
-      setLoading(false);
-      return;
+    let cancelled = false;
+
+    const set = (r: AppRole) => { if (!cancelled) setRole(r); };
+
+    async function loadInitial() {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user?.id;
+      if (!id) return set("unknown");
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", id)
+        .maybeSingle();
+      set(prof?.role === "admin" ? "admin" : "user");
     }
 
-    const fetchRole = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+    loadInitial();
 
-      if (error || !data) {
-        console.error('Error fetching user role:', error);
-        setRole('user');
-      } else {
-        // Assume role column is text 'admin' or 'user'
-        setRole(data.role as Role);
-      }
-      setLoading(false);
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      const id = session?.user?.id;
+      if (!id) return set("unknown");
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", id)
+        .maybeSingle()
+        .then(({ data: prof }) => set(prof?.role === "admin" ? "admin" : "user"));
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.subscription?.unsubscribe();
     };
+  }, []);
 
-    fetchRole();
-  }, [user]);
-
-  return { role, loading };
+  return { role };
 }

@@ -1,0 +1,42 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardList } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function ReviewSubmissionsTile(){
+  const navigate = useNavigate();
+  const [pending, setPending] = React.useState<number | null>(null);
+
+  React.useEffect(() => { (async () => {
+    // Try a few likely sources; first one that returns a count wins.
+    const attempts: Array<() => Promise<number | null>> = [
+      async () => { const { count, error } = await supabase.from("review_submissions").select("id", { count: "exact", head: true }); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("submitted_sightings").select("id", { count: "exact", head: true }); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("sightings").select("id", { count: "exact", head: true }).eq("status","pending"); if (error) throw error; return count ?? 0; },
+      async () => { const { count, error } = await supabase.from("sightings").select("id", { count: "exact", head: true }).eq("review_state","pending"); if (error) throw error; return count ?? 0; },
+    ];
+    for (const fn of attempts) {
+      try { const n = await fn(); if (typeof n === "number") { setPending(n); return; } } catch {}
+    }
+    setPending(0);
+  })(); }, []);
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-600" />
+            Manage Submitted Sightings{typeof pending === 'number' ? ' (' + pending + ')' : ''}
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Review and decide on submitted sightings, mantas, and photos.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/admin/review")}>Review</Button>
+      </CardContent>
+    </Card>
+  );
+}

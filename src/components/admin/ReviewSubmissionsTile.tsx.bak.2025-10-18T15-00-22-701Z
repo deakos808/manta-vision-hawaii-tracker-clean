@@ -1,0 +1,56 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardList } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function ReviewSubmissionsTile(){
+  const navigate = useNavigate();
+  const [pending, setPending] = React.useState<number | null>(null);
+
+  React.useEffect(() => { (async () => {
+  async function countFrom(table: string, filter: (q: any)=>any): Promise<number|null> {
+    try {
+      let q = supabase.from(table).select('id', { count: 'exact' }).limit(1);
+      q = filter(q);
+      const { count, error } = await q;
+      if (error) return null;
+      return typeof count === 'number' ? count : null;
+    } catch { return null; }
+  }
+
+  // Try staging first (most common for "submitted" items):
+  const tries: Array<() => Promise<number|null>> = [
+    // temp_sightings where processed = false
+    () => countFrom('temp_sightings', (q:any) => q.is('processed', false)),
+    // temp_sightings where status = 'submitted'
+    () => countFrom('temp_sightings', (q:any) => q.eq('status','submitted')),
+    // sightings where review_state = 'pending'
+    () => countFrom('sightings', (q:any) => q.eq('review_state','pending')),
+    // sightings where status = 'pending'
+    () => countFrom('sightings', (q:any) => q.eq('status','pending')),
+  ];
+
+  for (const fn of tries) {
+    const n = await fn();
+    if (n !== null) { setPending(n); return; }
+  }
+  setPending(0);
+})(); }, []);return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-600" />
+            Manage Submitted Sightings{typeof pending === 'number' ? ' (' + pending + ')' : ''}
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Review and decide on submitted sightings, mantas, and photos.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/admin/review")}>Review</Button>
+      </CardContent>
+    </Card>
+  );
+}

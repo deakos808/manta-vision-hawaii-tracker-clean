@@ -1,3 +1,4 @@
+import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
 // File: src/pages/admin/BestMantaImageDiagnostics.tsx
 import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
@@ -299,8 +300,8 @@ export default function BestMantaImageDiagnostics() {
     }
   };
 
-  return (
-    <Layout>
+  return (<Layout>
+  <ReviewSubmissionsCard />
       <div className="p-6 space-y-6">
         <div className="text-sm text-muted-foreground pb-2">
           <Link to="/admin" className="underline hover:text-primary">

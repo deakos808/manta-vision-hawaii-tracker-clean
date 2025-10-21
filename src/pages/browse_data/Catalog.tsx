@@ -10,6 +10,22 @@ import CatalogBestPhotoModal from "@/pages/browse_data/modals/CatalogBestPhotoMo
 import CatalogSightingsQuickModal from "@/pages/browse_data/modals/CatalogSightingsQuickModal";
 import SightingMantasQuickModal from "@/pages/browse_data/modals/SightingMantasQuickModal";
 
+function _norm(v?: string | null): string {
+  return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
+}
+function _arrHas(active: string[], arr?: (string|null)[]|null, single?: string|null): boolean {
+  if (active.length === 0) return true;
+  const want = active.map(_norm);
+  if (arr && arr.length) {
+    const hay = arr.map(_norm);
+    return hay.some(x => x && want.includes(x));
+  }
+  if (single) return want.includes(_norm(single));
+  return false;
+}
+
+
+
 type CatalogRow = {
   pk_catalog_id: number;
   name: string | null;
@@ -49,6 +65,39 @@ const EMPTY_FILTERS: FiltersState = {
   species: [],
 };
 
+function computeFiltered(catalog:any[], search:any, filters:any, sortAsc:boolean){
+  const norm=(v:any)=> (v??'').toString().normalize('NFC').trim().toLowerCase();
+  const set=(arr:any[])=> new Set((arr||[]).map(norm));
+  const overlaps=(sel:Set<string>, vals:(any[]|null|undefined))=>{
+    if(!sel || sel.size===0) return true;
+    if(!vals) return false;
+    for(const v of vals){ if(sel.has(norm(v))) return true; }
+    return false;
+  };
+
+  const sTxt=(search??'').toString().trim().toLowerCase();
+  const popSel=set(filters?.population||[]);
+  const islSel=set(filters?.island||[]);
+  const locSel=set(filters?.sitelocation||[]);
+  const genSel=set(filters?.gender||[]);
+  const ageSel=set(filters?.age_class||[]);
+  const spSel =set(filters?.species||[]);
+
+  const out=(catalog||[]).filter((c:any)=>{
+    const byText = (c?.name ? c.name.toLowerCase().includes(sTxt) : false) || String(c?.pk_catalog_id??'').includes(sTxt);
+    const popOk = overlaps(popSel, c?.populations);
+    const islOk = overlaps(islSel, c?.islands);
+    const locVals = Array.isArray(c?.locations) ? c.sitelocations : (c?.sitelocation ? [c.sitelocation] : []);
+    const locOk = overlaps(locSel, locVals);
+    const genOk = genSel.size===0 || genSel.has(norm(c?.gender));
+    const ageOk = ageSel.size===0 || ageSel.has(norm(c?.age_class));
+    const spOk  = spSel.size===0  || spSel.has(norm(c?.species));
+    return byText && popOk && islOk && locOk && genOk && ageOk && spOk;
+  }).sort((a:any,b:any)=> sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id);
+
+  return out;
+}
+
 export default function Catalog() {
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
@@ -79,33 +128,33 @@ export default function Catalog() {
   }, [catalogIdParam]);
 
   const filtered = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    const matches = (arr: string[], v?: string | null) =>
-      arr.length === 0 || (v ? arr.includes(v) : false);
+  const term = (search || '').trim().toLowerCase();
 
-    return catalog
-      .filter((c) => {
-        const text =
-          (c.name ? c.name.toLowerCase().includes(s) : false) ||
-          String(c.pk_catalog_id).includes(s);
-        const byFilters =
-          matches(filters.population, c.population ?? undefined) &&
-          matches(filters.island, c.island ?? undefined) &&
-          matches(filters.sitelocation, c.location ?? undefined) &&
-          matches(filters.gender, c.gender ?? undefined) &&
-          matches(filters.age_class, c.age_class ?? undefined);
-        const speciesOk =
-          filters.species.length === 0 ||
-          (c.species ? filters.species.includes(c.species) : false);
+  const textOK = (c: CatalogRow) =>
+    (c.name ? c.name.toLowerCase().includes(term) : false) ||
+    String(c.pk_catalog_id).includes(term);
 
-        return text && byFilters && speciesOk;
-      })
-      .sort((a, b) =>
-        sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id
-      );
-  }, [catalog, search, filters, sortAsc]);
+  const arrHasAny = (need: string[], have?: string[] | null) =>
+    !need.length || (Array.isArray(have) && have.some(v => need.includes(v)));
 
-  const clearAll = () => {
+  const valOK = (need: string[], v?: string | null) =>
+    !need.length || (v ? need.includes(v) : false);
+
+  const rows = catalog.filter((c) =>
+    textOK(c) &&
+    arrHasAny(filters.population, c.populations) &&
+    arrHasAny(filters.island, c.islands) &&
+    valOK(filters.sitelocation, c.sitelocation) &&
+    valOK(filters.gender, c.gender) &&
+    valOK(filters.age_class, c.age_class) &&
+    (!filters.species.length || (c.species ? filters.species.includes(c.species) : false))
+  );
+
+  rows.sort((a,b)=> (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
+  return rows;
+}, [catalog, search, filters, sortAsc]);
+
+    const clearAll = () => {
     setSearch("");
     setFilters(EMPTY_FILTERS);
     setSortAsc(true);
@@ -247,11 +296,7 @@ export default function Catalog() {
           open={true}
           onOpenChange={(o) => !o && setSelectedCatalogId(null)}
           pk_catalog_id={selectedCatalogId}
-          view={viewMode}
-          view={viewMode}
-          view={viewMode}
-          view={viewMode}
-          onSaved={() => load()}
+          view={viewMode} onSaved={() => load()}
         />
       )}
     </Layout>

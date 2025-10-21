@@ -34,8 +34,9 @@ export default function Layout({ children }: Props) {
   const { role } = useUserRole();
   const user    = useUser();
 
-  return (
-    <div className="flex flex-col min-h-screen bg-white text-black">
+  return (<>
+<>
+<div className="flex flex-col min-h-screen bg-white text-black">
       <Header />
       <main className="flex-grow px-4 py-6">{children}</main>
 
@@ -47,9 +48,8 @@ export default function Layout({ children }: Props) {
         </div>
         <div>
           Code version&nbsp;(HST):&nbsp;
-          <strong>{toHST(DEPLOYED_AT)}</strong>&nbsp;—&nbsp;{GIT_HASH}
+          <strong>{toHST(DEPLOYED_AT)}</strong>&nbsp;—&nbsp;{GIT_HASH}<br /><small className="text-xs text-gray-500">BUILD: manta-vision-hawaii-tracker-clean</small>
         </div>
       </footer>
-    </div>
-  );
+    </div></></>);
 }

@@ -1,364 +1,153 @@
-// FULL OVERWRITE FROM VERIFIED WORKING VERSION
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import Layout from '@/components/layout/Layout';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog';
-import {
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  Loader2,
-  KeyRound,
-  ChevronLeft,
-  ShieldCheck,
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
 
-interface Profile {
-  id: string;
+type RoleRow = {
+  id: string;           // auth.users.id (FK)
   email: string;
-  role: string;
+  role: "admin" | "user" | string;
   is_active: boolean;
-  created_at: string;
-  email_confirmed_at?: string | null;
+  created_at: string | null;
+};
+
+function toHST(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-US", { timeZone: "Pacific/Honolulu" });
 }
 
-const EDGE_BASE_URL = import.meta.env.VITE_SUPABASE_EDGE_URL;
-
 export default function AdminRolesPage() {
-  const navigate = useNavigate();
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'user' | 'admin'>('user');
-  const [isCreating, setIsCreating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [adminId, setAdminId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [passwordModalUserId, setPasswordModalUserId] = useState<string | null>(null);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [rows, setRows] = useState<RoleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selfId, setSelfId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data.session;
-      setAccessToken(session?.access_token || null);
-      if (session?.user?.id) setAdminId(session.user.id);
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setSelfId(data.user?.id);
     });
+    (async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,email,role,is_active,created_at")
+        .order("created_at", { ascending: true });
+      if (error) {
+        console.error("[AdminRoles] load error", error);
+        setError(error.message);
+      } else {
+        setRows((data as any) ?? []);
+      }
+      setLoading(false);
+    })();
+    return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (accessToken) fetchUsers();
-  }, [accessToken, showArchived]);
-
-  async function fetchUsers() {
-    setIsLoading(true);
-    try {
-      const [{ data: profiles }, authResRaw] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        fetch(`${EDGE_BASE_URL}/list-users`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      ]);
-      const authJson = await authResRaw.json();
-      if (!profiles || authJson.error) throw new Error(authJson.error || 'Fetch error');
-      const enriched = (profiles as Profile[]).map((profile) => {
-        const match = authJson.find((u: any) => u.id === profile.id);
-        return { ...profile, email_confirmed_at: match?.created_at || null };
-      });
-      setUsers(enriched.filter((u) => (showArchived ? true : u.is_active)));
-    } catch (e) {
-      toast.error('Failed loading users');
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+  async function setRole(id: string, role: RoleRow["role"]) {
+    setBusyId(id);
+    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, role } : r)));
   }
 
-  async function handleConfirmUser(userId: string) {
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/confirm-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to confirm user');
-      toast.success('Email confirmed');
-      fetchUsers();
-    } catch (e) {
-      toast.error('Failed to confirm email');
-      console.error(e);
-    }
+  async function setActive(id: string, is_active: boolean) {
+    setBusyId(id);
+    const { error } = await supabase.from("profiles").update({ is_active }).eq("id", id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, is_active } : r)));
   }
 
-  async function handlePasswordUpdate() {
-    if (!passwordModalUserId || !accessToken || newPasswordValue.length < 8) return;
-    setIsUpdatingPassword(true);
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/update-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          user_id: passwordModalUserId,
-          new_password: newPasswordValue,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Password update failed');
-      toast.success('Password updated');
-      setPasswordModalUserId(null);
-      setNewPasswordValue('');
-    } catch (e) {
-      toast.error('Password update failed');
-      console.error(e);
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  }
-
-  async function handleAddUser() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast.error('Please enter a valid email address');
+  async function deleteRow(row: RoleRow) {
+    if (row.id === selfId) {
+      alert("You cannot delete your own admin record.");
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (!adminId || !accessToken) {
-      toast.error('Session expired, please sign in again');
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/create-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          email: newEmail,
-          password: newPassword,
-          role: newRole,
-          admin_id: adminId,
-        }),
-      });
-      const text = await res.text();
-      console.log('[create-user response]', text);
-      const json = JSON.parse(text);
-      if (!res.ok) throw new Error(json.error || 'Create failed');
-
-      toast.success(`${newEmail} was added as ${newRole}`);
-      setTimeout(() => {
-        setIsDialogOpen(false);
-        setNewEmail('');
-        setNewPassword('');
-        setNewRole('user');
-        fetchUsers();
-      }, 500);
-    } catch (e: any) {
-      toast.error(e.message || 'Unexpected error');
-      console.error(e);
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
-  async function handleDelete(userId: string) {
-    if (!adminId || !accessToken) {
-      toast.error('Session expired');
-      return;
-    }
-
-    setIsDeleting(userId);
-
-    try {
-      const res = await fetch(`${EDGE_BASE_URL}/delete-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ user_id: userId, admin_id: adminId }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Delete failed');
-
-      toast.success('User deleted');
-      fetchUsers();
-    } catch (e) {
-      toast.error((e as Error).message || 'Unexpected error');
-      console.error(e);
-    } finally {
-      setIsDeleting(null);
-    }
+    if (!confirm(`Delete role record for ${row.email}? This removes it from the roles table only.`)) return;
+    setBusyId(row.id);
+    const { error } = await supabase.from("profiles").delete().eq("id", row.id);
+    setBusyId(null);
+    if (error) return alert(error.message);
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
   }
 
   return (
-    <Layout>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/admin/users-invite")}>Invite User</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Admin Dashboard
-          </Button>
-          <Button onClick={() => setShowArchived(!showArchived)}>
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
-        </div>
+    <div className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Admin Roles</h1>
+        <Link to="/admin/users-invite" className="text-sky-700 hover:underline">
+          Invite Users
+        </Link>
       </div>
 
-      <Dialog open={!!passwordModalUserId} onOpenChange={() => setPasswordModalUserId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Password</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              type="password"
-              placeholder="New password"
-              value={newPasswordValue}
-              onChange={(e) => setNewPasswordValue(e.target.value)}
-            />
-            <Button onClick={handlePasswordUpdate} disabled={isUpdatingPassword} className="w-full">
-              {isUpdatingPassword ? <Loader2 className="animate-spin" /> : 'Save Password'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {loading && <div className="text-gray-600">Loading…</div>}
+      {error && <div className="text-red-600 mb-3">{error}</div>}
 
-      {isLoading ? (
-        <div className="text-center py-10">
-          <Loader2 className="mx-auto animate-spin" />
-          <p className="mt-2 text-gray-500">Loading users...</p>
-        </div>
-      ) : (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="p-2 text-left">Email</th>
-              <th className="p-2 text-left">Role</th>
-              <th className="p-2 text-center">Status</th>
-              <th className="p-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="p-2">{u.email}</td>
-                <td className="p-2">
-                  <Select
-                    value={u.role}
-                    onValueChange={async (val) => {
-                      await supabase.from('profiles').update({ role: val }).eq('id', u.id);
-                      await fetchUsers();
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="p-2 text-center">
-                  {u.is_active ? (
-                    <CheckCircle className="text-green-600 mx-auto" title="Active" />
-                  ) : (
-                    <AlertTriangle className="text-red-600 mx-auto" title="Archived" />
-                  )}
-                </td>
-                <td className="p-2 text-center flex items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setPasswordModalUserId(u.id)}
-                  >
-                    <KeyRound size={16} />
-                  </Button>
-
-                  {u.email_confirmed_at ? null : (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleConfirmUser(u.id)}
-                    >
-                      <ShieldCheck size={16} />
-                    </Button>
-                  )}
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button disabled={isDeleting === u.id}>
-                        {isDeleting === u.id ? (
-                          <Loader2 className="mx-auto animate-spin" />
-                        ) : (
-                          <Trash2 className="text-red-500" />
-                        )}
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent aria-describedby="delete-user-desc">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete {u.email}?</AlertDialogTitle>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(u.id)}>
-                          Confirm
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {!loading && rows.length === 0 && (
+        <div className="text-gray-600">No users found.</div>
       )}
-    </Layout>
+
+      {!loading && rows.length > 0 && (
+        <div className="overflow-x-auto border rounded">
+          <table className="min-w-full border-collapse">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-sm text-gray-600">
+                <th className="p-3 border-b">Email</th>
+                <th className="p-3 border-b">Role</th>
+                <th className="p-3 border-b">Active</th>
+                <th className="p-3 border-b">Created</th>
+                <th className="p-3 border-b">User ID</th>
+                <th className="p-3 border-b text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="text-sm">
+                  <td className="p-3 border-b align-middle">{r.email}</td>
+                  <td className="p-3 border-b align-middle">
+                    <select
+                      className="border rounded px-2 py-1"
+                      value={r.role}
+                      disabled={busyId === r.id}
+                      onChange={(e) => setRole(r.id, e.target.value as RoleRow["role"])}
+                    >
+                      <option value="user">user</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </td>
+                  <td className="p-3 border-b align-middle">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={!!r.is_active}
+                      disabled={busyId === r.id}
+                      onChange={(e) => setActive(r.id, e.target.checked)}
+                    />
+                  </td>
+                  <td className="p-3 border-b align-middle">{toHST(r.created_at)}</td>
+                  <td className="p-3 border-b align-middle">{r.id}</td>
+                  <td className="p-3 border-b align-middle">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        className="px-3 py-1 rounded border border-red-600 text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        disabled={busyId === r.id}
+                        onClick={() => deleteRow(r)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,0 +1,130 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import { Pencil, Trash2 } from "lucide-react";
+
+type Row = {
+  session_id: string;
+  n_measurements: number | null;
+  mean_error_pct: number | null;
+  photographer_name?: string | null;
+  camera_model?: string | null;
+  created_at?: string | null;
+};
+
+export default function CalibrationLandingPage(){
+  const navigate = useNavigate();
+
+  async function deleteSession(sessionId: string){
+    try{
+      // 1) Attempt to delete storage files under calibration/<sessionId>/
+      const base = `calibration/${sessionId}`;
+      const { data: list, error: listErr } = await supabase.storage.from("calibration-images").list(base, { limit: 100 });
+      if (!listErr && list && list.length){
+        const paths = list.map(it => `${base}/${it.name}`);
+        await supabase.storage.from("calibration-images").remove(paths);
+      }
+      // 2) Delete DB row (photos + measurements cascade)
+      const { error: delErr } = await supabase.from("calibration_sessions").delete().eq("id", sessionId);
+      if (delErr) throw delErr;
+      // soft refresh
+      window.location.reload();
+    } catch(e){ console.error("[calibration] deleteSession error", e); alert("Delete failed: " + (e as any)?.message ?? e); }
+  }
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(()=>{ (async ()=>{
+    setLoading(true);
+    try{
+      const { data: stats, error: e1 } = await supabase
+        .from("calibration_session_stats")
+        .select("*");
+      if (e1) throw e1;
+
+      const { data: heads, error: e2 } = await supabase
+        .from("calibration_sessions")
+        .select("id, photographer_name, camera_model, created_at");
+      if (e2) throw e2;
+
+      const map = new Map((heads||[]).map(h => [h.id, h]));
+      const merged: Row[] = (stats||[]).map(s => ({
+        session_id: s.session_id,
+        n_measurements: s.n_measurements,
+        mean_error_pct: s.mean_error_pct,
+        photographer_name: map.get(s.session_id)?.photographer_name ?? null,
+        camera_model: map.get(s.session_id)?.camera_model ?? null,
+        created_at: map.get(s.session_id)?.created_at ?? null,
+      })).sort((a,b)=> (b.created_at||'').localeCompare(a.created_at||''));
+      setRows(merged);
+    } finally { setLoading(false); }
+  })(); },[]);
+
+  return (
+    <div className="p-6">
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold">Calibration Sessions</h1>
+        <p className="text-sm text-slate-600">Mean error is computed across photos with measurements.</p>
+      </div>
+
+      <div className="mb-4">
+        <Link to="/admin/calibration/new" className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-slate-50">
+          New Calibration
+        </Link>
+      </div>
+
+      <div className="overflow-x-auto border rounded-lg bg-white">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="text-left px-3 py-2">Created</th>
+              <th className="text-left px-3 py-2">Photographer</th>
+              <th className="text-left px-3 py-2">Camera</th>
+              <th className="text-right px-3 py-2">Photos</th>
+              <th className="text-right px-3 py-2">Mean error (%)</th>
+              <th className="px-3 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r=>(
+              <tr key={r.session_id} className="border-t">
+                <td className="px-3 py-2">{r.created_at ? new Date(r.created_at).toLocaleString() : "-"}</td>
+                <td className="px-3 py-2">{r.photographer_name || "-"}</td>
+                <td className="px-3 py-2">{r.camera_model || "-"}</td>
+                <td className="px-3 py-2 text-right">{r.n_measurements ?? 0}</td>
+                <td className="px-3 py-2 text-right">{r.mean_error_pct != null ? r.mean_error_pct.toFixed(2) : "-"}</td>
+                <td className="px-3 py-2 text-right">
+                  <span className="text-sky-700 underline cursor-pointer" onClick={()=>window.location.href = `/admin/calibration/${r.session_id}` }>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 mr-2"
+                      onClick={() => navigate(`/admin/calibration/${r.session_id}`)}
+                      aria-label="Edit session"
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span className="sr-only">Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-slate-50 text-rose-700"
+                      onClick={() => { if(confirm("Delete this calibration session? This will remove its photos/measurements. Continue?")) deleteSession(r.session_id); }}
+                      aria-label="Delete session"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Delete</span>
+                    </button>
+                  </td>
+                </td>
+              </tr>
+            ))}
+            {(!rows.length && !loading) && (
+              <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={6}>No sessions yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
