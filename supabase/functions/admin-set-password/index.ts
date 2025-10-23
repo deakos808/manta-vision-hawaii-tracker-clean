@@ -1,52 +1,36 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// supabase/functions/admin-set-password/index.ts
+import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-function env(k: string) { return Deno.env.get(k) ?? ""; }
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': '*',
+  'Content-Type': 'application/json',
+};
 
 serve(async (req) => {
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
-    "Access-Control-Allow-Headers": "authorization,content-type,x-bootstrap-secret",
-    "Content-Type": "application/json",
-    "Vary": "Origin"
-  };
-
-  if (req.method === "OPTIONS") return new Response(null, { headers });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+  }
 
   try {
-    const secret = env("BOOTSTRAP_SECRET");
-    const provided = req.headers.get("x-bootstrap-secret") ?? "";
-    if (!secret || provided !== secret) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
+    const { user_id, new_password } = await req.json();
+    if (!user_id || !new_password) {
+      return new Response(JSON.stringify({ error: 'Missing user_id or new_password' }), { status: 400, headers: corsHeaders });
     }
 
-    const SB_URL = env("SB_URL") || env("SUPABASE_URL");
-    const SB_SERVICE = env("SB_SERVICE_ROLE_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-    if (!SB_URL || !SB_SERVICE) {
-      return new Response(JSON.stringify({ error: "Server misconfigured" }), { status: 500, headers });
+    const url = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const sb = createClient(url, serviceKey);
+
+    const { error } = await sb.auth.admin.updateUserById(String(user_id), { password: String(new_password) });
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
     }
 
-    const { email, new_password } = await req.json().catch(() => ({}));
-    if (!email || !new_password || String(new_password).length < 8) {
-      return new Response(JSON.stringify({ error: "Email and new_password (>=8) required" }), { status: 400, headers });
-    }
-
-    const admin = createClient(SB_URL, SB_SERVICE);
-
-    // Get user id via profiles (id = auth.users.id)
-    const { data: prof, error: profErr } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
-    if (profErr || !prof?.id) {
-      return new Response(JSON.stringify({ error: "User not found in profiles" }), { status: 404, headers });
-    }
-
-    const upd = await admin.auth.admin.updateUserById(prof.id, { password: new_password });
-    if (upd.error) {
-      return new Response(JSON.stringify({ error: upd.error.message }), { status: 400, headers });
-    }
-
-    return new Response(JSON.stringify({ ok: true, user_id: prof.id }), { status: 200, headers });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), { status: 500, headers });
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err?.message || 'Unexpected error' }), { status: 500, headers: corsHeaders });
   }
 });

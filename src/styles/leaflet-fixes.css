@@ -1,0 +1,6 @@
+.leaflet-pane .leaflet-tile{
+  outline: 1px solid rgba(0,0,0,0.001);
+  image-rendering: auto;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}

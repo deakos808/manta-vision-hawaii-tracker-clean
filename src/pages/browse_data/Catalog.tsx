@@ -10,6 +10,7 @@ import CatalogBestPhotoModal from "@/pages/browse_data/modals/CatalogBestPhotoMo
 import CatalogSightingsQuickModal from "@/pages/browse_data/modals/CatalogSightingsQuickModal";
 import SightingMantasQuickModal from "@/pages/browse_data/modals/SightingMantasQuickModal";
 
+import { useIsAdmin } from "@/lib/isAdmin";
 function _norm(v?: string | null): string {
   return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
 }
@@ -99,6 +100,7 @@ function computeFiltered(catalog:any[], search:any, filters:any, sortAsc:boolean
 }
 
 export default function Catalog() {
+  const isAdmin = useIsAdmin();
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
@@ -258,12 +260,12 @@ export default function Catalog() {
                   className="w-full aspect-square object-cover rounded border"
                   onError={(ev) => ((ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
                 />
-                <div
+                {isAdmin && (<div
                   className="mt-1 w-full text-center text-xs text-blue-500 underline cursor-pointer"
                   onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
                 >
                   change
-                </div>
+                </div>)}
               </div>
 
               {/* details */}
