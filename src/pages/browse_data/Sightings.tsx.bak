@@ -284,21 +284,6 @@ export default function Sightings() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-4 pb-12">
-        {/* Breadcrumb */}
-        <div className="mt-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/browse/data">Browse Data</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Sightings</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-
         {/* Optional 'Return to Catalog' link */}
         {catalogIdParam && (
           <div className="mt-2 text-sm">
@@ -311,23 +296,28 @@ export default function Sightings() {
           </div>
         )}
 
-        {/* Hero */}
-        <div className="mt-3 text-center">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-2xl py-6">
-            Sightings
-          </h1>
+        {/* Hero (full-width) */}
+        <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
+          <h1 className="text-4xl font-bold">Sightings</h1>
         </div>
-
         {/* Quick search */}
-        <input
-          className="mb-4 mt-4 border rounded px-3 py-2 w-full sm:w-64 text-sm"
-          placeholder="Search location, photographer…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
         {/* Filters */}
-        <div className="bg-blue-50 rounded-lg p-4 mb-2">
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2">
+          <div className="text-sm text-blue-800 mb-2">
+            <a href="/browse/data" className="hover:underline">← Return to Browse Data</a>
+          </div>
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm font-medium">Filter Sighting Records by:</div>
+          </div>
+
+          {/* Left-justified search */}
+          <input
+            className="mb-3 border rounded px-3 py-2 w-full sm:w-64 text-sm"
+            placeholder="Search location, photographer…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
           <SightingFilterBox
             island={island}
             setIsland={setIsland}
@@ -366,7 +356,6 @@ export default function Sightings() {
             ▼
           </Button>
         </div>
-
         </div>
 
         {/* Summary */}
@@ -399,6 +388,9 @@ export default function Sightings() {
                     <p>
                       <strong className="text-blue-600">Date:</strong>{" "}
                       {s.sighting_date ?? "unknown"}
+                    </p>
+                    <p>
+                      <strong>Sighting ID:</strong> {s.pk_sighting_id}
                     </p>
                     <p>
                       <strong>Time:</strong> {s.start_time || "—"} –{" "}

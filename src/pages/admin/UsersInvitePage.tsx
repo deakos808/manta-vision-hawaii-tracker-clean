@@ -1,109 +1,151 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react";
 import Layout from "@/components/layout/Layout";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import toast from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
 
-import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
+const EDGE_BASE =
+  (import.meta.env.VITE_SUPABASE_EDGE_URL?.replace(/\/$/, "")) ||
+  ((import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "") + "/functions/v1") ||
+  "https://apweteosdbgsolmvcmhn.supabase.co/functions/v1";
+
+function genTempPassword(len = 20) {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_!@#$%^&*";
+  const out: string[] = [];
+  const rnd = new Uint32Array(len);
+  (window.crypto || self.crypto).getRandomValues(rnd);
+  for (let i = 0; i < len; i++) out.push(abc[rnd[i] % abc.length]);
+  return out.join("");
+}
+
 export default function UsersInvitePage() {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"user" | "admin">("user");
-  const [sendEmail, setSendEmail] = useState(false); // default: show link inline
-  const [sending, setSending] = useState(false);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [result, setResult] = useState<{ action_link?: string; email?: string; role?: string; mode?: "invite" | "recovery" } | null>(null);
-
-  const EDGE_BASE = (import.meta as any).env.VITE_SUPABASE_EDGE_URL?.replace(/\/$/, "") || "";
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSessionToken(data.session?.access_token ?? null));
-  }, []);
+  const [role, setRole] = useState<"admin" | "user">("user");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setResult(null);
-    if (!sessionToken) { toast.error("Not signed in as admin"); return; }
-    if (!email || !/\S+@\S+\.\S+/.test(email)) { toast.error("Enter a valid email"); return; }
+    const em = email.trim();
+    if (!em) { alert("Please enter an email."); return; }
 
-    setSending(true);
+    // use provided password or generate one
+    let pw = password.trim();
+    if (!pw) pw = genTempPassword(20);
+
+    setBusy(true);
     try {
-      const r = await fetch(`${EDGE_BASE}/admin-create-user`, {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userRes?.user?.id) { alert("Cannot determine admin user id."); return; }
+      const admin_id = userRes.user.id;
+
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+
+      const r = await fetch(`${EDGE_BASE}/create-user`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${sessionToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role, sendEmail })
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          email: em,
+          password: pw,
+          role,
+          admin_id,
+        }),
       });
+
       const j = await r.json().catch(() => ({}));
-      if (!r.ok && !j.action_link) {
-        console.error("[admin-create-user] status", r.status, "payload:", j);
-        toast.error(j?.detail ?? j?.error ?? `Invite failed (${r.status})`);
-      } else {
-        setResult({ action_link: j.action_link, email: j.email, role: j.role, mode: j.mode });
-        toast.success(j.action_link ? (j.mode === "recovery" ? "Recovery link ready" : "Invite link ready") : "Email sent");
+      if (!r.ok) {
+        alert(`Invite failed (${r.status}): ${j?.error ?? "Unknown error"}`);
+        return;
       }
-    } catch (err: any) {
-      toast.error(String(err?.message || err));
+
+      // ✅ success — show the password ONCE so you can copy/paste to the user
+      alert(`Invite created.\n\nEmail: ${em}\nTemporary password:\n${pw}\n\nPlease copy this now and share it securely with the user.`);
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      console.error("[invite] error", err);
+      alert("Unexpected error. See console for details.");
     } finally {
-      setSending(false);
+      setBusy(false);
     }
   }
 
-  async function copyLink() {
-    if (result?.action_link) {
-      await navigator.clipboard.writeText(result.action_link);
-      toast.success("Invite link copied");
-    }
-  }
-
-  return (<Layout>
-  <ReviewSubmissionsCard />
-      <div className="mx-auto max-w-xl p-4">
-        <div className="mb-3 text-sm text-muted-foreground">
-          <Link to="/admin" className="hover:underline">← Admin Dashboard</Link>
+  return (
+    <Layout title="Invite Users">
+      <div className="mx-auto max-w-4xl px-4 pb-16">
+        <div className="mt-6 mb-4 text-sm">
+          <Link to="/admin" className="text-blue-600 hover:underline">← Admin Dashboard</Link>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Invite Admin/User</CardTitle>
-            <CardDescription>Create an account and send an invite link or email.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="person@example.org" />
-              </div>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={role} onValueChange={(v: any) => setRole(v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select role" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">user</SelectItem>
-                    <SelectItem value="admin">admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
-                Send email via Resend (otherwise just show invite/recovery link)
-              </label>
-              <Button type="submit" disabled={sending} className="w-full">{sending ? "Sending..." : "Generate Invite"}</Button>
-            </form>
 
-            {result?.action_link && (
-              <div className="mt-6 rounded-lg border p-3 text-sm space-y-2">
-                <div className="font-medium">
-                  {result.mode === "recovery" ? "Recovery link" : "Invite link"} (copy & share):
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold">Invite Admin/User</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create an account, set a password, and share the credentials with the user.
+          </p>
+
+          <form className="mt-4 grid gap-4 max-w-lg" onSubmit={onSubmit}>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="role">Role</Label>
+              <select
+                id="role"
+                className="h-10 rounded border px-3 text-sm"
+                value={role}
+                onChange={(e) => setRole(e.target.value as "admin" | "user")}
+              >
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <div className="text-xs text-muted-foreground">
+                  (leave blank and we’ll generate)
                 </div>
-                <div className="truncate">{result.action_link}</div>
-                <Button variant="outline" className="w-full" onClick={copyLink}>Copy Link</Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="flex gap-2">
+                <Input
+                  id="password"
+                  type={showPw ? "text" : "password"}
+                  placeholder="Set a temporary password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={() => setPassword(genTempPassword(16))}>
+                  Generate
+                </Button>
+              </div>
+              <label className="mt-1 flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} />
+                Show password
+              </label>
+            </div>
+
+            <Button type="submit" disabled={busy}>
+              {busy ? "Creating…" : "Generate Invite"}
+            </Button>
+          </form>
+        </div>
       </div>
     </Layout>
   );

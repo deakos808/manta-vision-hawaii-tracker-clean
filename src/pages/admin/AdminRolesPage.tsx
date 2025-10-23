@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
 
+import PasswordCell from "@/pages/admin/components/PasswordCell";
 type RoleRow = {
   id: string;           // auth.users.id (FK)
   email: string;
@@ -102,13 +103,17 @@ export default function AdminRolesPage() {
                 <th className="p-3 border-b">Active</th>
                 <th className="p-3 border-b">Created</th>
                 <th className="p-3 border-b">User ID</th>
-                <th className="p-3 border-b text-right">Actions</th>
+                <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Password</th>
+      <th className="p-3 border-b text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="text-sm">
-                  <td className="p-3 border-b align-middle">{r.email}</td>
+                  <td className="px-3 py-2 align-top">
+        <PasswordCell userId={String(r.user_id ?? r.id)} email={r.email} />
+      </td>
+      <td className="p-3 border-b align-middle">{r.email}</td>
                   <td className="p-3 border-b align-middle">
                     <select
                       className="border rounded px-2 py-1"
