@@ -1,269 +1,198 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-// Styles for both engines
-import "mapbox-gl/dist/mapbox-gl.css";
 import "leaflet/dist/leaflet.css";
+import "@/styles/leaflet-fixes.css";
+import Supercluster from "supercluster";
 
-type Point = { lat: number; lon: number };
+type Point = { id?: number; lat: number; lon: number; date?: string | null; photographer?: string | null; total?: number | null };
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   points: Point[];
+  totalFiltered?: number;
+  children?: React.ReactNode;
+  onSelect?: (sid: number) => void;
 };
 
-/* In-memory cache for aggregations (accelerates reopen with same inputs) */
-const aggCache = new Map<string, Array<{ lat: number; lon: number; count: number }>>();
+export default function MapDialog({ open, onOpenChange, points, totalFiltered, children, onSelect }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inst = useRef<{ map: any; layer: any; index: any; setData: (pts: Point[]) => void; render: () => void } | null>(null);
+  const [ready, setReady] = useState(false);
 
-export default function MapDialog({ open, onOpenChange, points }: Props) {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const [mode, setMode] = useState<"mapbox" | "leaflet" | "none">("none");
-
-  // Hash for caching (simple + fast)
-  const ptsKey = useMemo(() => {
-    // order-insensitive key: we use length + first/last few coords
-    const n = points?.length ?? 0;
-    if (!n) return "empty";
-    const head = points.slice(0, 5).map(p => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join("|");
-    const tail = points.slice(-5).map(p => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join("|");
-    return `${n}#${head}#${tail}`;
-  }, [points]);
-
-  // Decide engine on open
   useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
+    (window as any).__map_onSelect = (sid: number) => onSelect?.(sid);
+    (window as any).handleSelectFromMap = (sid: number) => onSelect?.(sid);
+    return () => {
+      try {
+        delete (window as any).__map_onSelect;
+        delete (window as any).handleSelectFromMap;
+      } catch {}
+    };
+  }, [onSelect]);
 
-    (async () => {
-      const token = (import.meta.env as any).VITE_MAPBOX_TOKEN as string | undefined;
-      const canMapbox = !!token && (await webglSupported());
-      const chosen = canMapbox ? "mapbox" : "leaflet";
-      if (!cancelled) setMode(chosen);
-    })();
-
-    return () => { cancelled = true; };
+  useEffect(() => {
+    if (open) {
+      setReady(true);
+    } else {
+      setReady(false);
+      if (inst.current?.map) { try { inst.current.map.remove(); } catch {} }
+      inst.current = null;
+      if (containerRef.current) try { containerRef.current.innerHTML = ""; } catch {}
+    }
   }, [open]);
 
-  // Aggregate identical points (for Leaflet)
-  const aggregated = useMemo(() => {
-    if (!points || points.length === 0) return [];
-    if (aggCache.has(ptsKey)) return aggCache.get(ptsKey)!;
-
-    // exact lat/lon groups; keep as-is (no rounding) for exact duplicates
-    const map = new Map<string, { lat: number; lon: number; count: number }>();
-    for (const p of points) {
-      const key = `${p.lat},${p.lon}`; // exact match only
-      const cur = map.get(key);
-      if (cur) cur.count++;
-      else map.set(key, { lat: p.lat, lon: p.lon, count: 1 });
-    }
-    const arr = Array.from(map.values());
-    aggCache.set(ptsKey, arr);
-    return arr;
-  }, [points, ptsKey]);
-
-  // Build map on mode/points change
   useEffect(() => {
-    if (!open || mode === "none") return;
+    if (!open || !ready) return;
+    mountLeaflet();
+  }, [open, ready]);
 
-    const container = mapContainerRef.current;
-    if (!container) return;
-
-    // Cleanup any old map
-    if (mapInstanceRef.current?.remove) {
-      try { mapInstanceRef.current.remove(); } catch {}
-      mapInstanceRef.current = null;
-    }
-
-    // Guard: no points
-    if (!points || points.length === 0) return;
-
-    if (mode === "mapbox") {
-      (async () => {
-        const mapboxgl = (await import("mapbox-gl")).default as any;
-        mapboxgl.accessToken = (import.meta.env as any).VITE_MAPBOX_TOKEN;
-
-        const map = new mapboxgl.Map({
-          container,
-          style: "mapbox://styles/mapbox/outdoors-v12",
-          center: [points[0].lon, points[0].lat],
-          zoom: 7,
-        });
-        map.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-        map.on("load", () => {
-          // Build a GeoJSON source with clustering enabled
-          const geojson = {
-            type: "FeatureCollection",
-            features: points.map((p) => ({
-              type: "Feature",
-              properties: {},
-              geometry: { type: "Point", coordinates: [p.lon, p.lat] },
-            })),
-          };
-
-          if (map.getSource("sightings")) map.removeSource("sightings");
-          map.addSource("sightings", {
-            type: "geojson",
-            data: geojson,
-            cluster: true,
-            clusterMaxZoom: 16,
-            clusterRadius: 1, // 1px => only exact/near-identical coords cluster
-          });
-
-          // Cluster circles
-          map.addLayer({
-            id: "clusters",
-            type: "circle",
-            source: "sightings",
-            filter: ["has", "point_count"],
-            paint: {
-              "circle-color": "#2563eb",
-              "circle-radius": [
-                "step",
-                ["get", "point_count"],
-                12, 5, 14, 25, 18, 50, 22,
-              ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 1,
-            },
-          });
-
-          // Cluster counts
-          map.addLayer({
-            id: "cluster-count",
-            type: "symbol",
-            source: "sightings",
-            filter: ["has", "point_count"],
-            layout: {
-              "text-field": "{point_count_abbreviated}",
-              "text-size": 12,
-              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-            },
-            paint: { "text-color": "#ffffff" },
-          });
-
-          // Unclustered points
-          map.addLayer({
-            id: "unclustered-point",
-            type: "circle",
-            source: "sightings",
-            filter: ["!", ["has", "point_count"]],
-            paint: {
-              "circle-color": "#22c55e",
-              "circle-radius": 5,
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 1,
-            },
-          });
-
-          // Fit bounds to all points
-          const bounds = new mapboxgl.LngLatBounds();
-          points.forEach((p) => bounds.extend([p.lon, p.lat]));
-          if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40, duration: 700 });
-
-          // Important: ensure proper layout after dialog opens
-          setTimeout(() => { try { map.resize(); } catch {} }, 0);
-        });
-
-        mapInstanceRef.current = map;
-      })();
-    } else {
-      (async () => {
-        const L = await import("leaflet");
-
-        const map = L.map(container).setView([points[0].lat, points[0].lon], 7);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap contributors",
-          maxZoom: 19,
-        }).addTo(map);
-
-        // Create one divIcon marker per unique coord with a count badge
-        const markers: any[] = [];
-        for (const g of aggregated) {
-          const html =
-            g.count > 1
-              ? `<div style="
-                    background:#2563eb; color:#fff; border:1px solid #fff;
-                    width:28px;height:28px;border-radius:14px;
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:12px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.25);
-                 ">${g.count}</div>`
-              : `<div style="
-                    background:#22c55e; border:1px solid #fff;
-                    width:10px;height:10px;border-radius:5px;
-                    box-shadow:0 1px 2px rgba(0,0,0,0.25);
-                 "></div>`;
-
-          const icon = (L as any).divIcon({
-            className: "cluster-pin",
-            html,
-            iconSize: g.count > 1 ? [28, 28] : [10, 10],
-            iconAnchor: g.count > 1 ? [14, 14] : [5, 5],
-          });
-
-          const m = L.marker([g.lat, g.lon], { icon }).addTo(map);
-          markers.push(m);
-        }
-
-        // Fit bounds around the unique markers
-        if (markers.length) {
-          const group = (L as any).featureGroup(markers);
-          const bounds = group.getBounds();
-          if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
-        }
-
-        // Ensure correct size inside dialog
-        setTimeout(() => { try { map.invalidateSize(); } catch {} }, 0);
-
-        mapInstanceRef.current = map;
-      })();
-    }
-
-    // Cleanup on close or mode change
-    return () => {
-      if (mapInstanceRef.current?.remove) {
-        try { mapInstanceRef.current.remove(); } catch {}
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [open, mode, points, aggregated]);
+  useEffect(() => {
+    if (!open) return;
+    if (!inst.current?.setData) return;
+    inst.current.setData(points);
+    try { inst.current.render(); } catch {}
+  }, [open, points]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-3 pb-0">
+      <DialogContent className="max-w-6xl p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-3 pb-2">
           <DialogTitle>Map</DialogTitle>
-        </DialogHeader>
-
-        <div className="w-full h-[500px]">
-          {!points || points.length === 0 ? (
-            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-              No mappable points.
+          {typeof totalFiltered === "number" && (
+            <div className="text-xs text-muted-foreground">
+              Showing {points?.length ?? 0} of {totalFiltered} filtered records with coordinates
             </div>
+          )}
+        </DialogHeader>
+        {children && <div className="px-4 pb-3 border-b bg-muted/30">{children}</div>}
+        <div className="w-full h-[540px]">
+          {!points || points.length === 0 ? (
+            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No mappable points.</div>
           ) : (
-            <div ref={mapContainerRef} className="w-full h-full" />
+            <div ref={containerRef} className="w-full h-full" />
           )}
         </div>
-
-        {mode === "leaflet" && (
-          <div className="px-4 pb-3 text-xs text-muted-foreground">
-            Rendering with Leaflet (OpenStreetMap tiles). Add <code>VITE_MAPBOX_TOKEN</code> to enable Mapbox.
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
-}
 
-/* ---------- helpers ---------- */
-async function webglSupported(): Promise<boolean> {
-  try {
-    const { default: mapboxgl } = await import("mapbox-gl");
-    return typeof mapboxgl.supported === "function" ? mapboxgl.supported() : false;
-  } catch {
-    return false;
+  async function mountLeaflet() {
+    const Lmod: any = await import("leaflet");
+    const L = Lmod.default ?? Lmod;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const map = L.map(el, { zoomControl: true }).setView([20, -155], 6);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+      detectRetina: true,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      crossOrigin: true
+    }).addTo(map);
+
+    const layer = L.layerGroup().addTo(map);
+    const index = new Supercluster({ radius: 60, maxZoom: 18, minPoints: 2 });
+
+    const makeBadge = (text: string, size = 28) => {
+      const r = Math.round(size / 2);
+      const html =
+        '<div style="background:#2563eb;color:#fff;border:1px solid #fff;' +
+        `width:${size}px;height:${size}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;` +
+        'font-size:12px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.25);">' +
+        text +
+        "</div>";
+      return L.divIcon({ className: "cluster-pin", html, iconSize: [size, size], iconAnchor: [r, r] });
+    };
+
+    function setData(pts: Point[]) {
+      const feats = (pts || []).map((p) => ({
+        type: "Feature" as const,
+        properties: { id: p.id ?? null, date: p.date ?? null, photographer: p.photographer ?? null, total: p.total ?? null },
+        geometry: { type: "Point" as const, coordinates: [p.lon, p.lat] }
+      }));
+      index.load(feats as any);
+      render();
+      if (pts && pts.length) {
+        const bounds = (L as any).latLngBounds(pts.map((p) => (L as any).latLng(p.lat, p.lon)));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+      }
+    }
+
+    function render() {
+      layer.clearLayers();
+      const b = map.getBounds();
+      const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const clusters = index.getClusters(bbox, map.getZoom());
+
+      const counts: Record<string, number> = {};
+      for (const c of clusters) {
+        if (!c.properties.cluster) {
+          const [lon, lat] = c.geometry.coordinates as [number, number];
+          const key = `${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+
+      const dupIndex: Record<string, Point[]> = {};
+      for (const p of points || []) {
+        const key = `${(p.lat ?? 0).toFixed(5)}|${(p.lon ?? 0).toFixed(5)}`;
+        (dupIndex[key] ||= []).push(p);
+      }
+
+      clusters.forEach((c: any) => {
+        const [lon, lat] = c.geometry.coordinates as [number, number];
+        if (c.properties.cluster) {
+          const m = L.marker([lat, lon], { icon: makeBadge(String(c.properties.point_count), 28), zIndexOffset: 100 }).addTo(layer);
+          m.on("click", () => {
+            const z = Math.min(index.getClusterExpansionZoom(c.id), map.getMaxZoom());
+            map.setView([lat, lon], z, { animate: true });
+          });
+        } else {
+          const key = `${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          const countHere = counts[key] || 1;
+          const m = L.marker([lat, lon], { icon: makeBadge(String(countHere), countHere > 1 ? 28 : 24), zIndexOffset: 90 }).addTo(layer);
+
+          const list = dupIndex[key] || [];
+          let html = '<div style="font-size:12px;line-height:1.25">';
+          if (countHere > 1 && list.length > 0) {
+            html += `<div style="font-weight:600;margin-bottom:4px">${countHere} sightings here</div><div style="max-height:200px;overflow:auto">`;
+            for (const p of list) {
+              const sid = p.id ?? "";
+              const date = p.date ?? "—";
+              const who = p.photographer ?? "—";
+              const tot = typeof p.total === "number" ? String(p.total) : "—";
+              html += `<div style="display:flex;gap:6px;align-items:center;margin:2px 0">
+                <a href="#" data-sid="${sid}" style="color:#2563eb;text-decoration:underline">#${sid}</a>
+                <span style="color:#6b7280">| ${date} · ${who} · ${tot} manta(s)</span>
+              </div>`;
+            }
+            html += `</div>`;
+          } else {
+            const sid = c.properties?.id ?? "";
+            html += `<div><b>Sighting</b> <a href="#" data-sid="${sid}" style="color:#2563eb;text-decoration:underline">${sid}</a></div>`;
+          }
+          html += `</div>`;
+
+          m.bindPopup(html);
+          m.on("popupopen", (ev: any) => {
+            const root = ev?.popup?.getElement?.() as HTMLElement;
+            if (!root) return;
+            root.addEventListener("click", (e: any) => {
+              const a = (e.target as HTMLElement).closest('a[data-sid]') as HTMLElement | null;
+              if (!a) return;
+              e.preventDefault();
+              const sid = Number(a.getAttribute("data-sid"));
+              (window as any).__map_onSelect?.(sid);
+            });
+          });
+        }
+      });
+    }
+
+    inst.current = { map, layer, index, setData, render };
+    setData(points || []);
   }
 }

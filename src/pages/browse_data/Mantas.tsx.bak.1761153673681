@@ -1,0 +1,468 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import Layout from "@/components/layout/Layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import MantaFilterBox from "@/components/mantas/MantaFilterBox";
+import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
+
+type MantaRow = {
+  pk_manta_id: number;
+  fk_catalog_id: number;
+  fk_sighting_id: number;
+  name: string | null;
+  population: string | null;
+  island: string | null;
+  location: string | null;
+  photographer: string | null;
+  photo_count?: number;
+  best_thumb_url?: string | null;
+};
+
+type MantaFacetRow = {
+  population: string | null;
+  island: string | null;
+  location: string | null;
+  photographer: string | null;
+};
+
+const PAGE = 1000;
+
+export default function MantasPage() {
+  const [searchParams] = useSearchParams();
+
+  // Optional scoping context from the URL
+  const sightingIdParam = searchParams.get("sightingId");
+  const crumbIdParam =
+    searchParams.get("crumbCatalogId") ?? searchParams.get("catalogId");
+
+  const sightingId = sightingIdParam ? Number(sightingIdParam) : undefined;
+  const crumbCatalogId = crumbIdParam ? Number(crumbIdParam) : undefined;
+
+  // Data
+  const [allMantas, setAllMantas] = useState<MantaRow[]>([]);
+  const [facetRows, setFacetRows] = useState<MantaFacetRow[]>([]);
+  const [totalMantas, setTotalMantas] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search + Filters
+  const [q, setQ] = useState("");
+  const [population, setPopulation] = useState<string[]>([]);
+  const [island, setIsland] = useState<string[]>([]);
+  const [location, setLocation] = useState<string[]>([]);
+  const [photographer, setPhotographer] = useState<string[]>([]);
+
+  // Sort: false = newest first (desc), true = oldest first (asc)
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const handleClearFilters = () => {
+    setPopulation([]);
+    setIsland([]);
+    setLocation([]);
+    setPhotographer([]);
+    setQ("");
+  };
+
+  // Reset when context changes
+  useEffect(() => {
+    handleClearFilters();
+  }, [sightingId, crumbCatalogId]);
+
+  // Load mantas (paged), join catalog/sightings for metadata, get best thumbs
+  useEffect(() => {
+    let active = true;
+
+    async function fetchTotal() {
+      const { count } = await supabase
+        .from("mantas")
+        .select("*", { count: "exact", head: true });
+      if (!active) return;
+      setTotalMantas(count ?? 0);
+    }
+
+    async function fetchAll() {
+      setLoading(true);
+      setError(null);
+
+      const mantas: MantaRow[] = [];
+      const allMantaIds: number[] = [];
+      const facets: MantaFacetRow[] = [];
+
+      for (let from = 0; ; from += PAGE) {
+        let q = supabase
+          .from("mantas")
+          .select(
+            [
+              "pk_manta_id",
+              "fk_catalog_id",
+              "fk_sighting_id",
+              "photographer", // fallback if sightings.photographer is null
+              "catalog:fk_catalog_id ( name )",
+              "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+            ].join(",")
+          )
+          .range(from, from + PAGE - 1);
+
+        if (sightingId) q = q.eq("fk_sighting_id", sightingId);
+        if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
+
+        const { data, error } = await q;
+        if (!active) return;
+
+        if (error) {
+          setError(error.message);
+          setAllMantas([]);
+          setFacetRows([]);
+          setLoading(false);
+          return;
+        }
+
+        const rows = (data ?? []) as any[];
+        if (rows.length === 0) break;
+
+        for (const r of rows) {
+          const photog = r.sightings?.photographer ?? r.photographer ?? null; // prefer sightings.photographer
+          const m: MantaRow = {
+            pk_manta_id: r.pk_manta_id,
+            fk_catalog_id: r.fk_catalog_id,
+            fk_sighting_id: r.fk_sighting_id,
+            name: r.catalog?.name ?? null,
+            population: r.sightings?.population ?? null,
+            island: r.sightings?.island ?? null,
+            location: r.sightings?.sitelocation ?? null,
+            photographer: photog,
+            photo_count: undefined,
+            best_thumb_url: null,
+          };
+          mantas.push(m);
+          allMantaIds.push(m.pk_manta_id);
+          facets.push({
+            population: m.population,
+            island: m.island,
+            location: m.location,
+            photographer: m.photographer,
+          });
+        }
+
+        if (rows.length < PAGE) break;
+      }
+
+      if (!active) return;
+
+      // Best-ventral thumbnails
+      const idChunks: number[][] = [];
+      for (let i = 0; i < allMantaIds.length; i += 1000) {
+        idChunks.push(allMantaIds.slice(i, i + 1000));
+      }
+
+      const bestByManta = new Map<number, number>();
+      const thumbByPhotoId = new Map<number, string | null>();
+
+      for (const ids of idChunks) {
+        const { data: bestRows } = await supabase
+          .from("photos")
+          .select("pk_photo_id,fk_manta_id")
+          .eq("is_best_manta_ventral_photo", true)
+          .in("fk_manta_id", ids);
+
+        const bestIds = (bestRows ?? [])
+          .map((r: any) => {
+            if (r.fk_manta_id && r.pk_photo_id) {
+              bestByManta.set(r.fk_manta_id, r.pk_photo_id);
+              return r.pk_photo_id as number;
+            }
+            return undefined;
+          })
+          .filter(Boolean) as number[];
+
+        for (let i = 0; i < bestIds.length; i += 1000) {
+          const chunk = bestIds.slice(i, i + 1000);
+          const { data: trs } = await supabase
+            .from("photos_with_photo_view")
+            .select("pk_photo_id, thumbnail_url")
+            .in("pk_photo_id", chunk);
+          for (const tr of trs ?? []) {
+            thumbByPhotoId.set(tr.pk_photo_id, tr.thumbnail_url ?? null);
+          }
+        }
+      }
+
+      for (const m of mantas) {
+        const bestId = bestByManta.get(m.pk_manta_id);
+        if (bestId) m.best_thumb_url = thumbByPhotoId.get(bestId) ?? null;
+      }
+
+      setAllMantas(mantas);
+      setFacetRows(facets);
+      setLoading(false);
+    }
+
+    fetchTotal();
+    fetchAll();
+
+    return () => {
+      active = false;
+    };
+  }, [sightingId, crumbCatalogId]);
+
+  // Client-side search & filters
+  const filteredMantas = useMemo(() => {
+    const query = q.trim().toLowerCase();
+
+    return allMantas.filter((m) => {
+      const popOk = population.length === 0 || (m.population && population.includes(m.population));
+      const islOk = island.length === 0 || (m.island && island.includes(m.island));
+      const locOk = location.length === 0 || (m.location && location.includes(m.location));
+      const phoOk = photographer.length === 0 || (m.photographer && photographer.includes(m.photographer));
+      if (!(popOk && islOk && locOk && phoOk)) return false;
+
+      if (!query) return true;
+      if (/^\d+$/.test(query)) {
+        const id = Number(query);
+        return m.pk_manta_id === id || m.fk_catalog_id === id;
+        }
+      return (
+        (m.name ?? "").toLowerCase().includes(query) ||
+        (m.location ?? "").toLowerCase().includes(query) ||
+        (m.photographer ?? "").toLowerCase().includes(query)
+      );
+    });
+  }, [allMantas, q, population, island, location, photographer]);
+
+  // Sort AFTER filters
+  const sortedMantas = useMemo(() => {
+    const arr = [...filteredMantas];
+    arr.sort((a,b) => (sortAsc ? a.pk_manta_id - b.pk_manta_id : b.pk_manta_id - a.pk_manta_id));
+    return arr;
+  }, [filteredMantas, sortAsc]);
+
+  // Human-readable active filters string
+  const activeFiltersText = useMemo(() => {
+    const parts: string[] = [];
+    if (q.trim()) parts.push(`Search: "${q.trim()}"`);
+    if (population.length) parts.push(`Population: ${population.join(", ")}`);
+    if (island.length) parts.push(`Island: ${island.join(", ")}`);
+    if (location.length) parts.push(`Location: ${location.join(", ")}`);
+    if (photographer.length) parts.push(`Photographer: ${photographer.join(", ")}`);
+    return parts.join(" · ");
+  }, [q, population, island, location, photographer]);
+
+  // Summary line
+  const headerSubtitle = useMemo(() => {
+    let base = "";
+    if (sightingId) {
+      const n = filteredMantas.length;
+      base = `${n} record${n === 1 ? "" : "s"} for Sighting ${sightingId}${
+        crumbCatalogId ? ` (Catalog ${crumbCatalogId})` : ""
+      }`;
+    } else {
+      base = `${filteredMantas.length} record${filteredMantas.length === 1 ? "" : "s"} showing of ${totalMantas} total`;
+    }
+    if (activeFiltersText) base += ` — filtered by ${activeFiltersText}`;
+    return base;
+  }, [filteredMantas.length, sightingId, crumbCatalogId, totalMantas, activeFiltersText]);
+
+  // Breadcrumb + optional "Return to Sighting" builder
+  const sightingsBackHref = useMemo(() => {
+    if (!sightingId) return "";
+    const params = new URLSearchParams({ sightingId: String(sightingId) });
+    if (crumbCatalogId) params.set("catalogId", String(crumbCatalogId));
+    return `/browse/sightings?${params.toString()}`;
+  }, [sightingId, crumbCatalogId]);
+
+  // Photos modal
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [photosFor, setPhotosFor] = useState<{ mantaId: number; sightingId?: number } | null>(null);
+
+  return (
+    <Layout>
+      <div className="mx-auto max-w-6xl px-4 pb-12">
+{/* Optional return-to-sighting link (preserves catalogId) */}
+        {sightingId && (
+          <div className="mt-2 text-sm">
+            <Link to={sightingsBackHref} className="text-blue-600 hover:underline">
+              ← Return to Sighting {sightingId}
+            </Link>
+          </div>
+        )}
+
+        {/* Hero (full-width, Catalog style) */}
+        <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
+          <h1 className="text-4xl font-bold">Mantas</h1>
+        </div>
+
+        {/* Search + Filters (Catalog style light-blue block) */}
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2">
+          {/* Breadcrumb-like link (left-justified) */}
+          <div className="text-sm text-blue-800 mb-2">
+            <a href="/browse/data" className="hover:underline">← Return to Browse Data</a>
+          </div>
+
+          {/* Left-justified search */}
+          <div>
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name or ID…"
+              aria-label="Search mantas"
+              className="max-w-md mb-3 bg-white"
+            />
+          </div>
+
+          
+          <MantaFilterBox rows={facetRows}
+              population={population}
+              setPopulation={setPopulation}
+              island={island}
+              setIsland={setIsland}
+              location={location}
+              setLocation={setLocation}
+              photographer={photographer}
+              setPhotographer={setPhotographer}
+              onClear={handleClearFilters} />
+
+
+          {/* Sort row (Catalog style) */}
+          <div className="flex items-center text-sm text-gray-700 mt-1 gap-2">
+            <span>Sort by Manta&nbsp;ID</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "" : "text-blue-600"}
+              onClick={() => setSortAsc(false)}
+              title="Newest first"
+            >
+              ▲
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "text-blue-600" : ""}
+              onClick={() => setSortAsc(true)}
+              title="Oldest first"
+            >
+              ▼
+            </Button>
+          </div>
+
+          {/* Summary below */}
+        </div>
+
+        <div className="text-sm text-gray-700 mb-4">{headerSubtitle}</div>
+
+        {/* Results */}
+        <div className="mt-4 space-y-4">
+          {loading && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground shadow-sm">
+              Loading mantas…
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-red-600 shadow-sm">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && filteredMantas.length === 0 && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground shadow-sm">
+              No mantas found{sightingId ? " for this sighting." : "."}
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            sortedMantas.map((m) => {
+              return (
+                <div
+                  id={`m${m.pk_manta_id}`}
+                  key={m.pk_manta_id}
+                  className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm"
+                >
+                  <div className="h-24 w-24 overflow-hidden rounded-lg border bg-gray-50">
+                    <img
+                      src={m.best_thumb_url || "/manta-logo.svg"}
+                      alt={m.name ?? `Manta ${m.pk_manta_id}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) =>
+                        ((e.target as HTMLImageElement).src = "/manta-logo.svg")
+                      }
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="grid gap-1 text-sm">
+                      <div className="font-semibold text-sky-700">
+                        {m.name ?? `Manta — ${m.pk_manta_id}`}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                        <div>
+                          <span className="text-muted-foreground">Catalog ID:</span> {m.fk_catalog_id}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Manta ID:</span> {m.pk_manta_id}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Sighting ID:</span> {m.fk_sighting_id}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                        <div>
+                          <span className="text-muted-foreground">Population:</span>{" "}
+                          {m.population ?? "—"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Island:</span> {m.island ?? "—"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Location:</span>{" "}
+                          {m.location ?? "—"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-muted-foreground">Photographer:</span>{" "}
+                        {m.photographer ?? "—"}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        onClick={() => {
+                          setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
+                          setShowPhotos(true);
+                        }}
+                      >
+                        View All Photos
+                        {typeof m.photo_count === "number" ? ` (${m.photo_count})` : ""}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Photos modal */}
+      <MantaPhotosModal
+        open={showPhotos}
+        onOpenChange={setShowPhotos}
+        mantaId={photosFor?.mantaId ?? null}
+        sightingId={photosFor?.sightingId}
+      />
+    </Layout>
+  );
+}

@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { deletePhoto } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
 import { ChevronUp } from "lucide-react";
 import PhotoFilterBox from "@/components/photos/PhotoFilterBox";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +14,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
 type FiltersState = {
   population: string[];
   island: string[];
@@ -59,7 +60,8 @@ export default function PhotosPage() {
   const catalogIdParam = searchParams.get("catalogId");
   const sightingIdParam = searchParams.get("sightingId");
 
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [fullRows, setFullRows] = useState<Array<{population:string|null; island:string|null; location:string|null; photo_view:string|null; species?:string|null}>>([]);
+const [photos, setPhotos] = useState<Photo[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
@@ -71,7 +73,23 @@ export default function PhotosPage() {
     flag: [],
   });
 
+  // Sightings-driven option lists (islands + per-island locations)
+  const [islandOptionsAll, setIslandOptionsAll] = useState<string[]>([]);
+  const [locationsByIsland, setLocationsByIsland] = useState<Record<string,string[]>>({});
+  const [speciesOptionsAll, setSpeciesOptionsAll] = useState<string[]>([]);
+
   const [search, setSearch] = useState("");
+  // Admin role gate for update buttons
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => { (async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setIsAdmin(false); return; }
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      const role = data?.role ?? null;
+      setIsAdmin(role === "admin" || role === "database_manager");
+    } catch { setIsAdmin(false); }
+  })(); }, []);
   const [sortAsc, setSortAsc] = useState(true);
   const [totalCount, setTotalCount] = useState<number>(0);
 
@@ -398,6 +416,136 @@ export default function PhotosPage() {
     setPickerOpen(false);
   }
 
+  // Load distinct islands and locations from SIGHTINGS (for pill options)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        // Distinct islands
+        const { data: isl, error: e1 } = await supabase
+          .from("sightings")
+          .select("island")
+          .not("island","is", null);
+        if (!alive) return;
+        const islands = Array.from(
+          new Set((isl ?? []).map(r => (r.island ?? "").toString().trim()).filter(Boolean))
+        ).sort((a,b)=>a.localeCompare(b));
+        setIslandOptionsAll(islands);
+
+        // Distinct locations grouped by island
+        const { data: locs, error: e2 } = await supabase
+          .from("sightings")
+          .select("island,sitelocation")
+          .not("island","is", null)
+          .not("sitelocation","is", null);
+        if (!alive) return;
+
+        const map = {};
+        (locs ?? []).forEach(r => {
+          const isl = (r.island ?? "").toString().trim();
+          const loc = (r.sitelocation ?? "").toString().trim();
+          if (!isl || !loc) return;
+          if (!map[isl]) map[isl] = [];
+          if (!map[isl].includes(loc)) map[isl].push(loc);
+        });
+        Object.values(map).forEach(arr => arr.sort((a,b)=>a.localeCompare(b)));
+        setLocationsByIsland(map);
+      } catch {
+        // no-op
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Load distinct islands and locations from SIGHTINGS (for pill options)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        // Distinct islands
+        const { data: isl } = await supabase
+          .from("sightings")
+          .select("island")
+          .not("island","is", null);
+        if (!alive) return;
+        const islands = Array.from(new Set((isl ?? [])
+          .map(r => (r.island ?? "").toString().trim())
+          .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+        setIslandOptionsAll(islands);
+
+        // Distinct locations grouped by island
+        const { data: locs } = await supabase
+          .from("sightings")
+          .select("island,sitelocation")
+          .not("island","is", null)
+          .not("sitelocation","is", null);
+        if (!alive) return;
+        const map: Record<string,string[]> = {};
+        (locs ?? []).forEach(r => {
+          const isl = (r.island ?? "").toString().trim();
+          const loc = (r.sitelocation ?? "").toString().trim();
+          if (!isl || !loc) return;
+          (map[isl] ||= []);
+          if (!map[isl].includes(loc)) map[isl].push(loc);
+        });
+        Object.values(map).forEach(arr => arr.sort((a,b)=>a.localeCompare(b)));
+        setLocationsByIsland(map);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
+
+
+  // Load minimal full dataset for pill counts (independent of paged display)
+  
+  // Load distinct species from catalog (for Species pill options)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase.from("catalog").select("species").not("species","is", null);
+        if (!alive) return;
+        const species = Array.from(new Set((data ?? [])
+          .map(r => (r.species ?? "").toString().trim())
+          .filter(Boolean)))
+          .sort((a,b)=>a.localeCompare(b));
+        setSpeciesOptionsAll(species);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Species-aware, chunked loader for pill-basis (photos_pill_basis)
+  useEffect(function loadPillBasis() {
+    let alive = true;
+    (async () => {
+      const BATCH = 1000;
+      let from = 0;
+      const rows: Array<{population:string|null; island:string|null; location:string|null; photo_view:string|null; species:string|null}> = [];
+      while (true) {
+        const to = from + BATCH - 1;
+        const { data, error } = await supabase
+          .from("photos_pill_basis")
+          .select("population,island,location,photo_view,species")
+          .range(from, to);
+        if (!alive) return;
+        if (error) { console.error("[Photos] pill-basis error:", error); break; }
+        const chunk = (data ?? []).map((r: any) => ({
+          population: r.population ?? null,
+          island:     r.island ?? null,
+          location:   r.location ?? null,
+          photo_view: r.photo_view ?? null,
+          species:    r.species ?? null,
+        }));
+        rows.push(...chunk);
+        if (chunk.length < BATCH) break;
+        from += BATCH;
+      }
+      setFullRows(rows);
+    })();
+    return () => { alive = false; };
+  }, []);
+
   return (
     <Layout title="Photos">
       <div className="p-4">
@@ -407,33 +555,49 @@ export default function PhotosPage() {
           </h1>
         </div>
 
+        <div>
+            <Link to={backToMantasHref} className="underline">
+            </Link>
+
+        </div>
+
+        
+      <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2">
         <div className="mb-4 text-sm text-blue-600 text-left space-y-1">
           <div>
             <Link to="/browse/data" className="underline">← Return to Browse Data</Link>
           </div>
-          <div>
-            <Link to={backToMantasHref} className="underline">
-              {mantaIdParam ? `← Return to Manta ${mantaIdParam}` : "← Return to Mantas"}
-            </Link>
-          </div>
-        </div>
 
+        {/* Filter box */}          
+          <div className="mb-3">
+            <input
+              className="w-full sm:w-96 max-w-md bg-white border rounded px-3 py-2 text-sm"
+              placeholder="Search by photo ID, catalog ID, name, or photographer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         <PhotoFilterBox
-          rows={photoRows}
+          rows={fullRows}
           filters={filters}
           setFilters={setFilters}
-          sortAsc={setSortAsc as any}
-          setSortAsc={setSortAsc}
           onClearAll={onClearFilters}
           search={search}
           setSearch={setSearch}
-          populationCounts={populationCounts}
-          islandCounts={islandCounts}
-          locationCounts={locationCounts}
-          viewCounts={viewCounts}
+          islandOptionsAll={islandOptionsAll}
+          locationsByIsland={locationsByIsland}
+          speciesOptionsAll={speciesOptionsAll}
+        
+        
+          hideSearch={true}
+          sortAsc={sortAsc}
+          setSortAsc={setSortAsc}
         />
+        </div>
 
-        <p className="mb-4 text-sm text-muted-foreground">
+        {/* Sort row (Catalog style) */}
+      </div>
+  <p className="mb-4 text-sm text-muted-foreground">
           Showing {photoRows.length} of {totalCount} photos{filterSummary()}
         </p>
 
@@ -457,6 +621,21 @@ export default function PhotosPage() {
                   <p><strong>Photo:</strong> {photo.pk_photo_id}</p>
                   <p><strong>Photographer:</strong> {photo.photographer ?? "n/a"}</p>
                   <p><strong>View:</strong> {photo.photo_view}</p>
+          {isAdmin && (
+            <div className="mt-1">
+              <button
+                className="text-red-600 text-xs underline flex items-center gap-1"
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to delete this photo?")) return;
+                  try { await deletePhoto(photo.pk_photo_id); window.location.reload(); }
+                  catch (e) { alert('Delete failed: ' + (e?.message || e)); }
+                }}
+                title="Delete photo"
+              >
+                <Trash2 className="h-3 w-3" /> delete
+              </button>
+            </div>
+          )}
 
                   {/* Show badge + update button ONLY for the current BEST MANTA VENTRAL */}
                   {photo.photo_view === "ventral" && photo.is_best_manta_ventral_photo ? (
@@ -464,7 +643,7 @@ export default function PhotosPage() {
                       <span className="inline-flex items-center rounded bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5">
                         Best Manta Ventral
                       </span>
-                      {photo.fk_manta_id ? (
+                      {isAdmin && photo.fk_manta_id ? (
                         <button
                           onClick={() => openBestPicker(photo.fk_manta_id!)}
                           className="ml-2 text-[11px] underline text-blue-700"
@@ -485,7 +664,7 @@ export default function PhotosPage() {
 
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg"
+          className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-2 shadow-lg"
         >
           <ChevronUp className="w-5 h-5" />
         </button>

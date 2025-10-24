@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { deleteManta } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,6 +17,7 @@ import {
 import MantaFilterBox from "@/components/mantas/MantaFilterBox";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 
+import { useIsAdmin } from "@/lib/isAdmin";
 type MantaRow = {
   pk_manta_id: number;
   fk_catalog_id: number;
@@ -38,6 +41,7 @@ type MantaFacetRow = {
 const PAGE = 1000;
 
 export default function MantasPage() {
+  const isAdmin = useIsAdmin();
   const [searchParams] = useSearchParams();
 
   // Optional scoping context from the URL
@@ -61,6 +65,9 @@ export default function MantasPage() {
   const [island, setIsland] = useState<string[]>([]);
   const [location, setLocation] = useState<string[]>([]);
   const [photographer, setPhotographer] = useState<string[]>([]);
+
+  // Sort: false = newest first (desc), true = oldest first (asc)
+  const [sortAsc, setSortAsc] = useState(false);
 
   const handleClearFilters = () => {
     setPopulation([]);
@@ -236,6 +243,13 @@ export default function MantasPage() {
     });
   }, [allMantas, q, population, island, location, photographer]);
 
+  // Sort AFTER filters
+  const sortedMantas = useMemo(() => {
+    const arr = [...filteredMantas];
+    arr.sort((a,b) => (sortAsc ? a.pk_manta_id - b.pk_manta_id : b.pk_manta_id - a.pk_manta_id));
+    return arr;
+  }, [filteredMantas, sortAsc]);
+
   // Human-readable active filters string
   const activeFiltersText = useMemo(() => {
     const parts: string[] = [];
@@ -277,22 +291,7 @@ export default function MantasPage() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-4 pb-12">
-        {/* Breadcrumb */}
-        <div className="mt-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/browse/data">Browse Data</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Mantas</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-
-        {/* Optional return-to-sighting link (preserves catalogId) */}
+{/* Optional return-to-sighting link (preserves catalogId) */}
         {sightingId && (
           <div className="mt-2 text-sm">
             <Link to={sightingsBackHref} className="text-blue-600 hover:underline">
@@ -301,13 +300,18 @@ export default function MantasPage() {
           </div>
         )}
 
-        {/* Hero (centered title) */}
-        <div className="mt-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white shadow text-center">
-          <h1 className="text-3xl font-semibold">Mantas</h1>
+        {/* Hero (full-width, Catalog style) */}
+        <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
+          <h1 className="text-4xl font-bold">Mantas</h1>
         </div>
 
-        {/* Search + Filters */}
-        <div className="mt-4 space-y-3">
+        {/* Search + Filters (Catalog style light-blue block) */}
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2">
+          {/* Breadcrumb-like link (left-justified) */}
+          <div className="text-sm text-blue-800 mb-2">
+            <a href="/browse/data" className="hover:underline">← Return to Browse Data</a>
+          </div>
+
           {/* Left-justified search */}
           <div>
             <Input
@@ -315,26 +319,50 @@ export default function MantasPage() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search name or ID…"
               aria-label="Search mantas"
-              className="max-w-md"
+              className="max-w-md mb-3 bg-white"
             />
           </div>
 
-          <MantaFilterBox
-            rows={facetRows} // facets built from full dataset
-            population={population}
-            setPopulation={setPopulation}
-            island={island}
-            setIsland={setIsland}
-            location={location}
-            setLocation={setLocation}
-            photographer={photographer}
-            setPhotographer={setPhotographer}
-            onClear={handleClearFilters}
-          />
+          
+          <MantaFilterBox rows={facetRows}
+              population={population}
+              setPopulation={setPopulation}
+              island={island}
+              setIsland={setIsland}
+              location={location}
+              setLocation={setLocation}
+              photographer={photographer}
+              setPhotographer={setPhotographer}
+              onClear={handleClearFilters} />
 
-          {/* Summary below the filter box */}
-          <div className="text-sm text-muted-foreground">{headerSubtitle}</div>
+
+          {/* Sort row (Catalog style) */}
+          <div className="flex items-center text-sm text-gray-700 mt-1 gap-2">
+            <span>Sort by Manta&nbsp;ID</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "" : "text-blue-600"}
+              onClick={() => setSortAsc(false)}
+              title="Newest first"
+            >
+              ▲
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "text-blue-600" : ""}
+              onClick={() => setSortAsc(true)}
+              title="Oldest first"
+            >
+              ▼
+            </Button>
+          </div>
+
+          {/* Summary below */}
         </div>
+
+        <div className="text-sm text-gray-700 mb-4">{headerSubtitle}</div>
 
         {/* Results */}
         <div className="mt-4 space-y-4">
@@ -358,7 +386,7 @@ export default function MantasPage() {
 
           {!loading &&
             !error &&
-            filteredMantas.map((m) => {
+            sortedMantas.map((m) => {
               return (
                 <div
                   id={`m${m.pk_manta_id}`}
@@ -415,6 +443,19 @@ export default function MantasPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
+      {isAdmin && (
+        <button
+          className="text-red-600 text-xs underline flex items-center gap-1"
+          title="Delete manta and photos"
+          onClick={async () => {
+            if (!confirm("Are you sure you want to delete this manta and associated photos?")) return;
+            try { await deleteManta(m.pk_manta_id); window.location.reload(); }
+            catch (e) { alert('Delete failed: ' + (e?.message || e)); }
+          }}
+        >
+          <Trash2 className="h-4 w-4" /> delete
+        </button>
+      )}
                       <Button
                         onClick={() => {
                           setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
