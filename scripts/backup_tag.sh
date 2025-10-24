@@ -1,27 +1,17 @@
-#!/usr/bin/env sh
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# ensure .gitignore rules (idempotent)
-grep -qx 'backups/*.tar.gz' .gitignore 2>/dev/null || printf "backups/*.tar.gz\n" >> .gitignore
-grep -qx 'scripts/_backups/' .gitignore 2>/dev/null || printf "scripts/_backups/\n" >> .gitignore
+ts=$(date -u +'%Y%m%dT%H%M%SZ')
+tag="working-${ts}"
 
-# untrack any archives that were accidentally committed earlier
-git rm --cached backups/*.tar.gz 2>/dev/null || true
-
-# stage everything else and commit (empty commit if no changes)
 git add -A
-TS=$(date -u +%Y%m%dT%H%M%SZ)
-TAG="working-map-modal-$TS"
-if git diff --cached --quiet; then
-  git commit --allow-empty -m "backup(tag-only): $TAG"
-else
-  git commit -m "backup: $TAG"
+if ! git diff --cached --quiet; then
+  git commit -m "backup: ${tag}"
 fi
 
-# create a timestamped tag and push branch + tag
-git tag -a "$TAG" -m "$TAG"
-BR=$(git rev-parse --abbrev-ref HEAD)
-git push origin "$BR"
-git push origin "$TAG"
+mkdir -p backups
+git archive --format=tar.gz -o "backups/${tag}.tar.gz" HEAD
 
-echo "OK: tag $TAG pushed. Archives remain local only."
+git tag -f "${tag}"
+git push origin HEAD
+git push --force origin "${tag}"
