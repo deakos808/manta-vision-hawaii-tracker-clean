@@ -38,3 +38,5 @@ env*
 env*
 *secret*
 *prod*
+backups/*.tar.gz
+scripts/_backups/
