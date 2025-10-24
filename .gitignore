@@ -47,3 +47,5 @@ backups/*.tar.gz
 scripts/_backups/
 backups/*.tar.gz
 scripts/_backups/
+backups/*.tar.gz
+scripts/_backups/
