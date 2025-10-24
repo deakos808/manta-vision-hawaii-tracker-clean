@@ -121,7 +121,7 @@ return () => { alive = false; };
     }, 50);
   }
 
-  const [mapPoints, setMapPoints] = useState<{ lat: number; lon: number }[]>([]);
+  const [mapPoints, setMapPoints] = useState<Array<{ id:number; lat:number; lon:number; date?:string|null; photographer?:string|null; total_mantas?:number|null }>>([]);
   const [showMantas, setShowMantas] = useState(false);
   const [mantasForSighting, setMantasForSighting] = useState<number | null>(null);
 
@@ -296,7 +296,7 @@ return () => { alive = false; };
 
   const fetchAllMapPoints = async () => {
     const pageSz = 1000;
-    let base = supabase.from("sightings").select("pk_sighting_id,latitude,longitude");
+    let base = supabase.from("sightings").select("pk_sighting_id,latitude,longitude,sighting_date,photographer,total_manta_ids");
     if (island && island !== "all") base = base.ilike("island", `%${island}%`);
     if (photographer) base = base.ilike("photographer", `%${photographer}%`);
     if (location) base = base.eq("sitelocation", location.trim());
@@ -321,12 +321,12 @@ return () => { alive = false; };
       const acc: any[] = [];
       for (let i = 0; i < ids.length; i += CH) {
         const chunk = ids.slice(i, i + CH);
-        const { data } = await base.in("pk_sighting_id", chunk).select("pk_sighting_id,latitude,longitude");
+        const { data } = await base.in("pk_sighting_id", chunk).select("pk_sighting_id,latitude,longitude,sighting_date,photographer,total_manta_ids");
         if (data) acc.push(...data);
       }
       const pts = acc
         .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
-        .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude) }));
+        .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude), date: (r.sighting_date ?? null), photographer: (r.photographer ?? null), total: (typeof r.total_manta_ids === "number" ? r.total_manta_ids : (r.total_manta_ids ? Number(r.total_manta_ids) : null)) }));
       setMapPoints(pts);
       return;
     }
@@ -341,7 +341,7 @@ return () => { alive = false; };
     }
     const pts = acc
       .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
-      .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude) }));
+      .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude), date: (r.sighting_date ?? null), photographer: (r.photographer ?? null), total: (typeof r.total_manta_ids === "number" ? r.total_manta_ids : (r.total_manta_ids ? Number(r.total_manta_ids) : null)) }));
     setMapPoints(pts);
   };
 

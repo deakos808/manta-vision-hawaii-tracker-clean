@@ -4,14 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "@/styles/leaflet-fixes.css";
 import Supercluster from "supercluster";
 
-type Point = {
-  id?: number;
-  lat: number;
-  lon: number;
-  date?: string | null;
-  photographer?: string | null;
-  total?: number | null;
-};
+type Point = { id?: number; lat: number; lon: number; date?: string | null; photographer?: string | null; total?: number | null };
 
 type Props = {
   open: boolean;
