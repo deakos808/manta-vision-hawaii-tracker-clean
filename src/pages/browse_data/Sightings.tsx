@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -38,12 +39,12 @@ async function fetchSpeciesSightingIds(species: string): Promise<Set<number>> {
     const { data, error } = await supabase
       .from("catalog")
       .select("pk_catalog_id")
-      .ilike("species", `%${species}%`)
+      .ilike("species", "%" + species + "%")
       .range(from, from + pageSz - 1);
     if (error) break;
-    const chunk = data ?? [];
+    const chunk: any[] = data || [];
     for (const r of chunk) {
-      const id = Number((r as any)?.pk_catalog_id ?? 0);
+      const id = Number((r as any)?.pk_catalog_id || 0);
       if (id) catalogIds.push(id);
     }
     if (chunk.length < pageSz) break;
@@ -56,8 +57,9 @@ async function fetchSpeciesSightingIds(species: string): Promise<Set<number>> {
       .from("mantas")
       .select("fk_sighting_id")
       .in("fk_catalog_id", slice);
-    for (const r of data ?? []) {
-      const sid = Number((r as any)?.fk_sighting_id ?? 0);
+    const rows: any[] = data || [];
+    for (const r of rows) {
+      const sid = Number((r as any)?.fk_sighting_id || 0);
       if (sid) ids.add(sid);
     }
   }
@@ -66,8 +68,8 @@ async function fetchSpeciesSightingIds(species: string): Promise<Set<number>> {
 
 export default function Sightings() {
   const [searchParams] = useSearchParams();
-  const catalogIdParam = searchParams.get("catalogId");
-  const sightingIdParam = searchParams.get("sightingId");
+  const initialCatalogParam = searchParams.get("catalogId");
+  const initialSightingParam = searchParams.get("sightingId");
 
   const [search, setSearch] = useState("");
   const [island, setIsland] = useState("all");
@@ -83,14 +85,13 @@ export default function Sightings() {
   const [speciesIds, setSpeciesIds] = useState<Set<number> | null>(null);
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   useEffect(() => {
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setIsAdmin(false); return; }
         const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-        const role = data?.role ?? null;
+        const role = (data as any)?.role ?? null;
         setIsAdmin(role === "admin" || role === "database_manager");
       } catch {}
     })();
@@ -103,164 +104,183 @@ export default function Sightings() {
       const ids = await fetchSpeciesSightingIds(species);
       if (alive) setSpeciesIds(ids);
     })();
-return () => { alive = false; };
+    return () => { alive = false; };
   }, [species]);
 
   const [sortAsc, setSortAsc] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
   const [showMap, setShowMap] = useState(false);
-  function handleSelectFromMap(sid: number) {
-    try { setShowMap(false); } catch {}
-    const sp = new URLSearchParams(window.location.search);
-    sp.set("sightingId", String(sid));
-    window.history.replaceState({}, "", `${window.location.pathname}?${sp.toString()}`);
-    setTimeout(() => {
-      const el = document.querySelector(`[data-sighting-id="${sid}"]`) as HTMLElement | null;
-      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-  }
-
-  const [mapPoints, setMapPoints] = useState<Array<{ id:number; lat:number; lon:number; date?:string|null; photographer?:string|null; total_mantas?:number|null }>>([]);
+  const [mapPoints, setMapPoints] = useState<Array<{ id: number; lat: number; lon: number }>>([]);
   const [showMantas, setShowMantas] = useState(false);
   const [mantasForSighting, setMantasForSighting] = useState<number | null>(null);
 
   const fetchSightings = async ({ pageParam = 0 }: { pageParam?: number }) => {
     let q = supabase
       .from("sightings")
-      .select(
-        "pk_sighting_id,sighting_date,start_time,end_time,island,sitelocation,latitude,longitude,photographer,organization,total_mantas,population"
-      )
+      .select("pk_sighting_id,sighting_date,start_time,end_time,island,sitelocation,latitude,longitude,photographer,organization,total_mantas,population")
       .order("pk_sighting_id", { ascending: sortAsc })
       .range(pageParam * PAGE_SIZE, pageParam * PAGE_SIZE + PAGE_SIZE - 1);
 
-    if (island && island !== "all") q = q.ilike("island", `%${island}%`);
-    if (photographer) q = q.ilike("photographer", `%${photographer}%`);
+    if (island && island !== "all") q = q.ilike("island", "%" + island + "%");
+    if (photographer) q = q.ilike("photographer", "%" + photographer + "%");
     if (location) q = q.eq("sitelocation", location.trim());
-    if (population) q = q.ilike("population", `%${population}%`);
+    if (population) q = q.ilike("population", "%" + population + "%");
     if (minMantas !== "") q = q.gte("total_mantas", Number(minMantas));
     if (dateKnown) q = q.not("sighting_date", "is", null);
     if (dateUnknown) q = q.is("sighting_date", null);
     if (date) q = q.eq("sighting_date", date);
 
-    if (catalogIdParam) {
+    if (initialCatalogParam) {
       const { data: mRows } = await supabase
         .from("mantas")
         .select("fk_sighting_id")
-        .eq("fk_catalog_id", Number(catalogIdParam));
-      const ids = (mRows ?? []).map((r: any) => r.fk_sighting_id);
-      q = ids.length ? q.in("pk_sighting_id", ids) : q.eq("pk_sighting_id", 0);
+        .eq("fk_catalog_id", Number(initialCatalogParam));
+      const ids1 = (mRows || []).map((r: any) => r.fk_sighting_id);
+      q = ids1.length ? q.in("pk_sighting_id", ids1) : q.eq("pk_sighting_id", 0);
     }
-    if (sightingIdParam) q = q.eq("pk_sighting_id", Number(sightingIdParam));
+    if (initialSightingParam) q = q.eq("pk_sighting_id", Number(initialSightingParam));
+
+    if (speciesIds && speciesIds.size > 0) {
+      q = q.in("pk_sighting_id", Array.from(speciesIds));
+    }
 
     const { data, error } = await q;
     if (error) throw new Error(error.message);
-    return (data ?? []) as Sighting[];
+    return (data || []) as Sighting[];
   };
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
-    queryKey: ["sightings", { island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, catalogIdParam, sightingIdParam, sortAsc }],
+  const query = useInfiniteQuery({
+    queryKey: ["sightings", { island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, initialCatalogParam, initialSightingParam, species, sortAsc }],
     queryFn: ({ pageParam }) => fetchSightings({ pageParam }),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, pages) => (lastPage?.length ?? 0) >= PAGE_SIZE ? pages.length : undefined,
+    getNextPageParam: (last, pages) => ((last?.length || 0) >= PAGE_SIZE ? pages.length : undefined),
   });
 
-  const sightings = useMemo(() => (data?.pages ?? []).flat(), [data]);
+  const sightings = useMemo(() => (query.data?.pages || []).flat() as Sighting[], [query.data]);
+
+  const list = useMemo(() => {
+    const needle = (search || "").trim().toLowerCase();
+    const arr = [...sightings];
+    if (!needle) {
+      arr.sort((a, b) => (sortAsc ? a.pk_sighting_id - b.pk_sighting_id : b.pk_sighting_id - a.pk_sighting_id));
+      return arr;
+    }
+    const isNum = /^\d+$/.test(needle);
+    const filtered = arr.filter((s) => {
+      const text = ((s.sitelocation || "") + " " + (s.photographer || "") + " " + (s.organization || "")).toLowerCase();
+      const idOK = isNum ? String(s.pk_sighting_id).includes(needle) : false;
+      return isNum ? (idOK || text.includes(needle)) : text.includes(needle);
+    });
+    filtered.sort((a, b) => (sortAsc ? a.pk_sighting_id - b.pk_sighting_id : b.pk_sighting_id - a.pk_sighting_id));
+    return filtered;
+  }, [sightings, search, sortAsc]);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useCallback((node: HTMLDivElement) => {
-    if (isFetchingNextPage) return;
+    if (query.isFetchingNextPage) return;
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasNextPage) fetchNextPage();
+      if (entries[0].isIntersecting && query.hasNextPage) query.fetchNextPage();
     });
     if (node) observerRef.current.observe(node);
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  const sortedSightings = useMemo(() => {
-    const arr = [...sightings];
-    arr.sort((a, b) => sortAsc ? a.pk_sighting_id - b.pk_sighting_id : b.pk_sighting_id - a.pk_sighting_id);
-    return arr;
-  }, [sightings, sortAsc]);
-
-  const lower = search.toLowerCase();
-  const quickFiltered = sortedSightings.filter((s) => {
-    const textOK =
-      (s.sitelocation ?? "").toLowerCase().includes(lower) ||
-      (s.photographer ?? "").toLowerCase().includes(lower) ||
-      (s.organization ?? "").toLowerCase().includes(lower);
-    const speciesOK = !species || (speciesIds?.has(s.pk_sighting_id) ?? false);
-    return textOK && speciesOK;
-  });
-
-  const handleOpenMap = useCallback(() => {
-    fetchAllMapPoints().then(() => setShowMap(true));
-  }, [island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, catalogIdParam, sightingIdParam, species, speciesIds]);
-
-  const handleDeleteSighting = async (id: number) => {
-    if (!isAdmin) return;
-    try {
-      setDeletingId(id);
-      await supabase.from("sightings").delete().eq("pk_sighting_id", id);
-      await refetch();
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  }, [query.isFetchingNextPage, query.hasNextPage, query.fetchNextPage]);
 
   useEffect(() => {
-    const getTotal = async () => {
-      let q = supabase.from("sightings").select("*", { count: "exact", head: true });
-      if (island !== "all") q = q.ilike("island", `%${island}%`);
-      if (photographer) q = q.ilike("photographer", `%${photographer}%`);
+    let mounted = true;
+    (async () => {
+      let q: any = supabase.from("sightings").select("*", { count: "exact", head: true });
+      if (island && island !== "all") q = q.ilike("island", "%" + island + "%");
+      if (photographer) q = q.ilike("photographer", "%" + photographer + "%");
       if (location) q = q.eq("sitelocation", location.trim());
-      if (population) q = q.ilike("population", `%${population}%`);
+      if (population) q = q.ilike("population", "%" + population + "%");
       if (minMantas !== "") q = q.gte("total_mantas", Number(minMantas));
       if (dateKnown) q = q.not("sighting_date", "is", null);
       if (dateUnknown) q = q.is("sighting_date", null);
       if (date) q = q.eq("sighting_date", date);
-      if (catalogIdParam) {
-        const { data: mdata } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(catalogIdParam));
-        const ids = (mdata ?? []).map((r: any) => r.fk_sighting_id);
-        q = ids.length ? q.in("pk_sighting_id", ids) : q.eq("pk_sighting_id", 0);
+      if (initialCatalogParam) {
+        const { data: mdata } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(initialCatalogParam));
+        const ids2 = (mdata || []).map((r: any) => r.fk_sighting_id);
+        q = ids2.length ? q.in("pk_sighting_id", ids2) : q.eq("pk_sighting_id", 0);
       }
-      if (sightingIdParam) q = q.eq("pk_sighting_id", Number(sightingIdParam));
+      if (initialSightingParam) q = q.eq("pk_sighting_id", Number(initialSightingParam));
       if (species) {
-        const idsSet = await fetchSpeciesSightingIds(species);
-        const ids = Array.from(idsSet);
-        if (ids.length === 0) { setTotalCount(0); return; }
+        const sids = speciesIds || await fetchSpeciesSightingIds(species);
+        const arr = Array.from(sids || []);
+        if (arr.length === 0) { if (mounted) setTotalCount(0); return; }
         let total = 0;
         const CH = 800;
-        for (let i = 0; i < ids.length; i += CH) {
-          const chunk = ids.slice(i, i + CH);
+        for (let i = 0; i < arr.length; i += CH) {
+          const chunk = arr.slice(i, i + CH);
           const { count } = await q.in("pk_sighting_id", chunk);
-          total += count ?? 0;
+          total += count || 0;
         }
-        setTotalCount(total);
+        if (mounted) setTotalCount(total);
         return;
-      } else {
-        const { count: totalCountVal } = await q;
-        setTotalCount(totalCountVal ?? 0);
       }
-    };
-    getTotal();
-  }, [island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, catalogIdParam, sightingIdParam, species]);
+      const { count, error } = await q;
+      if (!mounted) return;
+      if (error) { console.error(error); return; }
+      setTotalCount(count || 0);
+    })();
+    return () => { mounted = false; };
+  }, [island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, initialCatalogParam, initialSightingParam, species, speciesIds]);
 
-  const summary = useMemo(() => {
-    const p: string[] = [];
-    if (date) p.push(`Date: ${date}`);
-    if (population) p.push(`Population: ${population}`);
-    if (island !== "all" && island) p.push(`Island: ${island}`);
-    if (location) p.push(`Location: ${location}`);
-    if (photographer) p.push(`Photographer: ${photographer}`);
-    if (minMantas !== "") p.push(`≥ Mantas: ${minMantas}`);
-    if (dateKnown) p.push("Date: known");
-    if (dateUnknown) p.push("Date: unknown");
-    if (species) p.push(`Species: ${species}`);
-    return p.join("; ");
-  }, [date, population, island, location, photographer, minMantas, dateKnown, dateUnknown, species]);
+  const fetchAllMapPoints = useCallback(async () => {
+    let base: any = supabase.from("sightings").select("pk_sighting_id,latitude,longitude");
+    if (island && island !== "all") base = base.ilike("island", "%" + island + "%");
+    if (photographer) base = base.ilike("photographer", "%" + photographer + "%");
+    if (location) base = base.eq("sitelocation", location.trim());
+    if (population) base = base.ilike("population", "%" + population + "%");
+    if (minMantas !== "") base = base.gte("total_mantas", Number(minMantas));
+    if (dateKnown) base = base.not("sighting_date", "is", null);
+    if (dateUnknown) base = base.is("sighting_date", null);
+    if (date) base = base.eq("sighting_date", date);
+    if (initialCatalogParam) {
+      const { data: mRows } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(initialCatalogParam));
+      const ids3 = (mRows || []).map((r: any) => r.fk_sighting_id);
+      base = ids3.length ? base.in("pk_sighting_id", ids3) : base.eq("pk_sighting_id", 0);
+    }
+    if (initialSightingParam) base = base.eq("pk_sighting_id", Number(initialSightingParam));
 
-  const onClear = () => {
+    if (species) {
+      const sids = speciesIds || await fetchSpeciesSightingIds(species);
+      const arr = Array.from(sids || []);
+      if (arr.length === 0) { setMapPoints([]); return; }
+      const CH = 800;
+      const acc: any[] = [];
+      for (let i = 0; i < arr.length; i += CH) {
+        const chunk = arr.slice(i, i + CH);
+        const { data } = await base.in("pk_sighting_id", chunk).select("pk_sighting_id,latitude,longitude");
+        if (data) acc.push(...data);
+      }
+      const pts = acc
+        .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
+        .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude) }));
+      setMapPoints(pts);
+      return;
+    }
+
+    const pageSz = 1000;
+    const acc: any[] = [];
+    for (let from = 0; from < 500000; from += pageSz) {
+      const { data, error } = await base.range(from, from + pageSz - 1);
+      if (error) break;
+      const chunk: any[] = data || [];
+      acc.push(...chunk);
+      if (chunk.length < pageSz) break;
+    }
+    const pts = acc
+      .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
+      .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude) }));
+    setMapPoints(pts);
+  }, [island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, initialCatalogParam, initialSightingParam, species, speciesIds]);
+
+  const handleOpenMap = useCallback(() => {
+    fetchAllMapPoints().then(() => setShowMap(true));
+  }, [fetchAllMapPoints]);
+
+  const onClear = useCallback(() => {
     setSearch("");
     setIsland("all");
     setPhotographer("");
@@ -271,88 +291,51 @@ return () => { alive = false; };
     setDateKnown(false);
     setDateUnknown(false);
     setSpecies("");
+  }, []);
+
+  const handleDeleteSighting = async (id: number) => {
+    if (!isAdmin) return;
+    try {
+      await supabase.from("sightings").delete().eq("pk_sighting_id", id);
+      await query.refetch();
+    } catch {}
   };
 
-  useEffect(() => {
-    if (isLoading) return;
-    let cancelled = false;
-    async function maybeFetchMore() {
-      await new Promise((r) => setTimeout(r, 50));
-      const docH = document.documentElement.scrollHeight;
-      const winH = window.innerHeight;
-      if (!cancelled && hasNextPage && docH <= winH) {
-        await fetchNextPage();
-        if (!cancelled) maybeFetchMore();
-      }
-    }
-    maybeFetchMore();
-    return () => { cancelled = true; };
-  }, [isLoading, hasNextPage, fetchNextPage, quickFiltered.length]);
+  function handleSelectFromMap(sid: number) {
+    try { setShowMap(false); } catch {}
+    const sp = new URLSearchParams(window.location.search);
+    sp.set("sightingId", String(sid));
+    window.history.replaceState({}, "", window.location.pathname + "?" + sp.toString());
+    setTimeout(() => {
+      const el = document.querySelector('[data-sighting-id="' + sid + '"]') as HTMLElement | null;
+      if (el && (el as any).scrollIntoView) (el as any).scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
 
-  useEffect(() => {
-    if (!showMap) return;
-    fetchAllMapPoints();
-  }, [showMap, island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, catalogIdParam, sightingIdParam, species, speciesIds]);
-
-  const fetchAllMapPoints = async () => {
-    const pageSz = 1000;
-    let base = supabase.from("sightings").select("pk_sighting_id,latitude,longitude,sighting_date,photographer,total_manta_ids");
-    if (island && island !== "all") base = base.ilike("island", `%${island}%`);
-    if (photographer) base = base.ilike("photographer", `%${photographer}%`);
-    if (location) base = base.eq("sitelocation", location.trim());
-    if (population) base = base.ilike("population", `%${population}%`);
-    if (minMantas !== "") base = base.gte("total_mantas", Number(minMantas));
-    if (dateKnown) base = base.not("sighting_date", "is", null);
-    if (dateUnknown) base = base.is("sighting_date", null);
-    if (date) base = base.eq("sighting_date", date);
-    if (catalogIdParam) {
-      const { data: mRows } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(catalogIdParam));
-      const ids = (mRows ?? []).map((r: any) => r.fk_sighting_id);
-      base = ids.length ? base.in("pk_sighting_id", ids) : base.eq("pk_sighting_id", 0);
-    }
-    if (sightingIdParam) base = base.eq("pk_sighting_id", Number(sightingIdParam));
-
-    if (species) {
-      let idsSet = speciesIds;
-      if (!idsSet) idsSet = await fetchSpeciesSightingIds(species);
-      const ids = Array.from(idsSet ?? []);
-      if (ids.length === 0) { setMapPoints([]); return; }
-      const CH = 800;
-      const acc: any[] = [];
-      for (let i = 0; i < ids.length; i += CH) {
-        const chunk = ids.slice(i, i + CH);
-        const { data } = await base.in("pk_sighting_id", chunk).select("pk_sighting_id,latitude,longitude,sighting_date,photographer,total_manta_ids");
-        if (data) acc.push(...data);
-      }
-      const pts = acc
-        .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
-        .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude), date: (r.sighting_date ?? null), photographer: (r.photographer ?? null), total: (typeof r.total_manta_ids === "number" ? r.total_manta_ids : (r.total_manta_ids ? Number(r.total_manta_ids) : null)) }));
-      setMapPoints(pts);
-      return;
-    }
-
-    const acc: any[] = [];
-    for (let from = 0; from < 500000; from += pageSz) {
-      const { data, error } = await base.range(from, from + pageSz - 1);
-      if (error) break;
-      const chunk = data ?? [];
-      acc.push(...chunk);
-      if (chunk.length < pageSz) break;
-    }
-    const pts = acc
-      .filter((r: any) => typeof r.latitude === "number" && typeof r.longitude === "number")
-      .map((r: any) => ({ id: Number(r.pk_sighting_id), lat: Number(r.latitude), lon: Number(r.longitude), date: (r.sighting_date ?? null), photographer: (r.photographer ?? null), total: (typeof r.total_manta_ids === "number" ? r.total_manta_ids : (r.total_manta_ids ? Number(r.total_manta_ids) : null)) }));
-    setMapPoints(pts);
-  };
+  const summary = useMemo(() => {
+    const p: string[] = [];
+    if (date) p.push("Date: " + date);
+    if (population) p.push("Population: " + population);
+    if (island && island !== "all") p.push("Island: " + island);
+    if (location) p.push("Location: " + location);
+    if (photographer) p.push("Photographer: " + photographer);
+    if (minMantas !== "") p.push(">= Mantas: " + String(minMantas));
+    if (dateKnown) p.push("Date: known");
+    if (dateUnknown) p.push("Date: unknown");
+    if (species) p.push("Species: " + species);
+    return p.join("; ");
+  }, [date, population, island, location, photographer, minMantas, dateKnown, dateUnknown, species]);
 
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-4 pb-12">
-        {catalogIdParam && (
+        {initialCatalogParam ? (
           <div className="mt-2 text-sm">
-            <Link to={`/browse/catalog?catalogId=${Number(catalogIdParam)}`} className="text-blue-600 hover:underline">← Return to Catalog {catalogIdParam}</Link>
+            <Link to={"/browse/catalog?catalogId=" + String(Number(initialCatalogParam))} className="text-blue-600 hover:underline">
+              ← Return to Catalog {initialCatalogParam}
+            </Link>
           </div>
-        )}
+        ) : null}
 
         <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
           <h1 className="text-4xl font-bold">Sightings</h1>
@@ -362,11 +345,17 @@ return () => { alive = false; };
           <div className="text-sm text-blue-800 mb-2">
             <a href="/browse/data" className="hover:underline">← Return to Browse Data</a>
           </div>
+
           <div className="flex justify-between items-center mb-3">
             <div className="text-sm font-medium">Filter Sighting Records by:</div>
           </div>
 
-          <input className="mb-3 border rounded px-3 py-2 w-full sm:w-64 text-sm" placeholder="Search location, photographer…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            className="mb-3 border rounded px-3 py-2 w-full sm:w-64 text-sm"
+            placeholder="Search ID, location, photographer…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
           <SightingFilterBox
             island={island} setIsland={setIsland}
@@ -388,41 +377,46 @@ return () => { alive = false; };
         </div>
 
         <div className="text-sm text-gray-700 mb-4">
-          Showing {quickFiltered.length} of {totalCount ?? "…"} total records{summary ? `, filtered by ${summary}` : ""}
+          Showing {list.length} of {totalCount == null ? "…" : totalCount} total records{summary ? ", filtered by " + summary : ""}
         </div>
 
         <div className="mb-4">
           <Button variant="outline" className="text-blue-600 border-blue-600" onClick={handleOpenMap}>View Map</Button>
         </div>
 
-        <div className="space-y-4">
-          {isLoading && <p>Loading…</p>}
-          {!isLoading && quickFiltered.length === 0 && <p>No sightings found.</p>}
-          {!isLoading && quickFiltered.map((s) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {query.isLoading && <p>Loading…</p>}
+          {!query.isLoading && list.length === 0 && <p>No sightings found.</p>}
+          {!query.isLoading && list.map((s) => (
             <Card key={s.pk_sighting_id} data-sighting-id={s.pk_sighting_id} className="overflow-hidden border shadow-sm">
-              <CardContent className="p-4 flex flex-col md:flex-row gap-6">
-                <div className="text-sm space-y-1 md:w-1/2">
-                  <p><strong className="text-blue-600">Date:</strong> {s.sighting_date ?? "unknown"}</p>
+              <CardContent className="p-4 flex flex-col gap-3">
+                <div className="text-sm space-y-1">
+                  <p><strong className="text-blue-600">Date:</strong> {s.sighting_date || "unknown"}</p>
                   <p><strong>Sighting ID:</strong> {s.pk_sighting_id}</p>
-                  <p><strong>Time:</strong> {s.start_time || "—"} – {s.end_time || "—"}</p>
+                  <p><strong>Time:</strong> {(s.start_time || "—") + " – " + (s.end_time || "—")}</p>
                   <p><strong>Island:</strong> {s.island || "—"}</p>
                   <p><strong>Location:</strong> {s.sitelocation || "—"}</p>
                 </div>
-                <div className="text-sm space-y-2 md:w-1/2">
-                  {isAdmin && (
-                    <div className="flex justify-end md:self-center">
-                      <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteSighting(s.pk_sighting_id)} disabled={deletingId === s.pk_sighting_id} title="Delete sighting">
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  )}
+
+                <div className="text-sm space-y-2">
                   <p><strong>Photographer:</strong> {s.photographer || "—"}</p>
                   <p><strong>Organization:</strong> {s.organization || "—"}</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <Button variant="default" className="text-white bg-blue-600 hover:bg-blue-700" onClick={() => { setMantasForSighting(s.pk_sighting_id); setShowMantas(true); }}>
-                      View All Mantas{typeof s.manta_count === "number" ? ` (${s.manta_count})` : ""}
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="default"
+                      className="text-white bg-blue-600 hover:bg-blue-700"
+                      onClick={() => { setMantasForSighting(s.pk_sighting_id); setShowMantas(true); }}
+                    >
+                      {"View All Mantas" + (typeof s.total_mantas === "number" ? " (" + String(s.total_mantas) + ")" : "")}
                     </Button>
-                                      </div>
+
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 ml-auto" onClick={() => handleDeleteSighting(s.pk_sighting_id)} title="Delete sighting">
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -431,25 +425,15 @@ return () => { alive = false; };
 
         <div ref={loadMoreRef} className="h-10" />
 
-        {hasNextPage && (
+        {query.hasNextPage && (
           <div className="mt-2 flex justify-center">
-            <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>{isFetchingNextPage ? "Loading…" : "Load more"}</Button>
+            <Button variant="outline" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>
+              {query.isFetchingNextPage ? "Loading…" : "Load more"}
+            </Button>
           </div>
         )}
 
-        <MapDialog open={showMap} onOpenChange={setShowMap} points={mapPoints} totalFiltered={totalCount ?? 0} onSelect={handleSelectFromMap}>
-          <SightingFilterBox
-            island={island} setIsland={setIsland}
-            photographer={photographer} setPhotographer={setPhotographer}
-            location={location} setLocation={setLocation}
-            population={population} setPopulation={setPopulation}
-            minMantas={minMantas} setMinMantas={setMinMantas}
-            date={date} setDate={setDate}
-            onClear={onClear}
-            isAdmin={isAdmin}
-            species={species} setSpecies={setSpecies}
-          />
-        </MapDialog>
+        <MapDialog open={showMap} onOpenChange={setShowMap} points={mapPoints} totalFiltered={totalCount || 0} onSelect={handleSelectFromMap} />
 
         <MantasInSightingModal open={showMantas} onOpenChange={setShowMantas} sightingId={mantasForSighting} />
       </div>

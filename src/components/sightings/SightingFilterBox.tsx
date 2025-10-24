@@ -16,6 +16,8 @@ const POP_ISLANDS: Record<string, string[]> = {
 };
 
 interface Props {
+    sightingId: string; setSightingId: (v: string) => void;
+    catalogIdFilter: string; setCatalogIdFilter: (v: string) => void;
   island: string; setIsland: (v: string) => void;
   photographer: string; setPhotographer: (v: string) => void;
   location: string; setLocation: (v: string) => void;
@@ -29,7 +31,7 @@ interface Props {
   species: string; setSpecies: (v: string) => void;
 }
 
-type Filters = Pick<Props, "population" | "island" | "location" | "photographer" | "minMantas" | "date" | "species">;
+type Filters = Pick<Props, "population" | "island" | "location" | "photographer" | "minMantas" | "date" | "species" | "sightingId" | "catalogIdFilter">;
 
 function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>>): boolean {
   const pop = (r.population ?? "").toString();
@@ -44,7 +46,7 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
   if (f.photographer && !pho.toLowerCase().includes(f.photographer.toLowerCase())) return false;
   if (f.minMantas !== "" && !(tm >= Number(f.minMantas))) return false;
   if (f.date && dt !== f.date) return false;
-  if (f.species) {
+    if (f.sightingId && String(r.pk_sighting_id) !== String(f.sightingId)) return false;if (f.species) {
     const set = speciesBySighting.get(Number(r.pk_sighting_id)) ?? new Set();
     // includes if ANY manta in the sighting matches species filter
     const has = Array.from(set).some(s => s.toLowerCase().includes(f.species!.toLowerCase()));
@@ -55,7 +57,7 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
 
 export default function SightingFilterBox(props: Props) {
   const {
-    island, setIsland,
+      island, setIsland,
     photographer, setPhotographer,
     location, setLocation,
     population, setPopulation,
@@ -64,7 +66,9 @@ export default function SightingFilterBox(props: Props) {
     onClear,
     isAdmin = false,
     species, setSpecies,
-  } = props;
+      sightingId, setSightingId,
+      catalogIdFilter, setCatalogIdFilter,
+    } = props;
 
   const filters: Filters = { population, island, location, photographer, minMantas, date, species };
 
@@ -74,10 +78,17 @@ export default function SightingFilterBox(props: Props) {
     let alive = true;
     (async () => {
       let q = supabase
-        .from("sightings")
-        .select("pk_sighting_id,population,island,sitelocation,photographer,total_mantas,sighting_date");
+          .from("sightings")
+          .select("pk_sighting_id,population,island,sitelocation,photographer,total_mantas,sighting_date");
+// apply catalogIdFilter
+        
 
       if (population) q = q.ilike("population", `%${population}%`);
+        if (catalogIdFilter) {
+          const { data: idsRows } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(catalogIdFilter));
+          const ids = (idsRows ?? []).map((r:any) => r.fk_sighting_id);
+          q = ids.length ? q.in("pk_sighting_id", ids) : q.eq("pk_sighting_id", 0);
+        }
       if (island && island !== "all") q = q.ilike("island", `%${island}%`);
       if (location) q = q.eq("sitelocation", location);
       if (photographer) q = q.ilike("photographer", `%${photographer}%`);
