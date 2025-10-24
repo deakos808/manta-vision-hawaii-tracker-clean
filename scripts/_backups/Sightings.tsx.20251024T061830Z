@@ -103,24 +103,28 @@ export default function Sightings() {
       const ids = await fetchSpeciesSightingIds(species);
       if (alive) setSpeciesIds(ids);
     })();
-return () => { alive = false; };
+    
+  return () => { alive = false; };
   }, [species]);
 
-  const [sortAsc, setSortAsc] = useState(false);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
-
-  const [showMap, setShowMap] = useState(false);
+// [map-bridge:handler]
   function handleSelectFromMap(sid: number) {
     try { setShowMap(false); } catch {}
     const sp = new URLSearchParams(window.location.search);
     sp.set("sightingId", String(sid));
     window.history.replaceState({}, "", `${window.location.pathname}?${sp.toString()}`);
     setTimeout(() => {
-      const el = document.querySelector(`[data-sighting-id="${sid}"]`) as HTMLElement | null;
-      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .querySelector(`[data-sighting-id="${sid}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
 
+
+  const [sortAsc, setSortAsc] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+
+  const [showMap, setShowMap] = useState(false);
   const [mapPoints, setMapPoints] = useState<{ lat: number; lon: number }[]>([]);
   const [showMantas, setShowMantas] = useState(false);
   const [mantasForSighting, setMantasForSighting] = useState<number | null>(null);
@@ -278,6 +282,24 @@ return () => { alive = false; };
     let cancelled = false;
     async function maybeFetchMore() {
       await new Promise((r) => setTimeout(r, 50));
+  useEffect(() => {
+    if (!showMap) return;
+    try { fetchAllMapPoints();
+  useEffect(() => {
+    if (!showMap) return;
+    try { fetchAllMapPoints(); } catch {}
+  }, [showMap, catalogIdParam, species, speciesIds, island, location, population, dateKnown, dateUnknown, date, minMantas, photographer, sightingIdParam]);
+ } catch {}
+  }, [
+    showMap,
+    catalogIdParam,
+    species, speciesIds,
+    island, location, population,
+    dateKnown, dateUnknown, date,
+    minMantas, photographer,
+    sightingIdParam
+  ]);
+
       const docH = document.documentElement.scrollHeight;
       const winH = window.innerHeight;
       if (!cancelled && hasNextPage && docH <= winH) {
@@ -288,12 +310,6 @@ return () => { alive = false; };
     maybeFetchMore();
     return () => { cancelled = true; };
   }, [isLoading, hasNextPage, fetchNextPage, quickFiltered.length]);
-
-  useEffect(() => {
-    if (!showMap) return;
-    fetchAllMapPoints();
-  }, [showMap, island, photographer, location, population, minMantas, date, dateKnown, dateUnknown, catalogIdParam, sightingIdParam, species, speciesIds]);
-
   const fetchAllMapPoints = async () => {
     const pageSz = 1000;
     let base = supabase.from("sightings").select("pk_sighting_id,latitude,longitude");

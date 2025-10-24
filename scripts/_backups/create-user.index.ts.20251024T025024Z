@@ -1,3 +1,7 @@
+/**
+ * supabase/functions/create-user/index.ts
+ * Creates or updates an auth user + profile and ensures email is confirmed so password login works immediately.
+ */
 import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -9,7 +13,9 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+  }
 
   try {
     const { email, password, role, admin_id } = await req.json();
@@ -24,19 +30,23 @@ serve(async (req) => {
 
     let userId: string | null = null;
 
+    // 1) Try to create the auth user (confirmed)
     const { data: created, error: createErr } = await sb.auth.admin.createUser({
       email: emailLower,
       password,
-      email_confirm: true
+      email_confirm: true, // important: allow immediate password login
     });
 
     if (created?.user?.id) {
       userId = created.user.id;
     } else {
+      // If already registered, lookup, then update to confirm & set password
       const conflict = (createErr?.message || '').toLowerCase().includes('already been registered');
       if (!conflict) {
         return new Response(JSON.stringify({ error: createErr?.message || 'Auth user creation failed' }), { status: 500, headers: corsHeaders });
       }
+
+      // List users (admin API) to find the existing account by email
       let page = 1;
       const perPage = 200;
       while (!userId) {
@@ -47,26 +57,35 @@ serve(async (req) => {
         if (!data?.users?.length || data.users.length < perPage) break;
         page += 1;
       }
-      if (!userId) return new Response(JSON.stringify({ error: 'Auth user exists but could not be located' }), { status: 500, headers: corsHeaders });
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Auth user exists but could not be located' }), { status: 500, headers: corsHeaders });
+      }
 
+      // Force confirm + set the password so password login always works
       const { error: updErr } = await sb.auth.admin.updateUserById(userId, {
         password,
-        email_confirm: true
+        email_confirm: true,
       });
-      if (updErr) return new Response(JSON.stringify({ error: `Auth update failed: ${updErr.message}` }), { status: 500, headers: corsHeaders });
+      if (updErr) {
+        return new Response(JSON.stringify({ error: `Auth update failed: ${updErr.message}` }), { status: 500, headers: corsHeaders });
+      }
     }
 
+    // 2) Idempotent profile upsert
     const upsertPayload = {
       id: userId!,
       email: emailLower,
       role,
       is_active: true,
       created_by: admin_id,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
     const { error: upsertErr } = await sb.from('profiles').upsert(upsertPayload, { onConflict: 'id' });
-    if (upsertErr) return new Response(JSON.stringify({ error: upsertErr.message }), { status: 500, headers: corsHeaders });
+    if (upsertErr) {
+      return new Response(JSON.stringify({ error: upsertErr.message }), { status: 500, headers: corsHeaders });
+    }
 
+    // 3) (Optional) Send a recovery link via Resend, if configured
     let emailed = false;
     try {
       const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({ type: 'recovery', email: emailLower });
@@ -88,7 +107,7 @@ serve(async (req) => {
         });
         emailed = res.ok;
       }
-    } catch (_) {}
+    } catch (_) { /* email sending is best-effort */ }
 
     return new Response(JSON.stringify({ success: true, user_id: userId, emailed }), { status: 200, headers: corsHeaders });
   } catch (err: any) {
