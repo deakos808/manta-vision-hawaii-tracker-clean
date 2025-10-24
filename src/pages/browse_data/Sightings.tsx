@@ -399,7 +399,7 @@ return () => { alive = false; };
           {isLoading && <p>Loading…</p>}
           {!isLoading && quickFiltered.length === 0 && <p>No sightings found.</p>}
           {!isLoading && quickFiltered.map((s) => (
-            <Card key={s.pk_sighting_id} data-sighting-id={s.pk_sighting_id}>
+            <Card key={s.pk_sighting_id} data-sighting-id={s.pk_sighting_id} className="overflow-hidden border shadow-sm">
               <CardContent className="p-4 flex flex-col md:flex-row gap-6">
                 <div className="text-sm space-y-1 md:w-1/2">
                   <p><strong className="text-blue-600">Date:</strong> {s.sighting_date ?? "unknown"}</p>
@@ -422,14 +422,7 @@ return () => { alive = false; };
                     <Button variant="default" className="text-white bg-blue-600 hover:bg-blue-700" onClick={() => { setMantasForSighting(s.pk_sighting_id); setShowMantas(true); }}>
                       View All Mantas{typeof s.manta_count === "number" ? ` (${s.manta_count})` : ""}
                     </Button>
-                    {catalogIdParam && (
-                      <Button asChild variant="outline" className="border-blue-600 text-blue-700">
-                        <Link to={`/browse/mantas?sightingId=${s.pk_sighting_id}&catalogId=${Number(catalogIdParam)}${s.manta_for_catalog_id ? `#m${s.manta_for_catalog_id}` : ""}`} title={s.manta_for_catalog_id ? `Jump to manta ${s.manta_for_catalog_id}` : "Show only mantas for this catalog (anchor unknown)"}>
-                          {`View Catalog ${catalogIdParam} (1)`}
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
+                                      </div>
                 </div>
               </CardContent>
             </Card>
