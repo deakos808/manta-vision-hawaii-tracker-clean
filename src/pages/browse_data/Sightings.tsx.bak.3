@@ -372,8 +372,8 @@ useEffect(() => {
             isAdmin={isAdmin}
             species={species} setSpecies={setSpecies}
           
-          sightingIdFilter={sightingId}
-          setSightingIdFilter={setSightingId}
+          sightingId={sightingId}
+          setSightingId={setSightingId}
         />
 
           <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
@@ -442,7 +442,7 @@ useEffect(() => {
 
         <MapDialog open={showMap} onOpenChange={setShowMap} points={mapPoints} totalFiltered={totalCount || 0} onSelect={handleSelectFromMap} />
 
-        <MantasInSightingModal open={showMantas} onOpenChange={setShowMantas} sightingIdFilter={mantasForSighting} />
+        <MantasInSightingModal open={showMantas} onOpenChange={setShowMantas} sightingId={mantasForSighting} />
       </div>
     </Layout>
   );

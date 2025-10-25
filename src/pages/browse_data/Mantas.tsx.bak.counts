@@ -165,30 +165,6 @@ export default function MantasPage() {
 
       if (!active) return;
 
-      
-      // Photo counts (from manta_photo_counts view)
-      try {
-        const countChunks = [];
-        for (let i = 0; i < allMantaIds.length; i += 1000) countChunks.push(allMantaIds.slice(i, i + 1000));
-        const countsByManta = new Map<number, number>();
-        for (const ids of countChunks) {
-          const { data: crows } = await supabase
-            .from("manta_photo_counts")
-            .select("fk_manta_id, photos_count")
-            .in("fk_manta_id", ids);
-          for (const r of (crows ?? [])) {
-            if (typeof r.fk_manta_id === "number")
-              countsByManta.set(r.fk_manta_id, (r.photos_count as number) ?? 0);
-          }
-        }
-        for (const m of mantas) {
-          const n = countsByManta.get(m.pk_manta_id);
-          if (typeof n === "number") m.photo_count = n;
-        }
-      } catch (e) {
-        console.warn("[Mantas] count fetch failed", (e && e.message) || e);
-      }
-
       // Best-ventral thumbnails
       const idChunks: number[][] = [];
       for (let i = 0; i < allMantaIds.length; i += 1000) {

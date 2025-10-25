@@ -55,7 +55,6 @@ export default function MantasPage() {
 
   // Data
   const [allMantas, setAllMantas] = useState<MantaRow[]>([]);
-  const [photoCounts, setPhotoCounts] = useState<Record<number, number>>({});
   const [facetRows, setFacetRows] = useState<MantaFacetRow[]>([]);
   const [totalMantas, setTotalMantas] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -164,30 +163,6 @@ export default function MantasPage() {
       }
 
       if (!active) return;
-
-      
-      // Photo counts (from manta_photo_counts view)
-      try {
-        const countChunks = [];
-        for (let i = 0; i < allMantaIds.length; i += 1000) countChunks.push(allMantaIds.slice(i, i + 1000));
-        const countsByManta = new Map<number, number>();
-        for (const ids of countChunks) {
-          const { data: crows } = await supabase
-            .from("manta_photo_counts")
-            .select("fk_manta_id, photos_count")
-            .in("fk_manta_id", ids);
-          for (const r of (crows ?? [])) {
-            if (typeof r.fk_manta_id === "number")
-              countsByManta.set(r.fk_manta_id, (r.photos_count as number) ?? 0);
-          }
-        }
-        for (const m of mantas) {
-          const n = countsByManta.get(m.pk_manta_id);
-          if (typeof n === "number") m.photo_count = n;
-        }
-      } catch (e) {
-        console.warn("[Mantas] count fetch failed", (e && e.message) || e);
-      }
 
       // Best-ventral thumbnails
       const idChunks: number[][] = [];
@@ -413,8 +388,9 @@ export default function MantasPage() {
           {!loading &&
             !error &&
             sortedMantas.map((m) => {
-                const photoCount = photoCounts[m.pk_manta_id as number] ?? null;
-              return (
+  const photoCount =
+    (m && (m.photo_count ?? m.photos_count ?? m.total_photos ?? m.total_manta_photos ?? m.num_photos ?? m.photos_len)) ?? null;
+return (
                 <div
                   id={`m${m.pk_manta_id}`}
                   key={m.pk_manta_id}
@@ -500,7 +476,7 @@ export default function MantasPage() {
       </div>
 
       {/* Photos modal */}
-      <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />
+      <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null} />
     </Layout>
   );
 }

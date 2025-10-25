@@ -16,7 +16,7 @@ const POP_ISLANDS: Record<string, string[]> = {
 };
 
 interface Props {
-    sightingIdFilter: string; setSightingIdFilter: (v: string) => void;
+    sightingId: string; setSightingId: (v: string) => void;
     catalogIdFilter: string; setCatalogIdFilter: (v: string) => void;
   island: string; setIsland: (v: string) => void;
   photographer: string; setPhotographer: (v: string) => void;
@@ -30,11 +30,11 @@ interface Props {
   // NEW: species selection
   species: string; setSpecies: (v: string) => void;
 
-  sightingIdFilter?: string;
-  setSightingIdFilter?: (v: string) => void;
+  sightingId?: string;
+  setSightingId?: (v: string) => void;
 }
 
-type Filters = Pick<Props, "population" | "island" | "location" | "photographer" | "minMantas" | "date" | "species" | "sightingIdFilter" | "catalogIdFilter">;
+type Filters = Pick<Props, "population" | "island" | "location" | "photographer" | "minMantas" | "date" | "species" | "sightingId" | "catalogIdFilter">;
 
 function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>>): boolean {
   const pop = (r.population ?? "").toString();
@@ -49,7 +49,7 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
   if (f.photographer && !pho.toLowerCase().includes(f.photographer.toLowerCase())) return false;
   if (f.minMantas !== "" && !(tm >= Number(f.minMantas))) return false;
   if (f.date && dt !== f.date) return false;
-    if (f.sightingIdFilter && String(r.pk_sighting_id) !== String(f.sightingIdFilter)) return false;if (f.species) {
+    if (f.sightingId && String(r.pk_sighting_id) !== String(f.sightingId)) return false;if (f.species) {
     const set = speciesBySighting.get(Number(r.pk_sighting_id)) ?? new Set();
     // includes if ANY manta in the sighting matches species filter
     const has = Array.from(set).some(s => s.toLowerCase().includes(f.species!.toLowerCase()));
@@ -59,6 +59,7 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
 }
 
 export default function SightingFilterBox(props: Props) {
+  console.debug("[SightingFilterBox] sightingId prop:", sightingId, "has setter:", typeof setSightingId === "function");
 const {
       island, setIsland,
     photographer, setPhotographer,
@@ -69,7 +70,7 @@ const {
     onClear,
     isAdmin = false,
     species, setSpecies,
-      sightingIdFilter, setSightingIdFilter,
+      sightingId, setSightingId,
       catalogIdFilter, setCatalogIdFilter,
     } = props;
 
@@ -226,7 +227,7 @@ const {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {typeof setSightingIdFilter === "function" && (
+        {typeof setSightingId === "function" && (
   <div className="flex items-center gap-2">
     <span className="text-sm text-muted-foreground whitespace-nowrap">Sighting&nbsp;ID</span>
     <input
@@ -234,11 +235,11 @@ const {
       pattern="[0-9]*"
       className="h-8 w-28 rounded-full border px-3 text-sm bg-background"
       placeholder="e.g. 5951"
-      value={sightingIdFilter ?? ""}
-      onChange={(e) => setSightingIdFilter(e.target.value.replace(/[^0-9]/g, ""))}
+      value={sightingId ?? ""}
+      onChange={(e) => setSightingId(e.target.value.replace(/[^0-9]/g, ""))}
     />
-    {sightingIdFilter ? (
-      <button type="button" className="h-8 px-3 rounded-full border text-sm" onClick={() => setSightingIdFilter("")}>Clear</button>
+    {sightingId ? (
+      <button type="button" className="h-8 px-3 rounded-full border text-sm" onClick={() => setSightingId("")}>Clear</button>
     ) : null}
   </div>
 )}

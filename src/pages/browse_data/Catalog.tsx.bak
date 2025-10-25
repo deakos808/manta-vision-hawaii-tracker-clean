@@ -28,6 +28,8 @@ function _arrHas(active: string[], arr?: (string|null)[]|null, single?: string|n
   return false;
 }
 
+
+
 type CatalogRow = {
   pk_catalog_id: number;
   name: string | null;
@@ -42,9 +44,9 @@ type CatalogRow = {
   last_sighting?: string | null;
 
   /* filters */
-  population?: string | null;
-  island?: string | null;
-  sitelocation?: string | null;
+  population?: string | null;   /* if your view keeps a single population */
+  island?: string | null;       /* if your view keeps a single island */
+  sitelocation?: string | null; /* legacy single site label for filtering */
 
   /* thumbs */
   best_catalog_ventral_thumb_url?: string | null;
@@ -114,27 +116,9 @@ export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const catalogIdParam = searchParams.get("catalogId");
 
-  // NEW: local state for Catalog ID filter (numeric, kept as string for the input)
-  const [catalogIdFilter, setCatalogIdFilter] = useState<string>("");
-
-  // When arriving with ?catalogId= in the URL, prefill once
-  useEffect(() => {
-    if (catalogIdParam && catalogIdParam !== catalogIdFilter) {
-      setCatalogIdFilter(catalogIdParam);
-      console.debug("[Catalog] prefill from ?catalogId=", catalogIdParam);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogIdParam]);
-
   const load = async () => {
     let q = supabase.from("catalog_with_photo_view").select("*");
-    if (catalogIdFilter) {
-      const n = Number(catalogIdFilter);
-      if (!Number.isNaN(n)) {
-        q = q.eq("pk_catalog_id", n);
-      }
-    }
-    console.debug("[Catalog] load → pk_catalog_id filter:", catalogIdFilter || "(none)");
+    if (catalogIdParam) q = q.eq("pk_catalog_id", catalogIdParam);
     const { data, error } = await q;
     if (error) {
       console.error("[Load Catalog]", error);
@@ -146,42 +130,40 @@ export default function Catalog() {
 
   useEffect(() => {
     load();
-  }, [catalogIdFilter]);
+  }, [catalogIdParam]);
 
   const filtered = useMemo(() => {
-    const term = (search || '').trim().toLowerCase();
+  const term = (search || '').trim().toLowerCase();
 
-    const textOK = (c: CatalogRow) =>
-      (c.name ? c.name.toLowerCase().includes(term) : false) ||
-      String(c.pk_catalog_id).includes(term);
+  const textOK = (c: CatalogRow) =>
+    (c.name ? c.name.toLowerCase().includes(term) : false) ||
+    String(c.pk_catalog_id).includes(term);
 
-    const arrHasAny = (need: string[], have?: string[] | null) =>
-      !need.length || (Array.isArray(have) && have.some(v => need.includes(v)));
+  const arrHasAny = (need: string[], have?: string[] | null) =>
+    !need.length || (Array.isArray(have) && have.some(v => need.includes(v)));
 
-    const valOK = (need: string[], v?: string | null) =>
-      !need.length || (v ? need.includes(v) : false);
+  const valOK = (need: string[], v?: string | null) =>
+    !need.length || (v ? need.includes(v) : false);
 
-    const rows = catalog.filter((c) =>
-      textOK(c) &&
-      arrHasAny(filters.population, c.populations) &&
-      arrHasAny(filters.island, c.islands) &&
-      valOK(filters.sitelocation, c.sitelocation) &&
-      valOK(filters.gender, c.gender) &&
-      valOK(filters.age_class, c.age_class) &&
-      (!filters.species.length || (c.species ? filters.species.includes(c.species) : false))
-    );
+  const rows = catalog.filter((c) =>
+    textOK(c) &&
+    arrHasAny(filters.population, c.populations) &&
+    arrHasAny(filters.island, c.islands) &&
+    valOK(filters.sitelocation, c.sitelocation) &&
+    valOK(filters.gender, c.gender) &&
+    valOK(filters.age_class, c.age_class) &&
+    (!filters.species.length || (c.species ? filters.species.includes(c.species) : false))
+  );
 
-    rows.sort((a,b)=> (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
-    return rows;
-  }, [catalog, search, filters, sortAsc]);
+  rows.sort((a,b)=> (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
+  return rows;
+}, [catalog, search, filters, sortAsc]);
 
-  const clearAll = () => {
+    const clearAll = () => {
     setSearch("");
     setFilters(EMPTY_FILTERS);
     setSortAsc(true);
-    setCatalogIdFilter("");            // NEW: reset the numeric filter
     setSearchParams({});
-    console.debug("[Catalog] Clear All → reset catalogIdFilter");
   };
 
   const summary = useMemo(() => {
@@ -235,8 +217,6 @@ export default function Catalog() {
           sortAsc={sortAsc}
           setSortAsc={setSortAsc}
           onClearAll={clearAll}
-          catalogIdFilter={catalogIdFilter}
-          setCatalogIdFilter={setCatalogIdFilter}
         />
 
         {/* view toggle + banner */}

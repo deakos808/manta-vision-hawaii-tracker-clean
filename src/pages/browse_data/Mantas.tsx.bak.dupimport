@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import PhotoCountLoader from "@/components/mantas/PhotoCountLoader";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { deleteManta } from "@/lib/adminApi";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import MantaFilterBox from "@/components/mantas/MantaFilterBox";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
+import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
 import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
 
 import { useIsAdmin } from "@/lib/isAdmin";
@@ -164,30 +166,6 @@ export default function MantasPage() {
       }
 
       if (!active) return;
-
-      
-      // Photo counts (from manta_photo_counts view)
-      try {
-        const countChunks = [];
-        for (let i = 0; i < allMantaIds.length; i += 1000) countChunks.push(allMantaIds.slice(i, i + 1000));
-        const countsByManta = new Map<number, number>();
-        for (const ids of countChunks) {
-          const { data: crows } = await supabase
-            .from("manta_photo_counts")
-            .select("fk_manta_id, photos_count")
-            .in("fk_manta_id", ids);
-          for (const r of (crows ?? [])) {
-            if (typeof r.fk_manta_id === "number")
-              countsByManta.set(r.fk_manta_id, (r.photos_count as number) ?? 0);
-          }
-        }
-        for (const m of mantas) {
-          const n = countsByManta.get(m.pk_manta_id);
-          if (typeof n === "number") m.photo_count = n;
-        }
-      } catch (e) {
-        console.warn("[Mantas] count fetch failed", (e && e.message) || e);
-      }
 
       // Best-ventral thumbnails
       const idChunks: number[][] = [];
@@ -420,6 +398,7 @@ export default function MantasPage() {
                   key={m.pk_manta_id}
                   className="flex flex-col rounded-xl border bg-white p-4 shadow-sm"
                 >
+                    <PhotoCountLoader mantaId={m.pk_manta_id as number} onLoaded={(n)=>setPhotoCounts(c=>({...c,[m.pk_manta_id as number]:n}))} />
                   <div className="w-full aspect-square overflow-hidden rounded-lg border bg-gray-50">
                     <img
                       src={m.best_thumb_url || "/manta-logo.svg"}
@@ -500,7 +479,7 @@ export default function MantasPage() {
       </div>
 
       {/* Photos modal */}
-      <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />
+      <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null} />
     </Layout>
   );
 }

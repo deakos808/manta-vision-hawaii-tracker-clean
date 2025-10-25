@@ -19,9 +19,12 @@ export interface FiltersState {
 }
 
 interface CatalogEntry {
+  /* NEW — arrays coming from the view */
   species?: string | null;
   populations?: string[] | null;
   islands?: string[] | null;
+
+  /* Legacy single-value cols (still used by UI) */
   sitelocation?: string | null;
   gender?: string | null;
   age_class?: string | null;
@@ -34,9 +37,6 @@ interface Props {
   sortAsc: boolean;
   setSortAsc: (v: boolean) => void;
   onClearAll: () => void;
-  /* NEW: numeric filter from parent */
-  catalogIdFilter?: string;
-  setCatalogIdFilter?: (v: string) => void;
 }
 
 /* ── constants ─────────────────────────────────────── */
@@ -84,12 +84,7 @@ export default function CatalogFilterBox({
   sortAsc,
   setSortAsc,
   onClearAll,
-  catalogIdFilter,
-  setCatalogIdFilter,
 }: Props) {
-  /* DEBUG: surface whether the numeric pill is wired */
-  console.debug("[CatalogFilterBox] props.catalogIdFilter:", catalogIdFilter, "has setter:", typeof setCatalogIdFilter === "function");
-
   /* ── toggle / clear helpers ───────────────────────── */
   const toggle = (key: keyof FiltersState, value: string) => {
     const next = filters[key].includes(value)
@@ -118,12 +113,14 @@ export default function CatalogFilterBox({
   const islandBase = useMemo(() => {
     if (filters.population.length === 1) {
       const pop = filters.population[0];
+      /* If you rely on the helper map, use it; otherwise skip this block */
       if (populationIslandMap[pop]) {
         return catalog.filter((c) =>
           c.islands?.some((is) => populationIslandMap[pop].includes(is)),
         );
       }
     }
+    /* generic filter: keep rows that share any selected population */
     return filters.population.length
       ? catalog.filter((c) =>
           c.populations?.some((p) => filters.population.includes(p)),
@@ -245,33 +242,6 @@ export default function CatalogFilterBox({
 
       {/* dropdown row */}
       <div className="flex flex-wrap gap-2">
-        {/* NEW: Catalog ID numeric pill */}
-        {typeof setCatalogIdFilter === "function" && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Catalog&nbsp;ID</span>
-            <input
-              inputMode="numeric"
-              pattern="[0-9]*"
-              className="h-8 w-28 rounded-full border px-3 text-sm bg-background"
-              placeholder="e.g. 123"
-              value={catalogIdFilter ?? ""}
-              onChange={(e) =>
-                setCatalogIdFilter(e.target.value.replace(/[^0-9]/g, ""))
-              }
-            />
-            {catalogIdFilter ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-8 px-3 rounded-full text-sm"
-                onClick={() => setCatalogIdFilter("")}
-              >
-                Clear
-              </Button>
-            ) : null}
-          </div>
-        )}
-
         {renderMenu("Species", "species", speciesOptions, speciesCounts)}
         {renderMenu("Population", "population", populationOptions, populationCounts)}
         {renderMenu("Island", "island", islandOptions, islandCounts)}
