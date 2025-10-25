@@ -1,0 +1,156 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useIsAdmin } from "@/lib/isAdmin";
+
+type View = "ventral" | "dorsal" | "other";
+
+type PhotoRow = {
+  pk_photo_id: number | null;
+  fk_manta_id: number | null;
+  storage_path: string | null;
+  photo_view: View | null; // use this column from your schema
+  is_best_manta_ventral_photo: boolean | null;
+  is_best_manta_dorsal_photo: boolean | null;
+};
+
+type Props = { open: boolean; onOpenChange: (v: boolean) => void; mantaId: number | null; 
+  onCount?: (mantaId: number, count: number) => void;
+};
+
+export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount }: Props) {
+  const isAdmin = useIsAdmin();
+  const [rows, setRows] = useState<PhotoRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState<null | View>(null);
+  const canEdit = !!isAdmin;
+
+  useEffect(() => {
+    if (!open || !mantaId) return;
+    let stop = false;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("photos")
+        .select("pk_photo_id, fk_manta_id, storage_path, photo_view, is_best_manta_ventral_photo, is_best_manta_dorsal_photo")
+        .eq("fk_manta_id", mantaId)
+        .order("photo_view", { ascending: true })
+        .order("pk_photo_id", { ascending: true });
+      if (!stop) {
+        if (error) {
+          console.warn("[MantaPhotosViewer] fetch error:", error.message);
+          setRows([]);
+        } else {
+          setRows((data as PhotoRow[]) || []);
+        }
+        setLoading(false);
+      }
+    })();
+    return () => { stop = true; };
+  }, [open, mantaId]);
+
+  const groups = useMemo(() => {
+    const g: Record<View, PhotoRow[]> = { ventral: [], dorsal: [], other: [] };
+    for (const r of rows) {
+      const v = (r.photo_view || "other") as View;
+      g[v].push(r);
+    }
+    return g;
+  }, [rows]);
+
+  if (!open) return null;
+
+  const urlFor = (r: PhotoRow) => {
+    if (!r.storage_path) return "";
+    const { data } = supabase.storage.from("manta-images").getPublicUrl(r.storage_path);
+    return data?.publicUrl || "";
+  };
+
+  async function setBest(view: View, target: PhotoRow) {
+    if (!canEdit || !mantaId || !target.pk_photo_id) return;
+    setSaving(view);
+    try {
+      await supabase
+        .from("photos")
+        .update(view === "ventral" ? { is_best_manta_ventral_photo: false } : { is_best_manta_dorsal_photo: false })
+        .eq("fk_manta_id", mantaId)
+        .eq("photo_view", view);
+
+      await supabase
+        .from("photos")
+        .update(view === "ventral" ? { is_best_manta_ventral_photo: true } : { is_best_manta_dorsal_photo: true })
+        .eq("pk_photo_id", target.pk_photo_id);
+
+      setRows(prev =>
+        prev.map(p => {
+          if ((p.photo_view || "other") !== view) return p;
+          const isTarget = p.pk_photo_id === target.pk_photo_id;
+          return view === "ventral"
+            ? { ...p, is_best_manta_ventral_photo: isTarget }
+            : { ...p, is_best_manta_dorsal_photo: isTarget };
+        })
+      );
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const Section: React.FC<{ label: string; list: PhotoRow[]; view: View }> = ({ label, list, view }) => (
+    <div className="mb-6">
+      <div className="text-sm font-medium mb-2">{label} ({list.length})</div>
+      {list.length === 0 ? (
+        <div className="text-xs text-muted-foreground">— none —</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {list.map((r) => {
+            const url = urlFor(r);
+            const bestV = !!r.is_best_manta_ventral_photo;
+            const bestD = !!r.is_best_manta_dorsal_photo;
+            const isBest = view === "ventral" ? bestV : view === "dorsal" ? bestD : false;
+            return (
+              <div key={String(r.pk_photo_id ?? "")} className="border rounded p-2 bg-white">
+                {url ? (
+                  <img src={url} alt={`photo ${String(r.pk_photo_id ?? "")}`} className="w-full h-28 object-cover rounded mb-2" />
+                ) : (
+                  <div className="w-full h-28 bg-gray-100 rounded mb-2 flex items-center justify-center text-xs text-gray-500">no image</div>
+                )}
+                <div className="text-[11px] text-muted-foreground flex items-center justify-between">
+                  <span>id: {String(r.pk_photo_id ?? "")}</span>
+                  {isBest && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">Best</span>}
+                </div>
+                {canEdit && (view === "ventral" || view === "dorsal") && (
+                  <button
+                    className="mt-2 w-full border rounded px-2 py-1 text-xs"
+                    disabled={saving === view}
+                    onClick={() => setBest(view, r)}
+                  >
+                    {saving === view ? "Updating…" : view === "ventral" ? "Set Best Ventral" : "Set Best Dorsal"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center" onClick={() => onOpenChange(false)}>
+      <div className="bg-white rounded-lg border w-full max-w-5xl p-4 relative" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-medium">Photos for Manta {mantaId ?? "—"}</h3>
+          <button type="button" onClick={() => onOpenChange(false)} className="px-2 py-1 border rounded">Close</button>
+        </div>
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading photos…</div>
+        ) : (
+          <>
+            <Section label="Ventral" list={groups.ventral} view="ventral" />
+            <Section label="Dorsal" list={groups.dorsal} view="dorsal" />
+            <Section label="Other" list={groups.other} view="other" />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
