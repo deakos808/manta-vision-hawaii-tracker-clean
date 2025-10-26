@@ -98,7 +98,12 @@ export default function CatalogStagingPanel() {
         return copy;
       });
 
-      const allowed = new Set([...stagingColumns, "src_file"]);
+      const { data: _stgColsQ } = await supabase
+        .from("v_db_columns").select("column_name")
+        .eq("table_schema", "public").eq("table_name", "stg_catalog")
+        .order("ordinal_position", { ascending: true });
+      const _stgCols = (_stgColsQ || []).map((r: any) => String((r as any).column_name).toLowerCase());
+      const allowed = new Set([..._stgCols, "src_file", "pk_catalog_id"]);
       const filtered = stagedRows.map((row) => {
         const o: Record<string, any> = {};
         for (const k of Object.keys(row)) {
