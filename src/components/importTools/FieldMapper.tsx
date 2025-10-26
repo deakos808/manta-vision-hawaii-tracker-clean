@@ -142,21 +142,22 @@ function sanitizeAsColumn(header: string): string {
 }
 
 function buildComputedViewSQL(mappings: FieldPlan[]): string {
-  const computed = mappings.filter(m => m.asComputed);
-  const cols = computed.map((m) => {
-    const col = sanitizeAsColumn(m.target || m.csvHeader);
-    const typ = m.inferredType || "text";
-    const note = m.calcHint?.note ? ` -- ${m.calcHint.note}` : "";
-    return `  null::${typ} as ${col}${note}`;
-  });
-
+  const comps = mappings.filter(m => m.asComputed);
   const lines: string[] = [];
   lines.push(`-- Preview: computed fields as a view (edit formulas before running)`);
   lines.push(`create or replace view public.v_catalog_computed as`);
   lines.push(`select`);
   lines.push(`  c.pk_catalog_id,`);
-  if (cols.length) {
-    lines.push(cols.join(",\n") + `,`);
+  if (comps.length > 0) {
+    comps.forEach((m, i) => {
+      const col = sanitizeAsColumn(m.target || m.csvHeader);
+      const typ = m.inferredType || "text";
+      const comma = (i < comps.length - 1) ? "," : "";
+      const note = m.calcHint?.note ? ` -- ${m.calcHint.note}` : "";
+      // comma BEFORE the comment so SQL stays valid when pasted
+      lines.push(`  null::\${typ} as \${col}\${comma}\${note}`);
+    });
+    lines.push(`,`);
   }
   lines.push(`  c.name,`);
   lines.push(`  c.species`);
@@ -165,8 +166,9 @@ function buildComputedViewSQL(mappings: FieldPlan[]): string {
   lines.push(`  on s.pk_catalog_id = c.pk_catalog_id; -- adjust if linkage differs`);
   lines.push(`-- Replace null::type stubs above with real expressions, e.g.:`);
   lines.push(`--   max(s.sighting_date) as date_last_sighted`);
-  return lines.join("\n");
+  return lines.join("\\n");
 }
+
 
 export default function FieldMapper({
   csvHeaders,
