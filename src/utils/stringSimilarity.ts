@@ -14,14 +14,14 @@ export function diceCoefficient(a: string, b: string): number {
   };
   const sB = bigrams(s);
   const tB = bigrams(t);
-  const set = new Map<string, number>();
-  for (const g of sB) set.set(g, (set.get(g) || 0) + 1);
+  const multiset = new Map<string, number>();
+  for (const g of sB) multiset.set(g, (multiset.get(g) || 0) + 1);
   let matches = 0;
   for (const g of tB) {
-    const c = set.get(g) || 0;
+    const c = multiset.get(g) || 0;
     if (c > 0) {
       matches++;
-      set.set(g, c - 1);
+      multiset.set(g, c - 1);
     }
   }
   return (2 * matches) / (sB.length + tB.length);
