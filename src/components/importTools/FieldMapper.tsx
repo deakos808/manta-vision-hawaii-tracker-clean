@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { diceCoefficient } from "@/utils/stringSimilarity";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { diceCoefficient } from "@/utils/stringSimilarity";
 
 type MappingAction = "map_existing" | "create_new" | "ignore";
 
@@ -26,6 +26,7 @@ export type MappingPlan = {
   computedSql: string;
 };
 
+// ---- Calculated column hints for CATALOG only (flag only; does NOT block updates) ----
 function calcHintForCatalog(headerLc: string): FieldPlan["calcHint"] | undefined {
   const h = headerLc.replace(/\s+/g, "_");
   const fromSightings = (note: string, formula?: string, dependsOn?: string[]) =>
@@ -117,6 +118,7 @@ function calcHintForCatalog(headerLc: string): FieldPlan["calcHint"] | undefined
   }
 }
 
+// ---- Type inference & helpers ----
 function inferType(values: any[]): string {
   const sample = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "").slice(0, 200);
   if (sample.length === 0) return "text";
@@ -172,7 +174,7 @@ export default function FieldMapper({
   csvHeaders,
   sampleRows,
   existingColumns,
-  defaultNoUpdate = new Set<string>(["species", "name"]),
+  defaultNoUpdate,
   onPlanChange,
 }: {
   csvHeaders: string[];
@@ -182,12 +184,15 @@ export default function FieldMapper({
   onPlanChange: (plan: MappingPlan) => void;
 }) {
   const [mappings, setMappings] = useState<FieldPlan[]>([]);
+  const DEFAULT_NO_UPDATE = useRef(new Set<string>(["species", "name"])).current;
+  const noUpdate = defaultNoUpdate ?? DEFAULT_NO_UPDATE;
 
   const existingSet = useMemo(
     () => new Set(existingColumns.map(c => c.toLowerCase())),
     [existingColumns]
   );
 
+  // Build initial row mapping once inputs change (stable defaults; do NOT depend on Set identity)
   useEffect(() => {
     const initial: FieldPlan[] = csvHeaders.map((h) => {
       const lc = h.toLowerCase();
@@ -202,9 +207,9 @@ export default function FieldMapper({
       let adminOnly = false;
 
       if (existsInTable) {
-        action = defaultNoUpdate.has(lc) ? "ignore" : "map_existing";
+        action = noUpdate.has(lc) ? "ignore" : "map_existing";
         target = lc;
-        note = defaultNoUpdate.has(lc) ? "present (no update by default)" : "present";
+        note = noUpdate.has(lc) ? "present (no update by default)" : "present";
       } else {
         let best: { col: string; sim: number } | null = null;
         for (const col of existingSet) {
@@ -251,7 +256,7 @@ export default function FieldMapper({
     });
 
     setMappings(initial);
-  }, [csvHeaders, existingSet, defaultNoUpdate]);
+  }, [csvHeaders, existingSet]); // ← no defaultNoUpdate here
 
   const typedMappings = useMemo(() => {
     const valuesByHeader: Record<string, any[]> = {};
@@ -279,7 +284,7 @@ export default function FieldMapper({
 
   useEffect(() => {
     onPlanChange({ table: "catalog", mappings: typedMappings, ddl: ddlPreview, computedSql });
-  }, [typedMappings, ddlPreview, computedSql]);
+  }, [typedMappings, ddlPreview, computedSql]); // ← stable deps only
 
   function setRow<K extends keyof FieldPlan>(i: number, key: K, value: FieldPlan[K]) {
     setMappings(prev => {
@@ -325,7 +330,6 @@ export default function FieldMapper({
           <tbody>
             {typedMappings.map((m, i) => {
               const showEditor = m.editMap && m.action === "map_existing";
-              // Value we display for the existing header, even when ignored
               const displayTarget = (m.target || m.suggested || (m.existsInTable ? m.csvHeader.toLowerCase() : "")).toString();
 
               return (
@@ -422,7 +426,7 @@ export default function FieldMapper({
         </table>
       </div>
 
-      {ddlPreview.length > 0 && (
+      { (ddlPreview.length > 0) && (
         <div className="mt-3 text-xs text-muted-foreground">
           {ddlPreview.length} DDL statements prepared (only non‑computed “Create new”). Copy and run them in SQL editor, then click <b>Refresh Dry‑Run</b>.
         </div>
