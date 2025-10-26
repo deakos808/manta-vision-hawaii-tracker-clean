@@ -41,6 +41,7 @@ export default function CatalogStagingPanel() {
   const [plan, setPlan] = useState<MappingPlan | null>(null);
   const [updatesOnly, setUpdatesOnly] = useState<boolean>(false);
   const [gtRows, setGtRows] = useState<GtRow[]>([]);
+  const [showComputed, setShowComputed] = useState(false);
   const [savingVis, setSavingVis] = useState(false);
   const [showDdl, setShowDdl] = useState(false);
 
@@ -250,6 +251,7 @@ export default function CatalogStagingPanel() {
   }, [summary, plan, keyConfirmed, loading]);
 
   const ddlText = useMemo(() => (plan?.ddl || []).join("\n"), [plan]);
+  const computedText = useMemo(() => plan?.computedSql || "", [plan]);
 
   function copyDdlText() {
     if (!ddlText) { toast.error("No DDL statements to copy"); return; }
@@ -323,10 +325,33 @@ export default function CatalogStagingPanel() {
         <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
         <Button variant="outline" onClick={runGroundtruth} disabled={loading || (csvHeaders.length === 0)}>Run Groundtruth</Button>
         <Button variant="outline" onClick={saveAdminVisibility} disabled={savingVis || !plan}>Save Admin Visibility</Button>
+        <Button variant="outline" onClick={() => setShowComputed(v => !v)} disabled={!computedText}>{showComputed ? "Hide Computed View" : "Show Computed View"}</Button>
         <Button variant="outline" onClick={() => setShowDdl(v => !v)} disabled={!ddlText}>{showDdl ? "Hide DDL" : "Show DDL"}</Button>
       </div>
 
       {showDdl && (
+      {showComputed && (
+        <div className="rounded border p-4">
+          <h3 className="font-semibold mb-2">Computed View Preview</h3>
+          <p className="text-xs text-muted-foreground mb-2">
+            Paste this SQL into the Supabase SQL editor to create/update the computed view. You can edit formulas before running.
+          </p>
+          <div className="flex gap-2 mb-2">
+            <Button variant="outline" onClick={() => { if (computedText) navigator.clipboard.writeText(computedText); }}>Copy</Button>
+            <Button variant="outline" onClick={() => {
+              if (!computedText) return;
+              const blob = new Blob([computedText], { type: "text/sql;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = "catalog_computed_view.sql";
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}>Download</Button>
+          </div>
+          <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-3 rounded border">{computedText || "No computed SQL to show."}</pre>
+        </div>
+      )}
+
         <div className="rounded border p-4">
           <h3 className="font-semibold mb-2">DDL Preview</h3>
           <p className="text-xs text-muted-foreground mb-2">These statements are generated from fields marked <b>Create new</b> (not Computed). Run them in the SQL editor, then <b>Clear Staging</b> and re-stage.</p>
