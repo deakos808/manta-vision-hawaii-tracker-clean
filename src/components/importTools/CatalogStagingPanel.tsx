@@ -323,11 +323,13 @@ export default function CatalogStagingPanel() {
           <Stat label="Type warnings" value={summary?.catalog_type_warnings} warn />
         </div>
         {mergePreview && (
+          {(() => { const willInsert = (mergePreview?.will_insert ?? 0); return null; })()}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mt-3">
-            <Stat label="Will insert" value={mergePreview.will_insert} />
-            <Stat label="Will update" value={mergePreview.will_update} />
-            <Stat label="Updates with changes" value={mergePreview.will_update_changed_only} />
-            <Stat label="Total staged" value={mergePreview.total_staged} />
+            <Stat label={`Will insert${updatesOnly ? " (ignored)" : ""}`} value={updatesOnly ? 0 : (mergePreview?.will_insert ?? 0)} />
+            <Stat label="Will update" value={mergePreview?.will_update ?? 0} />
+            <Stat label="Updates with changes" value={mergePreview?.will_update_changed_only ?? 0} />
+            <Stat label="Total staged" value={mergePreview?.total_staged ?? 0} />
           </div>
         )}
       </div>
