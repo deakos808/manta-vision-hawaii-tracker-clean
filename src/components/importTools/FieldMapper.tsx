@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { diceCoefficient, normalizeKey } from "@/utils/stringSimilarity";
+import { diceCoefficient } from "@/utils/stringSimilarity";
 import { Button } from "@/components/ui/button";
 
 type MappingAction = "map_existing" | "create_new" | "ignore";
@@ -15,7 +15,7 @@ export type FieldPlan = {
 };
 
 export type MappingPlan = {
-  table: "catalog" | "sightings" | "mantas" | "photos";
+  table: "catalog";
   mappings: FieldPlan[];
   ddl: string[];
 };
@@ -45,14 +45,12 @@ function sanitizeAsColumn(header: string): string {
 }
 
 export default function FieldMapper({
-  table,
   csvHeaders,
   sampleRows,
   existingColumns,
   defaultNoUpdate = new Set<string>(["species", "name"]),
   onPlanChange,
 }: {
-  table: "catalog" | "sightings" | "mantas" | "photos";
   csvHeaders: string[];
   sampleRows: any[];
   existingColumns: string[];
@@ -77,7 +75,6 @@ export default function FieldMapper({
         target = lc;
         note = defaultNoUpdate.has(lc) ? "present (no update by default)" : "present";
       } else {
-        // find closest match
         let best: { col: string; sim: number } | null = null;
         for (const col of existingSet) {
           const sim = diceCoefficient(h, col);
@@ -92,28 +89,19 @@ export default function FieldMapper({
         }
       }
 
-      // pk fields: map only as key, not as update
-      if (lc === "pk_catalog_id" || lc === "pk_sighting_id") {
+      if (lc === "pk_catalog_id") {
         action = "ignore";
         target = lc;
-        note = "primary key (used for match only)";
+        note = "primary key (match only)";
       }
 
-      // small heuristic for common typo
       if (lc === "days_since_last_sighitng" && existingSet.has("days_since_last_sighting")) {
         action = "map_existing";
         target = "days_since_last_sighting";
         note = "mapped typo → days_since_last_sighting";
       }
 
-      return {
-        csvHeader: h,
-        action,
-        target,
-        note,
-        suggested,
-        similarity,
-      };
+      return { csvHeader: h, action, target, note, suggested, similarity };
     });
 
     setMappings(initial);
@@ -122,9 +110,7 @@ export default function FieldMapper({
   const typedMappings = useMemo(() => {
     const valuesByHeader: Record<string, any[]> = {};
     for (const h of csvHeaders) valuesByHeader[h] = [];
-    for (const row of sampleRows || []) {
-      for (const h of csvHeaders) valuesByHeader[h].push(row[h] ?? row[h.toLowerCase()]);
-    }
+    for (const row of sampleRows || []) for (const h of csvHeaders) valuesByHeader[h].push(row[h] ?? row[h.toLowerCase()]);
     return mappings.map((m) => ({
       ...m,
       inferredType: m.action === "create_new" ? inferType(valuesByHeader[m.csvHeader] || []) : undefined,
@@ -136,24 +122,16 @@ export default function FieldMapper({
     for (const m of typedMappings) {
       if (m.action === "create_new" && m.target && m.inferredType) {
         const col = sanitizeAsColumn(m.target);
-        stmts.push(`alter table public.${table} add column if not exists ${col} ${m.inferredType};`);
-        if (table === "catalog") {
-          stmts.push(`alter table public.stg_catalog add column if not exists ${col} ${m.inferredType};`);
-        } else if (table === "sightings") {
-          stmts.push(`alter table public.stg_sightings add column if not exists ${col} ${m.inferredType};`);
-        } else if (table === "mantas") {
-          stmts.push(`alter table public.stg_mantas add column if not exists ${col} ${m.inferredType};`);
-        } else if (table === "photos") {
-          stmts.push(`alter table public.stg_photos add column if not exists ${col} ${m.inferredType};`);
-        }
+        stmts.push(`alter table public.catalog add column if not exists ${col} ${m.inferredType};`);
+        stmts.push(`alter table public.stg_catalog add column if not exists ${col} ${m.inferredType};`);
       }
     }
     return stmts;
-  }, [typedMappings, table]);
+  }, [typedMappings]);
 
   useEffect(() => {
-    onPlanChange({ table, mappings: typedMappings, ddl: ddlPreview });
-  }, [table, typedMappings, ddlPreview, onPlanChange]);
+    onPlanChange({ table: "catalog", mappings: typedMappings, ddl: ddlPreview });
+  }, [typedMappings, ddlPreview, onPlanChange]);
 
   function updateAction(idx: number, action: MappingAction) {
     setMappings(prev => {
@@ -173,20 +151,14 @@ export default function FieldMapper({
 
   function copyDDL() {
     const text = ddlPreview.join("\n");
-    navigator.clipboard.writeText(text).then(() => {
-      // no toast here; parent page can show one if desired
-    });
+    navigator.clipboard.writeText(text);
   }
 
   return (
     <div className="rounded border p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">Field Mapper</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={copyDDL} disabled={ddlPreview.length === 0}>
-            Copy DDL Preview
-          </Button>
-        </div>
+        <Button variant="outline" onClick={copyDDL} disabled={ddlPreview.length === 0}>Copy DDL Preview</Button>
       </div>
 
       <div className="overflow-x-auto">
@@ -222,21 +194,17 @@ export default function FieldMapper({
                 </td>
                 <td className="px-2 py-1 border-b">
                   {m.action === "map_existing" ? (
-                    <select
-                      className="border rounded px-2 py-1"
+                    <input
+                      className="border rounded px-2 py-1 w-56"
                       value={(m.target || m.suggested || "").toLowerCase()}
                       onChange={(e) => updateTarget(i, e.target.value)}
-                    >
-                      <option value="">Select column</option>
-                      {existingColumns.map((c) => (
-                        <option key={c} value={c.toLowerCase()}>{c.toLowerCase()}</option>
-                      ))}
-                    </select>
+                      list="existing-cols"
+                    />
                   ) : m.action === "create_new" ? (
                     <input
                       className="border rounded px-2 py-1 w-56"
                       value={m.target || ""}
-                      onChange={(e) => updateTarget(i, sanitizeAsColumn(e.target.value))}
+                      onChange={(e) => updateTarget(i, e.target.value)}
                     />
                   ) : (
                     <span className="text-muted-foreground">—</span>
@@ -251,10 +219,13 @@ export default function FieldMapper({
           </tbody>
         </table>
       </div>
+      <datalist id="existing-cols">
+        {existingColumns.map(c => <option key={c} value={c.toLowerCase()} />)}
+      </datalist>
 
       {ddlPreview.length > 0 && (
         <div className="mt-3 text-xs text-muted-foreground">
-          {ddlPreview.length} DDL statements prepared. Click <b>Copy DDL Preview</b>, review in SQL editor, run them, then click <b>Refresh Dry-Run</b> before committing.
+          {ddlPreview.length} DDL statements prepared. Copy and run them in SQL editor, then click <b>Refresh Dry‑Run</b> before committing.
         </div>
       )}
     </div>
