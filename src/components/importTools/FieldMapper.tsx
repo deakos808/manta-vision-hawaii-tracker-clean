@@ -198,7 +198,7 @@ export default function FieldMapper({
       let similarity: number | undefined;
       let existsInTable = existingSet.has(lc);
       const calcHint = calcHintForCatalog(lc);
-      let asComputed = Boolean(calcHint?.recommended && !existsInTable); // recommend computed for new, calculated fields
+      let asComputed = Boolean(calcHint?.recommended && !existsInTable);
       let adminOnly = false;
 
       if (existsInTable) {
@@ -325,6 +325,9 @@ export default function FieldMapper({
           <tbody>
             {typedMappings.map((m, i) => {
               const showEditor = m.editMap && m.action === "map_existing";
+              // Value we display for the existing header, even when ignored
+              const displayTarget = (m.target || m.suggested || (m.existsInTable ? m.csvHeader.toLowerCase() : "")).toString();
+
               return (
                 <tr key={m.csvHeader} className="odd:bg-white even:bg-gray-50">
                   <td className="px-2 py-1 border-b">{m.csvHeader}</td>
@@ -350,8 +353,11 @@ export default function FieldMapper({
                         <div className="flex items-center gap-2">
                           <select
                             className="border rounded px-2 py-1"
-                            value={(m.target || m.suggested || "").toLowerCase()}
-                            onChange={(e) => setRow(i, "target", e.target.value.toLowerCase())}
+                            value={displayTarget.toLowerCase()}
+                            onChange={(e) => {
+                              setRow(i, "target", e.target.value.toLowerCase());
+                              setRow(i, "editMap", false);
+                            }}
                           >
                             <option value="">Select existing</option>
                             {existingColumns.map((c) => (
@@ -362,12 +368,16 @@ export default function FieldMapper({
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-mono">{(m.target || m.suggested || "—").toString().toLowerCase()}</span>
+                          <span className="font-mono">{displayTarget || "—"}</span>
                           <Button variant="outline" onClick={() => setRow(i, "editMap", true)}>Change</Button>
                         </div>
                       )
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      m.existsInTable ? (
+                        <span className="font-mono text-slate-700">{displayTarget} <span className="text-xs text-muted-foreground">(ignored)</span></span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )
                     )}
                   </td>
                   <td className="px-2 py-1 border-b">
