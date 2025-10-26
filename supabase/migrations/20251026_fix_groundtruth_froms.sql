@@ -1,3 +1,17 @@
+create or replace function public.fn_parse_catalog_date(t text)
+returns date
+language sql
+immutable
+as $$
+  select case
+    when t is null or length(btrim(t)) = 0 then null
+    when t ~ '^\d{4}-\d{2}-\d{2}$' then t::date
+    when t ~ '^\d{1,2}/\d{1,2}/\d{4}$' then to_date(t, 'MM/DD/YYYY')
+    when t ~ '^\d{1,2}/\d{1,2}/\d{2}$'  then to_date(t, 'MM/DD/YY')
+    else null
+  end
+$$;
+
 create or replace function public.fn_imports_groundtruth_catalog(p_checks text[] default null)
 returns table(
   field text,
@@ -22,7 +36,6 @@ with s as (
   from public.stg_catalog
 ),
 chk as (
-  -- Between (days)
   select
     'days_between_first_last:days'::text as field,
     '(date_last_sighted - date_first_sighted)::int'::text as formula,
@@ -33,7 +46,6 @@ chk as (
     false as missing_dependencies
   from s
   union all
-  -- Between (years ~ numeric, tolerance 0.02y ≈ 7.3 days)
   select
     'days_between_first_last:years'::text,
     '(date_last_sighted - date_first_sighted)/365.25'::text,
@@ -46,7 +58,6 @@ chk as (
     false
   from s
   union all
-  -- Since last sighting (days)
   select
     'days_since_last_sighting'::text,
     '(current_date - date_last_sighted)::int'::text,
@@ -57,7 +68,6 @@ chk as (
     false
   from s
   union all
-  -- Placeholders needing cross-table joins (sightings, etc.)
   select 'last_sex'::text, 'latest s.gender by date'::text, 0,0,0,0,true
   union all
   select 'last_size'::text, 'latest size measurement'::text, 0,0,0,0,true
@@ -73,3 +83,4 @@ where p_checks is null
 $$;
 
 grant execute on function public.fn_imports_groundtruth_catalog(text[]) to authenticated;
+grant execute on function public.fn_parse_catalog_date(text) to authenticated;
