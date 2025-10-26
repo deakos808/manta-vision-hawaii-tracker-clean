@@ -323,7 +323,7 @@ export default function CatalogStagingPanel() {
           <Stat label="Type warnings" value={summary?.catalog_type_warnings} warn />
         </div>
         {mergePreview && (
-          {(() => { const willInsert = (mergePreview?.will_insert ?? 0); return null; })()}
+          
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mt-3">
             <Stat label={`Will insert${updatesOnly ? " (ignored)" : ""}`} value={updatesOnly ? 0 : (mergePreview?.will_insert ?? 0)} />
