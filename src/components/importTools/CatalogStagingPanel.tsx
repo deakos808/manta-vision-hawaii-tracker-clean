@@ -41,6 +41,7 @@ export default function CatalogStagingPanel() {
   const [plan, setPlan] = useState<MappingPlan | null>(null);
   const [gtRows, setGtRows] = useState<GtRow[]>([]);
   const [savingVis, setSavingVis] = useState(false);
+  const [showDdl, setShowDdl] = useState(false);
 
   async function computeSha256Hex(f: File) {
     const buf = await f.arrayBuffer();
@@ -51,27 +52,20 @@ export default function CatalogStagingPanel() {
 
   async function loadColumns() {
     const { data: baseCols } = await supabase
-      .from("v_db_columns")
-      .select("column_name")
-      .eq("table_schema", "public")
-      .eq("table_name", "catalog")
+      .from("v_db_columns").select("column_name")
+      .eq("table_schema", "public").eq("table_name", "catalog")
       .order("ordinal_position", { ascending: true });
     setTargetColumns((baseCols || []).map((r: any) => String(r.column_name).toLowerCase()));
 
     const { data: stgCols } = await supabase
-      .from("v_db_columns")
-      .select("column_name")
-      .eq("table_schema", "public")
-      .eq("table_name", "stg_catalog")
+      .from("v_db_columns").select("column_name")
+      .eq("table_schema", "public").eq("table_name", "stg_catalog")
       .order("ordinal_position", { ascending: true });
     setStagingColumns((stgCols || []).map((r: any) => String(r.column_name).toLowerCase()));
   }
 
   async function stageCsv() {
-    if (!file) {
-      toast.error("Choose a CSV file first");
-      return;
-    }
+    if (!file) { toast.error("Choose a CSV file first"); return; }
     setLoading(true);
     try {
       await loadColumns();
@@ -80,8 +74,7 @@ export default function CatalogStagingPanel() {
 
       const parsed = await new Promise<{ rows: any[]; headers: string[] }>((resolve, reject) => {
         Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
+          header: true, skipEmptyLines: true,
           transformHeader: (h) => h.trim(),
           transform: (v) => (typeof v === "string" ? v.trim() : v),
           complete: (res) => {
@@ -135,11 +128,7 @@ export default function CatalogStagingPanel() {
   async function refreshDryRun() {
     await loadColumns();
     const { data: sum, error } = await supabase.from("stg_summary").select("*").single();
-    if (error) {
-      console.error(error);
-      toast.error("Failed to load dry-run summary");
-      return;
-    }
+    if (error) { console.error(error); toast.error("Failed to load dry-run summary"); return; }
     setSummary(sum as Summary);
 
     const { data: d } = await supabase.from("stg_v_catalog_dupe_pk").select("*").limit(25);
@@ -165,18 +154,9 @@ export default function CatalogStagingPanel() {
   async function commit() {
     if (!plan) return;
     const { pendingCreates, updateCols } = presentCreatePending(plan);
-    if (pendingCreates > 0) {
-      toast.error("Apply DDL for new columns, refresh, then commit.");
-      return;
-    }
-    if (updateCols.length === 0) {
-      toast.error("Select at least one column to update.");
-      return;
-    }
-    if (!keyConfirmed) {
-      toast.error("Confirm pk_catalog_id as primary key.");
-      return;
-    }
+    if (pendingCreates > 0) { toast.error("Apply DDL for new columns, refresh, then commit."); return; }
+    if (updateCols.length === 0) { toast.error("Select at least one column to update."); return; }
+    if (!keyConfirmed) { toast.error("Confirm pk_catalog_id as primary key."); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("fn_imports_commit_catalog_cols", {
@@ -199,15 +179,8 @@ export default function CatalogStagingPanel() {
     try {
       const { error } = await supabase.rpc("fn_imports_clear_staging");
       if (error) throw error;
-      setSummary(null);
-      setDupeRows([]);
-      setWarnRows([]);
-      setMergePreview(null);
-      setFile(null);
-      setLastSha(null);
-      setKeyConfirmed(false);
-      setPlan(null);
-      setGtRows([]);
+      setSummary(null); setDupeRows([]); setWarnRows([]); setMergePreview(null);
+      setFile(null); setLastSha(null); setKeyConfirmed(false); setPlan(null); setGtRows([]);
       toast.success("Staging tables truncated");
     } catch (e: any) {
       console.error(e);
@@ -219,21 +192,15 @@ export default function CatalogStagingPanel() {
 
   async function runGroundtruth() {
     try {
-      const checks = plan?.mappings
-        .filter(m => m.asComputed)
-        .map(m => (m.target || m.csvHeader).toLowerCase()) || null;
-
+      const checks = plan?.mappings.filter(m => m.asComputed).map(m => (m.target || m.csvHeader).toLowerCase()) || null;
       const { data, error } = await supabase.rpc("fn_imports_groundtruth_catalog", {
         p_checks: checks && checks.length ? checks : null
       });
       if (error) throw error;
       setGtRows(data || []);
       const hasMismatch = (data || []).some((r: GtRow) => r.mismatches > 0 && !r.missing_dependencies);
-      if (hasMismatch) {
-        toast.warning("Groundtruth: some calculated fields differ from CSV values.");
-      } else {
-        toast.success("Groundtruth: all computable calculated fields match CSV values.");
-      }
+      if (hasMismatch) toast.warning("Groundtruth: some calculated fields differ from CSV values.");
+      else toast.success("Groundtruth: all computable calculated fields match CSV values.");
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Groundtruth failed");
@@ -248,7 +215,6 @@ export default function CatalogStagingPanel() {
       for (const m of plan.mappings) {
         const col = String(m.target || m.csvHeader).toLowerCase();
         if (!col || col === "pk_catalog_id") continue;
-        // Only persist columns that will exist in the base table (computed ones will live in a view later)
         const isRealColumn = (m.action === "map_existing") || (m.action === "create_new" && !m.asComputed);
         if (isRealColumn) map[col] = !!m.adminOnly;
       }
@@ -272,6 +238,23 @@ export default function CatalogStagingPanel() {
     const { pendingCreates, updateCols } = presentCreatePending(plan);
     return loading || !keyConfirmed || errs > 0 || pendingCreates > 0 || updateCols.length === 0;
   }, [summary, plan, keyConfirmed, loading]);
+
+  const ddlText = useMemo(() => (plan?.ddl || []).join("\n"), [plan]);
+
+  function copyDdlText() {
+    if (!ddlText) { toast.error("No DDL statements to copy"); return; }
+    navigator.clipboard.writeText(ddlText).then(() => toast.success("DDL copied"));
+  }
+  function downloadDdl() {
+    if (!ddlText) return;
+    const blob = new Blob([ddlText], { type: "text/sql;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "catalog_ddl_preview.sql";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="space-y-6">
@@ -326,7 +309,20 @@ export default function CatalogStagingPanel() {
         <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
         <Button variant="outline" onClick={runGroundtruth} disabled={loading || (csvHeaders.length === 0)}>Run Groundtruth</Button>
         <Button variant="outline" onClick={saveAdminVisibility} disabled={savingVis || !plan}>Save Admin Visibility</Button>
+        <Button variant="outline" onClick={() => setShowDdl(v => !v)} disabled={!ddlText}>{showDdl ? "Hide DDL" : "Show DDL"}</Button>
       </div>
+
+      {showDdl && (
+        <div className="rounded border p-4">
+          <h3 className="font-semibold mb-2">DDL Preview</h3>
+          <p className="text-xs text-muted-foreground mb-2">These statements are generated from fields marked <b>Create new</b> (not Computed). Run them in the SQL editor, then <b>Clear Staging</b> and re-stage.</p>
+          <div className="flex gap-2 mb-2">
+            <Button variant="outline" onClick={copyDdlText}>Copy</Button>
+            <Button variant="outline" onClick={downloadDdl}>Download</Button>
+          </div>
+          <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-3 rounded border">{ddlText || "No DDL to show."}</pre>
+        </div>
+      )}
 
       {gtRows.length > 0 && (
         <div className="rounded border p-4">
@@ -360,7 +356,7 @@ export default function CatalogStagingPanel() {
             </table>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            “Missing deps” means this calculation requires tables/columns not present in <code>stg_catalog</code> yet (e.g., joins to <code>sightings</code>). We’ll extend groundtruth once the computed view is added.
+            “Missing deps” means this calculation requires tables/columns not present in <code>stg_catalog</code> yet (e.g., joins to <code>sightings</code>).
           </p>
         </div>
       )}
