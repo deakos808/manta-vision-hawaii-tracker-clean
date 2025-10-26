@@ -102,7 +102,7 @@ export default function CatalogStagingPanel() {
       const filtered = stagedRows.map((row) => {
         const o: Record<string, any> = {};
         for (const k of Object.keys(row)) {
-          const lc = k.toLowerCase();
+          const lc = k.trim().toLowerCase();
           if (allowed.has(lc)) o[lc] = row[k];
         }
         return o;
