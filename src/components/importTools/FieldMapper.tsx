@@ -279,7 +279,7 @@ export default function FieldMapper({
 
   useEffect(() => {
     onPlanChange({ table: "catalog", mappings: typedMappings, ddl: ddlPreview, computedSql });
-  }, [typedMappings, ddlPreview, computedSql, ];
+  }, [typedMappings, ddlPreview, computedSql];
 
   function setRow<K extends keyof FieldPlan>(i: number, key: K, value: FieldPlan[K]) {
     setMappings(prev => {
