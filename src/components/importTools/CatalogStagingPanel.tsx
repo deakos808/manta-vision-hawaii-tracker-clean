@@ -37,7 +37,7 @@ export default function CatalogStagingPanel() {
   const [keyConfirmed, setKeyConfirmed] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [lastSha, setLastSha] = useState<string | null>(null);
-  const [replaceStagedByFile, setReplaceStagedByFile] = useState<boolean>(True)  # placeholder
+  const [replaceStagedByFile, setReplaceStagedByFile] = useState<boolean>(true);
   const [plan, setPlan] = useState<MappingPlan | null>(null);
   const [gtRows, setGtRows] = useState<GtRow[]>([]);
   const [savingVis, setSavingVis] = useState(false);
@@ -337,7 +337,7 @@ const stagedRows = parsed.rows.map((r) => {
           
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mt-3">
-            <Stat label={`Will insert${updatesOnly ? " (ignored)" : ""}`} value={updatesOnly ? 0 : (mergePreview?.will_insert ?? 0)} />
+            <Stat label={`Will insert${updatesOnly ? " (ignored)" : ""}`} value={mergePreview?.will_insert ?? 0} />
             <Stat label="Will update" value={mergePreview?.will_update ?? 0} />
             <Stat label="Updates with changes" value={mergePreview?.will_update_changed_only ?? 0} />
             <Stat label="Total staged" value={mergePreview?.total_staged ?? 0} />
