@@ -5,6 +5,7 @@ import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import UniversalCsvUpdateTool from "@/components/admin/UniversalCsvUpdateTool";
+import CatalogStagingPanel from "@/components/importTools/CatalogStagingPanel";
 
 export default function ImportPage() {
   return (
@@ -26,10 +27,7 @@ export default function ImportPage() {
           <TabsContent value="catalog">
             <Card>
               <CardContent className="p-4">
-                <UniversalCsvUpdateTool
-                  table="catalog"
-                  primaryKey="pk_catalog_id"
-                />
+                <CatalogStagingPanel />
               </CardContent>
             </Card>
           </TabsContent>
