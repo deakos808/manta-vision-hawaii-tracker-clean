@@ -39,6 +39,7 @@ export default function CatalogStagingPanel() {
   const [loading, setLoading] = useState(false);
   const [lastSha, setLastSha] = useState<string | null>(null);
   const [plan, setPlan] = useState<MappingPlan | null>(null);
+  const [updatesOnly, setUpdatesOnly] = useState<boolean>(false);
   const [gtRows, setGtRows] = useState<GtRow[]>([]);
   const [savingVis, setSavingVis] = useState(false);
   const [showDdl, setShowDdl] = useState(false);
@@ -164,13 +165,17 @@ export default function CatalogStagingPanel() {
     if (!keyConfirmed) { toast.error("Confirm pk_catalog_id as primary key."); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("fn_imports_commit_catalog_cols", {
+      const { data, error } = await supabase.rpc(updatesOnly ?
+        "fn_imports_commit_catalog_cols_updates_only" :
+        "fn_imports_commit_catalog_cols", {
         p_columns: updateCols,
         p_src_file: file?.name || null,
         p_file_sha256: lastSha || null,
       });
       if (error) throw error;
-      toast.success(`Catalog committed: +${data.inserted_catalog} new, ~${data.updated_catalog} updated`);
+      updatesOnly
+        ? toast.success(`Catalog committed (updates-only): ~${data.updated_catalog || data.updated_catalog===0 ? data.updated_catalog : data.updated_catalog} updated`)
+        : toast.success(`Catalog committed: +${data.inserted_catalog} new, ~${data.updated_catalog} updated`);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Commit failed");
@@ -309,7 +314,11 @@ export default function CatalogStagingPanel() {
         />
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        <label className="flex items-center gap-2 text-sm mr-2">
+          <input type="checkbox" checked={updatesOnly} onChange={e=>setUpdatesOnly(e.target.checked)} />
+          Updates only (ignore new rows)
+        </label>
         <Button onClick={commit} disabled={commitDisabled}>Commit Import</Button>
         <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
         <Button variant="outline" onClick={runGroundtruth} disabled={loading || (csvHeaders.length === 0)}>Run Groundtruth</Button>
