@@ -13,6 +13,16 @@ type Summary = {
   catalog_missing_required?: number;
 };
 
+type GtRow = {
+  field: string;
+  formula: string;
+  total_rows: number;
+  matches: number;
+  mismatches: number;
+  null_in_csv: number;
+  missing_dependencies: boolean;
+};
+
 const CHUNK_SIZE = 1000;
 
 export default function CatalogStagingPanel() {
@@ -29,6 +39,8 @@ export default function CatalogStagingPanel() {
   const [loading, setLoading] = useState(false);
   const [lastSha, setLastSha] = useState<string | null>(null);
   const [plan, setPlan] = useState<MappingPlan | null>(null);
+  const [gtRows, setGtRows] = useState<GtRow[]>([]);
+  const [savingVis, setSavingVis] = useState(false);
 
   async function computeSha256Hex(f: File) {
     const buf = await f.arrayBuffer();
@@ -145,7 +157,7 @@ export default function CatalogStagingPanel() {
     const mappedExisting = plan.mappings
       .filter(m => m.action === "map_existing" && m.target)
       .map(m => String(m.target).toLowerCase());
-    const pendingCreates = plan.mappings.filter(m => m.action === "create_new").length;
+    const pendingCreates = plan.mappings.filter(m => m.action === "create_new" && !m.asComputed).length;
     const updateCols = Array.from(new Set(mappedExisting.filter(c => c !== "pk_catalog_id")));
     return { pendingCreates, updateCols };
   }
@@ -195,12 +207,62 @@ export default function CatalogStagingPanel() {
       setLastSha(null);
       setKeyConfirmed(false);
       setPlan(null);
+      setGtRows([]);
       toast.success("Staging tables truncated");
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Clear staging failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function runGroundtruth() {
+    try {
+      const checks = plan?.mappings
+        .filter(m => m.asComputed)
+        .map(m => (m.target || m.csvHeader).toLowerCase()) || null;
+
+      const { data, error } = await supabase.rpc("fn_imports_groundtruth_catalog", {
+        p_checks: checks && checks.length ? checks : null
+      });
+      if (error) throw error;
+      setGtRows(data || []);
+      const hasMismatch = (data || []).some((r: GtRow) => r.mismatches > 0 && !r.missing_dependencies);
+      if (hasMismatch) {
+        toast.warning("Groundtruth: some calculated fields differ from CSV values.");
+      } else {
+        toast.success("Groundtruth: all computable calculated fields match CSV values.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Groundtruth failed");
+    }
+  }
+
+  async function saveAdminVisibility() {
+    if (!plan) return;
+    setSavingVis(true);
+    try {
+      const map: Record<string, boolean> = {};
+      for (const m of plan.mappings) {
+        const col = String(m.target || m.csvHeader).toLowerCase();
+        if (!col || col === "pk_catalog_id") continue;
+        // Only persist columns that will exist in the base table (computed ones will live in a view later)
+        const isRealColumn = (m.action === "map_existing") || (m.action === "create_new" && !m.asComputed);
+        if (isRealColumn) map[col] = !!m.adminOnly;
+      }
+      const { error } = await supabase.rpc("fn_set_field_visibility", {
+        p_table: "catalog",
+        p_map: map
+      });
+      if (error) throw error;
+      toast.success("Admin-only visibility saved");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Save visibility failed");
+    } finally {
+      setSavingVis(false);
     }
   }
 
@@ -259,10 +321,49 @@ export default function CatalogStagingPanel() {
         />
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button onClick={commit} disabled={commitDisabled}>Commit Import</Button>
         <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
+        <Button variant="outline" onClick={runGroundtruth} disabled={loading || (csvHeaders.length === 0)}>Run Groundtruth</Button>
+        <Button variant="outline" onClick={saveAdminVisibility} disabled={savingVis || !plan}>Save Admin Visibility</Button>
       </div>
+
+      {gtRows.length > 0 && (
+        <div className="rounded border p-4">
+          <h3 className="font-semibold mb-2">Groundtruth Results</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-2 py-1 border-b">Field</th>
+                  <th className="text-left px-2 py-1 border-b">Formula</th>
+                  <th className="text-right px-2 py-1 border-b">Total</th>
+                  <th className="text-right px-2 py-1 border-b">Matches</th>
+                  <th className="text-right px-2 py-1 border-b">Mismatches</th>
+                  <th className="text-right px-2 py-1 border-b">Null in CSV</th>
+                  <th className="text-left px-2 py-1 border-b">Dependencies</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gtRows.map((r, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50">
+                    <td className="px-2 py-1 border-b">{r.field}</td>
+                    <td className="px-2 py-1 border-b font-mono text-xs">{r.formula}</td>
+                    <td className="px-2 py-1 border-b text-right">{r.total_rows}</td>
+                    <td className={`px-2 py-1 border-b text-right ${r.mismatches ? '' : 'text-green-700'}`}>{r.matches}</td>
+                    <td className={`px-2 py-1 border-b text-right ${r.mismatches ? 'text-amber-700 font-semibold' : ''}`}>{r.mismatches}</td>
+                    <td className="px-2 py-1 border-b text-right">{r.null_in_csv}</td>
+                    <td className="px-2 py-1 border-b">{r.missing_dependencies ? "missing deps" : "ok"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            “Missing deps” means this calculation requires tables/columns not present in <code>stg_catalog</code> yet (e.g., joins to <code>sightings</code>). We’ll extend groundtruth once the computed view is added.
+          </p>
+        </div>
+      )}
 
       {(dupeRows.length > 0 || warnRows.length > 0) && (
         <div className="space-y-6">
