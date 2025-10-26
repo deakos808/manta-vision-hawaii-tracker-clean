@@ -37,6 +37,7 @@ export default function CatalogStagingPanel() {
   const [keyConfirmed, setKeyConfirmed] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [lastSha, setLastSha] = useState<string | null>(null);
+  const [replaceStagedByFile, setReplaceStagedByFile] = useState<boolean>(True)  # placeholder
   const [plan, setPlan] = useState<MappingPlan | null>(null);
   const [gtRows, setGtRows] = useState<GtRow[]>([]);
   const [savingVis, setSavingVis] = useState(false);
@@ -107,7 +108,17 @@ export default function CatalogStagingPanel() {
       const _stgCols = (_stgColsQ || []).map((r: any) => String(r.column_name).toLowerCase());
       const allowed = new Set([..._stgCols, "src_file", "pk_catalog_id"]);
 
-      const stagedRows = parsed.rows.map((r) => {
+      
+      // Optional: remove any previously staged rows for this file to avoid duplicate PKs
+      if (replaceStagedByFile && file?.name) {
+        const { error: delErr } = await supabase
+          .from('stg_catalog')
+          .delete()
+          .eq('src_file', file.name);
+        if (delErr) { console.warn('Warning: could not clear previous staged rows for file', delErr.message); }
+      }
+
+const stagedRows = parsed.rows.map((r) => {
         const copy: Record<string, any> = { src_file: file.name, ...r };
         // normalize common typo
         if (copy["days_since_last_sighitng"] !== undefined && copy["days_since_last_sighting"] === undefined) {
@@ -300,7 +311,7 @@ export default function CatalogStagingPanel() {
           <label className="block text-sm font-medium mb-1">Catalog CSV file</label>
           <Input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={replaceStagedByFile} onChange={e=>setReplaceStagedByFile(e.target.checked)} />Replace staged rows for this file</label>
           <Button onClick={stageCsv} disabled={!file || loading}>{loading ? "Working…" : "Stage CSV"}</Button>
           <Button variant="outline" onClick={refreshDryRun} disabled={loading}>Refresh Dry-Run</Button>
         </div>
