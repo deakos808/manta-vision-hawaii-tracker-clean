@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import FieldMapper, { MappingPlan } from "@/components/importTools/FieldMapper";
 
 type Summary = {
   catalog_rows?: number;
@@ -30,32 +31,19 @@ export default function StagingCsvPanel() {
   const [warnRows, setWarnRows] = useState<any[]>([]);
   const [mergePreview, setMergePreview] = useState<any | null>(null);
   const [targetColumns, setTargetColumns] = useState<string[]>([]);
+  const [stagingColumns, setStagingColumns] = useState<string[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [sampleRows, setSampleRows] = useState<any[]>([]);
   const [keyConfirmed, setKeyConfirmed] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [lastSha, setLastSha] = useState<string | null>(null);
+  const [plan, setPlan] = useState<MappingPlan | null>(null);
 
   const targetBaseTable = useMemo(() => {
     if (selectedTable === "stg_catalog") return "catalog";
     if (selectedTable === "stg_mantas") return "mantas";
     return "photos";
   }, [selectedTable]);
-
-  const derivedIgnoreSet = useMemo(() => {
-    if (selectedTable !== "stg_catalog") return new Set<string>();
-    return new Set<string>([
-      "date_last_sighted","date_first_sighted",
-      "days_between_first_last_sighting","days_since_last_sighitng","days_since_last_sighting",
-      "last_sex","c_last_size","last_age_class","last_size",
-      "list_unique_locations","list_unique_regions","list_years_sighted",
-      "total_biopsies","total_sightings","total_tags","count_unique_years_sighted",
-      "unnamed: 18","unnamed:18"
-    ]);
-  }, [selectedTable]);
-
-  function toLcHeaders(headers: string[]) {
-    return headers.map(h => h.trim().toLowerCase());
-  }
 
   async function computeSha256Hex(f: File) {
     const buf = await f.arrayBuffer();
@@ -64,19 +52,22 @@ export default function StagingCsvPanel() {
     return bytes.map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
-  async function loadTargetColumns() {
-    const { data, error } = await supabase
+  async function loadColumns() {
+    const { data: baseCols } = await supabase
       .from("v_db_columns")
       .select("column_name")
       .eq("table_schema", "public")
       .eq("table_name", targetBaseTable)
       .order("ordinal_position", { ascending: true });
-    if (error) {
-      console.error(error);
-      toast.error("Failed to load table columns");
-      return;
-    }
-    setTargetColumns((data || []).map((r: any) => String(r.column_name).toLowerCase()));
+    setTargetColumns((baseCols || []).map((r: any) => String(r.column_name).toLowerCase()));
+
+    const { data: stgCols } = await supabase
+      .from("v_db_columns")
+      .select("column_name")
+      .eq("table_schema", "public")
+      .eq("table_name", selectedTable)
+      .order("ordinal_position", { ascending: true });
+    setStagingColumns((stgCols || []).map((r: any) => String(r.column_name).toLowerCase()));
   }
 
   async function stageCsv() {
@@ -86,12 +77,11 @@ export default function StagingCsvPanel() {
     }
     setLoading(true);
     try {
+      await loadColumns();
       const sha = await computeSha256Hex(file);
       setLastSha(sha);
 
-      await loadTargetColumns();
-
-      const parsed = await new Promise<{ rows: any[], headers: string[] }>((resolve, reject) => {
+      const parsed = await new Promise<{ rows: any[]; headers: string[] }>((resolve, reject) => {
         Papa.parse(file, {
           header: true,
           skipEmptyLines: true,
@@ -99,18 +89,21 @@ export default function StagingCsvPanel() {
           transform: (v) => (typeof v === "string" ? v.trim() : v),
           complete: (res) => {
             const rows = res.data as Record<string, any>[];
-            const headers = res.meta.fields ? res.meta.fields as string[] : Object.keys(rows[0] || {});
+            const headers = res.meta.fields ? (res.meta.fields as string[]) : Object.keys(rows[0] || {});
             resolve({ rows, headers });
           },
           error: (err) => reject(err),
         });
       });
 
-      const lcHeaders = toLcHeaders(parsed.headers);
+      const lcHeaders = parsed.headers.map(h => h.toLowerCase());
       setCsvHeaders(lcHeaders);
 
-      // append src_file and normalize known typos
-      const stamped = (parsed.rows || []).map((r) => {
+      // keep a small sample for type inference
+      setSampleRows(parsed.rows.slice(0, 200));
+
+      // normalize typo -> stage alias
+      const stagedRows = parsed.rows.map((r) => {
         const copy: Record<string, any> = { src_file: file.name, ...r };
         if (copy["days_since_last_sighitng"] !== undefined && copy["days_since_last_sighting"] === undefined) {
           copy["days_since_last_sighting"] = copy["days_since_last_sighitng"];
@@ -118,17 +111,26 @@ export default function StagingCsvPanel() {
         return copy;
       });
 
-      // Insert in small batches to the selected staging table
-      for (let i = 0; i < stamped.length; i += CHUNK_SIZE) {
-        const chunk = stamped.slice(i, i + CHUNK_SIZE);
-        const { error } = await supabase.from(selectedTable).insert(chunk, { returning: "minimal" });
-        if (error) {
-          console.error(error);
-          throw new Error(`Insert failed at batch ${Math.floor(i / CHUNK_SIZE) + 1}: ${error.message}`);
+      // filter to only columns that exist in staging to avoid insert errors
+      const allowed = new Set([...stagingColumns, "src_file"]);
+      const filtered = stagedRows.map((row) => {
+        const o: Record<string, any> = {};
+        for (const k of Object.keys(row)) {
+          const lc = k.toLowerCase();
+          if (allowed.has(lc)) o[lc] = row[k];
         }
-      }
+        return o;
+      });
 
-      toast.success(`Staged ${stamped.length} rows into ${selectedTable}`);
+      // insert in small batches
+      let total = 0;
+      for (let i = 0; i < filtered.length; i += CHUNK_SIZE) {
+        const chunk = filtered.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from(selectedTable).insert(chunk, { returning: "minimal" });
+        if (error) throw new Error(`Insert failed at batch ${Math.floor(i / CHUNK_SIZE) + 1}: ${error.message}`);
+        total += chunk.length;
+      }
+      toast.success(`Staged ${total} rows into ${selectedTable}`);
       await refreshDryRun();
     } catch (e: any) {
       console.error(e);
@@ -139,6 +141,7 @@ export default function StagingCsvPanel() {
   }
 
   async function refreshDryRun() {
+    await loadColumns();
     const { data: sum, error } = await supabase.from("stg_summary").select("*").single();
     if (error) {
       console.error(error);
@@ -147,7 +150,7 @@ export default function StagingCsvPanel() {
     }
     setSummary(sum as Summary);
 
-    // Load error-view samples
+    // error views
     const dupeView =
       selectedTable === "stg_catalog" ? "stg_v_catalog_dupe_pk" :
       selectedTable === "stg_mantas" ? "stg_v_mantas_dupe_pk" : null;
@@ -179,38 +182,61 @@ export default function StagingCsvPanel() {
     }
   }
 
-  function classifyFields() {
-    const lcTarget = new Set(targetColumns);
-    const lcCsv = new Set(csvHeaders);
-    const present = [...lcCsv].filter(h => lcTarget.has(h) && !derivedIgnoreSet.has(h));
-    const derived = [...lcCsv].filter(h => derivedIgnoreSet.has(h));
-    const newFields = [...lcCsv].filter(h => !lcTarget.has(h) && !derivedIgnoreSet.has(h));
-    return { present, derived, newFields };
+  function presentCreatePending(plan: MappingPlan | null) {
+    if (!plan) return { pendingCreates: 0, updateCols: [] as string[] };
+    const mappedExisting = plan.mappings
+      .filter(m => m.action === "map_existing" && m.target)
+      .map(m => String(m.target).toLowerCase());
+    const pendingCreates = plan.mappings.filter(m => m.action === "create_new").length;
+    // exclude pk
+    const updateCols = Array.from(new Set(mappedExisting.filter(c => c !== "pk_catalog_id")));
+    return { pendingCreates, updateCols };
   }
 
   async function commit() {
-    setLoading(true);
-    try {
-      if (selectedTable === "stg_catalog") {
-        const { data, error } = await supabase.rpc("fn_imports_commit_catalog", {
+    if (!plan) return;
+    const { pendingCreates, updateCols } = presentCreatePending(plan);
+
+    if (selectedTable === "stg_catalog") {
+      if (pendingCreates > 0) {
+        toast.error("Apply DDL for new columns, refresh, then commit.");
+        return;
+      }
+      if (updateCols.length === 0) {
+        toast.error("Select at least one column to update.");
+        return;
+      }
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.rpc("fn_imports_commit_catalog_cols", {
+          p_columns: updateCols,
           p_src_file: file?.name || null,
           p_file_sha256: lastSha || null,
         });
         if (error) throw error;
         toast.success(`Catalog committed: +${data.inserted_catalog} new, ~${data.updated_catalog} updated`);
-      } else {
+      } catch (e: any) {
+        console.error(e);
+        toast.error(e.message || "Commit failed");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // mantas/photos use existing commit for now
+      setLoading(true);
+      try {
         const { data, error } = await supabase.rpc("fn_imports_commit", {
           p_src_file: file?.name || null,
           p_file_sha256: lastSha || null,
         });
         if (error) throw error;
         toast.success(`Committed: Mantas +${data.inserted_mantas}/~${data.updated_mantas}, Photos +${data.inserted_photos}/~${data.updated_photos}`);
+      } catch (e: any) {
+        console.error(e);
+        toast.error(e.message || "Commit failed");
+      } finally {
+        setLoading(false);
       }
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Commit failed");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -226,6 +252,7 @@ export default function StagingCsvPanel() {
       setFile(null);
       setLastSha(null);
       setKeyConfirmed(false);
+      setPlan(null);
       toast.success("Staging tables truncated");
     } catch (e: any) {
       console.error(e);
@@ -235,17 +262,22 @@ export default function StagingCsvPanel() {
     }
   }
 
-  const { present, derived, newFields } = classifyFields();
-
-  const commitDisabled = (() => {
+  const commitDisabled = useMemo(() => {
     if (!summary) return true;
     if (selectedTable === "stg_catalog") {
-      const errs = (summary.catalog_dupe_pk || 0) + (summary.catalog_missing_required || 0);
-      return loading || !keyConfirmed || errs > 0;
+      const errs =
+        (summary.catalog_dupe_pk || 0) +
+        (summary.catalog_missing_required || 0);
+      const { pendingCreates, updateCols } = presentCreatePending(plan);
+      return loading || !keyConfirmed || errs > 0 || pendingCreates > 0 || updateCols.length === 0;
     }
-    const errs = (summary.mantas_dupe_pk || 0) + (summary.mantas_missing_fk_catalog || 0) + (summary.mantas_missing_fk_sighting || 0) + (summary.photos_missing_fk_manta || 0);
+    const errs =
+      (summary.mantas_dupe_pk || 0) +
+      (summary.mantas_missing_fk_catalog || 0) +
+      (summary.mantas_missing_fk_sighting || 0) +
+      (summary.photos_missing_fk_manta || 0);
     return loading || errs > 0;
-  })();
+  }, [summary, plan, keyConfirmed, loading, selectedTable]);
 
   return (
     <div className="space-y-6">
@@ -272,25 +304,6 @@ export default function StagingCsvPanel() {
         </div>
       </div>
 
-      <div className="rounded border p-4">
-        <h3 className="font-semibold mb-2">Field Classification (CSV → {targetBaseTable})</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Will import (existing columns)</div>
-            <ul className="list-disc pl-5">{present.map(h => <li key={h}>{h}</li>)}</ul>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Derived/ignored (computed from sightings)</div>
-            <ul className="list-disc pl-5">{derived.map(h => <li key={h}>{h}</li>)}</ul>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Not in table (no DDL is run)</div>
-            <ul className="list-disc pl-5">{newFields.map(h => <li key={h}>{h}</li>)}</ul>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">We will <b>not</b> create new columns automatically and will never overwrite derived data. Commit affects only allowed columns (e.g., catalog: pk_catalog_id, species, name).</p>
-      </div>
-
       {selectedTable === "stg_catalog" && (
         <div className="rounded border p-4">
           <h3 className="font-semibold mb-2">Key Confirmation</h3>
@@ -301,45 +314,53 @@ export default function StagingCsvPanel() {
         </div>
       )}
 
-      {summary && (
-        <div className="rounded border p-4 space-y-3">
-          <h3 className="font-semibold">Dry-Run Summary</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-            {selectedTable === "stg_catalog" && (
-              <>
-                <Stat label="Catalog rows" value={summary.catalog_rows} />
-                <Stat label="Dupe pk" value={summary.catalog_dupe_pk} warn />
-                <Stat label="Missing required" value={summary.catalog_missing_required} warn />
-                <Stat label="Type warnings" value={summary.catalog_type_warnings} warn />
-              </>
-            )}
-            {selectedTable !== "stg_catalog" && (
-              <>
-                <Stat label="Mantas rows" value={summary.mantas_rows} />
-                <Stat label="Mantas dupe pk" value={summary.mantas_dupe_pk} warn />
-                <Stat label="Missing fk catalog" value={summary.mantas_missing_fk_catalog} warn />
-                <Stat label="Missing fk sighting" value={summary.mantas_missing_fk_sighting} warn />
-                <Stat label="Photos rows" value={summary.photos_rows} />
-                <Stat label="Photos missing fk manta" value={summary.photos_missing_fk_manta} warn />
-              </>
-            )}
-          </div>
-
-          {mergePreview && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <Stat label="Will insert" value={mergePreview.will_insert} />
-              <Stat label="Will update" value={mergePreview.will_update} />
-              <Stat label="Updates with changes" value={mergePreview.will_update_changed_only} />
-              <Stat label="Total staged" value={mergePreview.total_staged} />
-            </div>
+      <div className="rounded border p-4">
+        <h3 className="font-semibold mb-2">Dry-Run Summary</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          {selectedTable === "stg_catalog" ? (
+            <>
+              <Stat label="Catalog rows" value={summary?.catalog_rows} />
+              <Stat label="Dupe pk" value={summary?.catalog_dupe_pk} warn />
+              <Stat label="Missing required" value={summary?.catalog_missing_required} warn />
+              <Stat label="Type warnings" value={summary?.catalog_type_warnings} warn />
+            </>
+          ) : (
+            <>
+              <Stat label="Mantas rows" value={summary?.mantas_rows} />
+              <Stat label="Mantas dupe pk" value={summary?.mantas_dupe_pk} warn />
+              <Stat label="Missing fk catalog" value={summary?.mantas_missing_fk_catalog} warn />
+              <Stat label="Missing fk sighting" value={summary?.mantas_missing_fk_sighting} warn />
+              <Stat label="Photos rows" value={summary?.photos_rows} />
+              <Stat label="Photos missing fk manta" value={summary?.photos_missing_fk_manta} warn />
+            </>
           )}
-
-          <div className="flex gap-2">
-            <Button onClick={commit} disabled={commitDisabled}>Commit Import</Button>
-            <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
-          </div>
         </div>
+
+        {mergePreview && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mt-3">
+            <Stat label="Will insert" value={mergePreview.will_insert} />
+            <Stat label="Will update" value={mergePreview.will_update} />
+            <Stat label="Updates with changes" value={mergePreview.will_update_changed_only} />
+            <Stat label="Total staged" value={mergePreview.total_staged} />
+          </div>
+        )}
+      </div>
+
+      {csvHeaders.length > 0 && (
+        <FieldMapper
+          table={targetBaseTable as any}
+          csvHeaders={csvHeaders}
+          sampleRows={sampleRows}
+          existingColumns={targetColumns}
+          defaultNoUpdate={new Set(["species", "name"])}
+          onPlanChange={setPlan}
+        />
       )}
+
+      <div className="flex gap-2">
+        <Button onClick={commit} disabled={commitDisabled}>Commit Import</Button>
+        <Button variant="outline" onClick={clearStaging} disabled={loading}>Clear Staging</Button>
+      </div>
 
       {(dupeRows.length > 0 || warnRows.length > 0) && (
         <div className="space-y-6">
@@ -362,7 +383,7 @@ function Stat({ label, value, warn }: { label: string; value: any; warn?: boolea
 
 function TableBlock({ title, rows }: { title: string; rows: any[] }) {
   return (
-    <div>
+    <div className="rounded border p-4">
       <h3 className="font-semibold mb-2">{title}</h3>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border">
