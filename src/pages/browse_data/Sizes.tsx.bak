@@ -1,0 +1,300 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+
+import Layout from "@/components/layout/Layout";
+import { supabase } from "@/lib/supabase";
+
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+
+type SummaryRow = {
+  total_mantas: number;
+  catalog_ids: number;
+  males: number;
+  females: number;
+  adults: number;
+  juveniles: number;
+};
+
+type QuadRow = {
+  age_group: "Adult" | "Juvenile";
+  gender: "Male" | "Female";
+  mean_m: number | null;
+  min_m: number | null;
+  max_m: number | null;
+  n: number | null;
+  std_m: number | null;
+};
+
+type CardRow = {
+  pk_catalog_id: number;
+  name: string | null;
+  species: string | null;
+  gender: string | null;
+  age_class: string | null;
+  last_size_m: number | null;
+  total_sizes: number | null;
+  thumbnail_url: string | null;
+};
+
+const fmt = (n: number | null | undefined, d = 2) =>
+  n == null ? "—" : (n as number).toFixed(d);
+
+export default function Sizes() {
+  const [summary, setSummary] = useState<SummaryRow | null>(null);
+  const [quads, setQuads] = useState<QuadRow[]>([]);
+  const [cards, setCards] = useState<CardRow[]>([]);
+
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<{ species: string[]; gender: string[]; age_class: string[] }>({
+    species: [],
+    gender: [],
+    age_class: [],
+  });
+  const [sortAsc, setSortAsc] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [s, q, c] = await Promise.all([
+        supabase.from("v_sizes_summary_stats_v3").select("*").single(),
+        supabase.from("v_sizes_quadrant_stats_v3").select("*"),
+        supabase.from("v_sizes_card_rows_v3").select("*"),
+      ]);
+      if (!s.error) setSummary(s.data as SummaryRow);
+      if (!q.error) setQuads((q.data as QuadRow[]) ?? []);
+      if (!c.error) setCards((c.data as CardRow[]) ?? []);
+      if (s.error) console.error("summary error", s.error);
+      if (q.error) console.error("quad error", q.error);
+      if (c.error) console.error("cards error", c.error);
+    })();
+  }, []);
+
+  const quadMap = useMemo(() => {
+    const m: Record<string, QuadRow> = {};
+    quads.forEach((r) => (m[`${r.age_group}|${r.gender}`] = r));
+    return m;
+  }, [quads]);
+
+  const filteredCards = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const rows = cards.filter((r) => {
+      const textOK =
+        (r.name ? r.name.toLowerCase().includes(term) : false) ||
+        String(r.pk_catalog_id).includes(term);
+      const spOK = !filters.species.length || (r.species ? filters.species.includes(r.species) : false);
+      const gOK = !filters.gender.length || (r.gender ? filters.gender.includes(r.gender) : false);
+      const aOK = !filters.age_class.length || (r.age_class ? filters.age_class.includes(r.age_class) : false);
+      return textOK && spOK && gOK && aOK;
+    });
+    rows.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
+    return rows;
+  }, [cards, search, filters, sortAsc]);
+
+  const baseForCounts = (ignore: "species" | "gender" | "age_class") => {
+    const term = search.trim().toLowerCase();
+    return cards.filter((r) => {
+      const textOK =
+        (r.name ? r.name.toLowerCase().includes(term) : false) ||
+        String(r.pk_catalog_id).includes(term);
+      const spOK = ignore === "species" || !filters.species.length || (r.species ? filters.species.includes(r.species) : false);
+      const gOK = ignore === "gender" || !filters.gender.length || (r.gender ? filters.gender.includes(r.gender) : false);
+      const aOK = ignore === "age_class" || !filters.age_class.length || (r.age_class ? filters.age_class.includes(r.age_class) : false);
+      return textOK && spOK && gOK && aOK;
+    });
+  };
+
+  const countBy = (rows: CardRow[], field: keyof CardRow) => {
+    const map: Record<string, number> = {};
+    rows.forEach((r) => {
+      const val = (r[field] as string | null) ?? "";
+      if (!val) return;
+      map[val] = (map[val] ?? 0) + 1;
+    });
+    return map;
+  };
+
+  const speciesCounts = useMemo(() => countBy(baseForCounts("species"), "species"), [cards, filters.gender, filters.age_class, search]);
+  const genderCounts  = useMemo(() => countBy(baseForCounts("gender"), "gender"),   [cards, filters.species, filters.age_class, search]);
+  const ageCounts     = useMemo(() => countBy(baseForCounts("age_class"), "age_class"), [cards, filters.species, filters.gender, search]);
+
+  const speciesOptions = useMemo(() => Object.keys(countBy(cards, "species")).sort(), [cards]);
+  const genderOptions  = useMemo(() => Object.keys(countBy(cards, "gender")).sort(),  [cards]);
+  const ageOptions     = useMemo(() => Object.keys(countBy(cards, "age_class")).sort(), [cards]);
+
+  const toggle = (key: "species" | "gender" | "age_class", value: string) => {
+    const arr = filters[key];
+    const next = arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+    setFilters({ ...filters, [key]: next });
+  };
+  const clearKey = (key: "species" | "gender" | "age_class") => setFilters({ ...filters, [key]: [] });
+  const clearAll = () => {
+    setSearch("");
+    setFilters({ species: [], gender: [], age_class: [] });
+    setSortAsc(true);
+  };
+
+  const summaryLine = useMemo(() => {
+    const parts: string[] = [];
+    if (filters.species.length) parts.push(`Species: ${filters.species.join(", ")}`);
+    if (filters.gender.length) parts.push(`Gender: ${filters.gender.join(", ")}`);
+    if (filters.age_class.length) parts.push(`Age: ${filters.age_class.join(", ")}`);
+    return parts.join("; ");
+  }, [filters]);
+
+  const renderMenu = (
+    label: string,
+    key: "species" | "gender" | "age_class",
+    options: string[],
+    counts: Record<string, number>,
+  ) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="text-sm">
+          {label}
+          {filters[key].length > 0 && <span className="ml-1">({filters[key].length})</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2 space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <span className="font-medium text-sm">{label}</span>
+          <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => clearKey(key)}>
+            All
+          </Button>
+        </div>
+        {options.map((opt) => (
+          <label key={opt} className="flex items-center justify-between gap-2 p-1 rounded hover:bg-muted/50 text-sm">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={filters[key].includes(opt)} onCheckedChange={() => toggle(key, opt)} />
+              {opt || "—"}
+            </div>
+            <span className="text-xs text-muted-foreground">{counts[opt] ?? 0}</span>
+          </label>
+        ))}
+        {options.length === 0 && <div className="text-xs text-muted-foreground">— none —</div>}
+      </PopoverContent>
+    </Popover>
+  );
+
+  return (
+    <Layout title="Sizes">
+      <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
+        <h1 className="text-4xl font-bold">Sizes</h1>
+      </div>
+
+      <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm">
+        <div className="text-sm text-blue-800 mb-2">
+          <Link to="/browse/data" className="hover:underline">← Return to Browse Data</Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+          <Card className="p-3">
+            <div className="text-xs text-gray-500">Total Mantas Sized</div>
+            <div className="text-2xl font-semibold">{summary ? summary.total_mantas : "—"}</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-gray-500">Catalog IDs</div>
+            <div className="text-2xl font-semibold">{summary ? summary.catalog_ids : "—"}</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-gray-500">Males</div>
+            <div className="text-2xl font-semibold">{summary ? summary.males : "—"}</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-gray-500">Females</div>
+            <div className="text-2xl font-semibold">{summary ? summary.females : "—"}</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-gray-500">Adults</div>
+            <div className="text-2xl font-semibold">{summary ? summary.adults : "—"}</div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {([
+            ["Adult", "Male", "Adult Males"],
+            ["Adult", "Female", "Adult Females"],
+            ["Juvenile", "Male", "Juvenile Males"],
+            ["Juvenile", "Female", "Juvenile Females"],
+          ] as const).map(([age, sex, label]) => {
+            const r = quadMap[`${age}|${sex}`];
+            return (
+              <Card key={label} className="p-3">
+                <div className="font-medium text-sm mb-1">{label}</div>
+                <div className="text-xs">Mean: {fmt(r?.mean_m)} m</div>
+                <div className="text-xs">Min: {fmt(r?.min_m)} m</div>
+                <div className="text-xs">Max: {fmt(r?.max_m)} m</div>
+                <div className="text-xs">N: {r?.n ?? "—"}</div>
+                <div className="text-xs">STD: {fmt(r?.std_m)} m</div>
+              </Card>
+            );
+          })}
+        </div>
+
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by Catalog ID or Name…"
+          className="mb-3 w-full sm:w-64"
+        />
+
+        <div className="bg-white shadow p-4 rounded border mb-3">
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm font-medium">Filter Size by:</div>
+            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {renderMenu("Species", "species", speciesOptions, speciesCounts)}
+            {renderMenu("Gender", "gender", genderOptions, genderCounts)}
+            {renderMenu("Age Class", "age_class", ageOptions, ageCounts)}
+          </div>
+
+          <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
+            <span>Sort by Catalog&nbsp;ID</span>
+            <Button size="icon" variant="ghost" className={sortAsc ? "text-blue-600" : ""} onClick={() => setSortAsc(true)}>▲</Button>
+            <Button size="icon" variant="ghost" className={!sortAsc ? "text-blue-600" : ""} onClick={() => setSortAsc(false)}>▼</Button>
+          </div>
+        </div>
+
+        <div className="text-sm text-gray-700">
+          {filteredCards.length} records showing of {cards.length} total records
+          {(() => {
+            const parts: string[] = [];
+            if (filters.species.length) parts.push(`Species: ${filters.species.join(", ")}`);
+            if (filters.gender.length) parts.push(`Gender: ${filters.gender.join(", ")}`);
+            if (filters.age_class.length) parts.push(`Age: ${filters.age_class.join(", ")}`);
+            return parts.length ? ` (filtered by ${parts.join("; ")})` : "";
+          })()}
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 lg:px-12 pb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredCards.map((c) => (
+          <Card key={c.pk_catalog_id} className="p-4 flex flex-col">
+            <div className="flex flex-col items-center w-full">
+              <img
+                src={c.thumbnail_url || "/manta-logo.svg"}
+                alt={c.name ?? "catalog"}
+                className="w-full aspect-square object-cover rounded border"
+                onError={(ev) => ((ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
+              />
+            </div>
+
+            <div className="mt-3 space-y-0.5 text-xs text-gray-700">
+              <div className="text-blue-600 font-bold text-sm">Catalog: {c.pk_catalog_id}</div>
+              <div>Name: {c.name || "—"}</div>
+              <div>Species: {c.species || "—"}</div>
+              <div>Gender: {c.gender || "—"}</div>
+              <div>Age: {c.age_class || "—"}</div>
+              <div>Total Sizes: {c.total_sizes ?? 0}</div>
+              <div>Last Size: {fmt(c.last_size_m)} m</div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </Layout>
+  );
+}

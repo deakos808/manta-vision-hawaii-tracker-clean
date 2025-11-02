@@ -1,4 +1,3 @@
-// File: src/components/sightings/SightingsMap.tsx
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -20,6 +19,12 @@ interface SightingsMapProps {
   onClose: () => void;
 }
 
+/**
+ * SightingsMap (no-cluster): plot every sighting at its exact coordinate.
+ * - Clustering disabled
+ * - Auto-fit to all points
+ * - Clean popup on click
+ */
 export default function SightingsMap({ sightings, onClose }: SightingsMapProps) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -29,10 +34,41 @@ export default function SightingsMap({ sightings, onClose }: SightingsMapProps) 
     if (!token || !mapContainer.current) return;
     mapboxgl.accessToken = token;
 
+    // Build FeatureCollection with valid coordinates only
+    const features = sightings
+      .map((s) => ({
+        id: s.pk_sighting_id,
+        lat: Number(s.latitude),
+        lon: Number(s.longitude),
+        date: s.sighting_date,
+        island: s.island ?? "",
+        site: s.sitelocation ?? "",
+        photographer: s.photographer ?? "",
+      }))
+      .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lon));
+
+    const geojson: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: features.map((s) => ({
+        type: "Feature",
+        properties: {
+          id: s.id,
+          date: s.date,
+          island: s.island,
+          site: s.site,
+          photographer: s.photographer,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [s.lon, s.lat], // GeoJSON expects [lon, lat]
+        },
+      })) as GeoJSON.Feature[],
+    };
+
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/outdoors-v12",
-      center: [-156.3319, 20.7983],
+      center: [-156.3319, 20.7983], // Hawaiʻi – starter center; fitBounds will update
       zoom: 6,
     });
 
@@ -40,132 +76,69 @@ export default function SightingsMap({ sightings, onClose }: SightingsMapProps) 
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      const geojson = {
-        type: "FeatureCollection",
-        features: sightings
-          .filter((s) => s.latitude && s.longitude)
-          .map((s) => ({
-            type: "Feature",
-            properties: {
-              id: s.pk_sighting_id,
-              date: s.sighting_date,
-              island: s.island,
-              site: s.sitelocation,
-              photographer: s.photographer,
-            },
-            geometry: {
-              type: "Point",
-              coordinates: [s.longitude!, s.latitude!],
-            },
-          })),
-      };
-
+      // Source without clustering
       map.addSource("sightings", {
         type: "geojson",
         data: geojson,
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
       });
 
+      // Exact points as circles
       map.addLayer({
-        id: "clusters",
+        id: "sighting-points",
         type: "circle",
         source: "sightings",
-        filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#3b82f6",
-          "circle-radius": [
-            "step",
-            ["get", "point_count"],
-            15,
-            10, 20,
-            25, 25,
-            50, 30,
-          ],
-        },
-      });
-
-      map.addLayer({
-        id: "cluster-count",
-        type: "symbol",
-        source: "sightings",
-        filter: ["has", "point_count"],
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-          "text-size": 12,
-        },
-        paint: {
-          "text-color": "#ffffff",
-        },
-      });
-
-      map.addLayer({
-        id: "unclustered-point",
-        type: "circle",
-        source: "sightings",
-        filter: ["!", ["has", "point_count"]],
-        paint: {
-          "circle-color": "#22c55e",
+          "circle-color": "#1d4ed8", // blue-700
           "circle-radius": 6,
           "circle-stroke-width": 1,
           "circle-stroke-color": "#ffffff",
         },
       });
 
-      map.on("click", "clusters", (e) => {
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ["clusters"],
-        });
-        const clusterId = features[0].properties?.cluster_id;
-        const source = map.getSource("sightings") as mapboxgl.GeoJSONSource;
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({ center: (features[0].geometry as any).coordinates, zoom });
-        });
-      });
+      // Click popup for any single point
+      map.on("click", "sighting-points", (e) => {
+        const f = e.features && e.features[0];
+        if (!f) return;
+        const props = f.properties as any;
+        const coords = (f.geometry as any).coordinates as [number, number];
 
-      map.on("click", "unclustered-point", (e) => {
-        const props = e.features?.[0].properties;
-        const coords = (e.features?.[0].geometry as any).coordinates;
-        new mapboxgl.Popup()
+        new mapboxgl.Popup({ closeButton: true, closeOnClick: true })
           .setLngLat(coords)
           .setHTML(`
             <div class="text-sm">
-              <strong>Date:</strong> ${props?.date}<br/>
-              <strong>Island:</strong> ${props?.island}<br/>
-              <strong>Site:</strong> ${props?.site}<br/>
-              <strong>Photographer:</strong> ${props?.photographer}
+              <div><strong>Date:</strong> ${props?.date ?? "—"}</div>
+              <div><strong>Island:</strong> ${props?.island ?? "—"}</div>
+              <div><strong>Site:</strong> ${props?.site ?? "—"}</div>
+              <div><strong>Photographer:</strong> ${props?.photographer ?? "—"}</div>
             </div>
           `)
           .addTo(map);
       });
 
-      map.on("mouseenter", "clusters", () => {
+      map.on("mouseenter", "sighting-points", () => {
         map.getCanvas().style.cursor = "pointer";
       });
-      map.on("mouseleave", "clusters", () => {
+      map.on("mouseleave", "sighting-points", () => {
         map.getCanvas().style.cursor = "";
       });
 
       // Auto-fit to all points
-      const bounds = new mapboxgl.LngLatBounds();
-      geojson.features.forEach((f: any) => {
-        bounds.extend(f.geometry.coordinates);
-      });
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 40, duration: 1000 });
+      if (features.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        geojson.features.forEach((f: any) => bounds.extend(f.geometry.coordinates));
+        map.fitBounds(bounds, { padding: 40, duration: 800, maxZoom: 13 });
       }
     });
 
-    return () => map.remove();
+    return () => {
+      map.remove();
+    };
   }, [sightings]);
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden">
-        <div className="w-full h-[500px]">
+      <DialogContent className="max-w-6xl p-0 overflow-hidden">
+        <div className="w-full h-[520px]">
           <div ref={mapContainer} className="w-full h-full" />
         </div>
       </DialogContent>

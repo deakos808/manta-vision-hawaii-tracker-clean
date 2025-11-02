@@ -2,7 +2,6 @@ import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import L, { Map as LeafletMap, LayerGroup, DivIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { supabase } from "@/lib/supabase";
 
 type Point = {
   id?: number;
@@ -46,24 +45,33 @@ function groupByExactCoord(points: Point[]): Map<string, Group> {
   return m;
 }
 
-function makeCountIcon(count?: number): DivIcon {
+function makeCountIcon(count: number): DivIcon {
   const txt = String(count ?? 0);
-  // Pure circular badge (no pin “dot”)
   return L.divIcon({
     html: `
-      <div style="position:relative;width:26px;height:26px;">
-        <div style="
-          position:absolute;left:0;top:0;width:26px;height:26px;
-          border-radius:9999px;background:#2563eb;color:#fff;
-          display:flex;align-items:center;justify-content:center;
-          font-weight:800;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.35);">
+      <div style="position:relative;width:25px;height:41px">
+        <img src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
+             srcset="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png 2x"
+             style="position:absolute;inset:0;width:25px;height:41px;display:block;z-index:1"/>
+        <div style="position:absolute;left:50%;top:13px;transform:translateX(-50%);
+                    width:16px;height:16px;border-radius:9999px;background:#2563eb;
+                    box-shadow:0 1px 2px rgba(0,0,0,.3);z-index:2"></div>
+        <span style="position:absolute;left:50%;top:13px;transform:translateX(-50%);
+                     width:16px;height:16px;line-height:16px;text-align:center;
+                     color:#fff;font-weight:800;font-size:11px;z-index:3;">
           ${txt}
-        </div>
+        </span>
       </div>`,
     className: "",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  }) as unknown as DivIcon;
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+  });
+}
+
+function escapeHtml(s: string) {
+  return String(s).replace(/[&<>"'`=\/]/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "`": "&#x60;", "/": "&#x2F;"
+  }[ch] || ch));
 }
 
 export default function MapDialog({
@@ -72,7 +80,7 @@ export default function MapDialog({
   points,
   totalFiltered,
   children,
-  onSelect,
+  onSelect
 }: Props) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<LeafletMap | null>(null);
@@ -80,7 +88,7 @@ export default function MapDialog({
 
   const groups = React.useMemo(() => groupByExactCoord(points), [points]);
 
-  // Init map when dialog opens
+  // Initialize map when dialog opens
   React.useEffect(() => {
     if (!open) {
       teardown();
@@ -116,6 +124,7 @@ export default function MapDialog({
         const bounds = L.latLngBounds(arr.map(g => L.latLng(g.lat, g.lon)));
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
       }
+
       draw();
     };
     raf = requestAnimationFrame(init);
@@ -123,7 +132,7 @@ export default function MapDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Redraw when points change
+  // Redraw on data change while open
   React.useEffect(() => {
     if (!open) return;
     draw();
@@ -131,16 +140,19 @@ export default function MapDialog({
   }, [groups]);
 
   function teardown() {
-    try { overlayRef.current?.remove(); } catch { /* noop */ }
+    try { overlayRef.current?.remove(); } catch (_) {}
     overlayRef.current = null;
-    try { mapRef.current?.remove(); } catch { /* noop */ }
+    try { mapRef.current?.remove(); } catch (_) {}
     mapRef.current = null;
   }
 
   function draw() {
     const map = mapRef.current;
     if (!map) return;
-    if (!overlayRef.current) overlayRef.current = L.layerGroup().addTo(map);
+
+    if (!overlayRef.current) {
+      overlayRef.current = L.layerGroup().addTo(map);
+    }
     overlayRef.current!.clearLayers();
 
     groups.forEach((g) => {
@@ -148,16 +160,18 @@ export default function MapDialog({
       const icon = makeCountIcon(count);
       const marker = L.marker([g.lat, g.lon], { icon: icon as any, zIndexOffset: 1000 }).addTo(overlayRef.current!);
 
-      // Build table rows with placeholders; fetched data will fill these spans
       const rows = g.items.map((it) => {
-        const sid = (it?.id ?? it?.pk_sighting_id ?? it?.pk_drone_photo ?? it?.pk_drone_id ?? it?.pk_drone_photo_id ?? "");
+        const d = it?.date ? String(it.date).slice(0, 10) : "—";
+        const who = it?.photographer ?? "—";
+        const m = (it?.total ?? it?.total_mantas) ?? "—";
+        const sid = (it?.id ?? it?.pk_drone_photo ?? it?.pk_drone_id ?? it?.pk_drone_photo_id ?? it?.pk_sighting_id) ?? "";
         const sidAttr = sid ? ` data-sid="${sid}"` : "";
         return `
           <div style="display:flex;gap:8px;align-items:center;padding:2px 0;">
-            <div style="min-width:80px"><span class="js-sighting-details" data-sid="${sid}" data-field="date">—</span></div>
-            <div style="flex:1"><span class="js-sighting-details" data-sid="${sid}" data-field="photographer">—</span></div>
-            <div style="min-width:40px;text-align:right;"><span class="js-sighting-details" data-sid="${sid}" data-field="mantas">—</span></div>
-            ${sid ? `<a href="#"${sidAttr} style="margin-left:8px;color:#2563eb;text-decoration:none">open</a>` : ""}
+            <div style="min-width:80px">${escapeHtml(d)}</div>
+            <div style="flex:1">${escapeHtml(String(who))}</div>
+            <div style="min-width:40px;text-align:right;">${escapeHtml(String(m))}</div>
+            ${sid ? `<a href="#"${sidAttr} style="margin-left:8px;color:#2563eb;text-decoration:underline">open</a>` : ""}
           </div>`;
       }).join("");
 
@@ -177,64 +191,24 @@ export default function MapDialog({
 
       marker.bindPopup(html);
 
-      // On popup open: keep "open" click-through and fetch details to fill placeholders
-      marker.on("popupopen", (ev: any) => {
-        const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
-        if (!root) return;
-
-        // Click handler → onSelect(sid)
-        const clickHandler = (e: Event) => {
-          const t = e.target as HTMLElement;
-          const link = t.closest("[data-sid]") as HTMLElement | null;
-          if (link) {
-            e.preventDefault();
-            const sid = Number(link.getAttribute("data-sid"));
-            if (!Number.isNaN(sid) && typeof onSelect === "function") onSelect(sid);
-          }
-        };
-        root.addEventListener("click", clickHandler);
-
-        const spans = Array.from(root.querySelectorAll(".js-sighting-details")) as HTMLElement[];
-        if (!spans.length) return;
-        const ids = Array.from(new Set(
-          spans.map(el => Number(el.getAttribute("data-sid") || "0")).filter(Boolean)
-        ));
-        if (!ids.length) return;
-
-        (async () => {
-          const { data, error } = await supabase
-            .from("sightings")
-            .select("pk_sighting_id, sighting_date, photographer, total_mantas, total_manta_ids")
-            .in("pk_sighting_id", ids);
-
-          if (error || !Array.isArray(data)) return;
-          const byId: Record<number, any> = {};
-          for (const r of data) byId[Number(r.pk_sighting_id)] = r;
-
-          for (const el of spans) {
-            const id = Number(el.getAttribute("data-sid") || "0");
-            const field = String(el.getAttribute("data-field") || "");
-            const r = byId[id];
-            if (!r) continue;
-
-            if (field === "date") {
-              const d = r?.sighting_date ? new Date(r.sighting_date) : null;
-              el.textContent = d ? d.toISOString().slice(0,10) : "—";
-            } else if (field === "photographer") {
-              el.textContent = r?.photographer ?? "—";
-            } else if (field === "mantas") {
-              const tot = (typeof r?.total_mantas === "number")
-                ? r.total_mantas
-                : (typeof r?.total_manta_ids === "number" ? r.total_manta_ids : undefined);
-              el.textContent = (typeof tot === "number") ? String(tot) : "—";
+      if (typeof onSelect === "function") {
+        marker.on("popupopen", (ev: any) => {
+          const el: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
+          if (!el) return;
+          const handler = (e: Event) => {
+            const t = e.target as HTMLElement;
+            const link = t.closest("[data-sid]") as HTMLElement | null;
+            if (link) {
+              const sid = Number(link.getAttribute("data-sid"));
+              if (!Number.isNaN(sid)) onSelect(sid);
             }
-          }
-        })();
-
-        ev.popup.once("remove", () => {
-          root.removeEventListener("click", clickHandler as any);
+          };
+          el.addEventListener("click", handler);
+          ev.popup.once("remove", () => {
+            el.removeEventListener("click", handler as any);
+          });
         });
-      });
+      }
     });
   }
 
@@ -245,7 +219,7 @@ export default function MapDialog({
           <DialogTitle>Map</DialogTitle>
           <div className="text-sm text-muted-foreground">
             {points?.length ?? 0} {points?.length === 1 ? "sighting" : "sightings"}
-            {typeof totalFiltered === "number" ? ` of ${totalFiltered} filtered records` : ""} with coordinates
+            {typeof totalFiltered === "number" ? \` of \${totalFiltered} filtered records\` : ""} with coordinates
           </div>
           {children}
         </DialogHeader>

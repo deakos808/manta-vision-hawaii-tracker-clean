@@ -21,22 +21,22 @@ export default function BrowseData() {
         </p>
 
         <div className="grid gap-4 sm:grid-cols-4 pt-6">
-          <Button variant="outline" onClick={() => navigate('/browse/catalog')}>
+          <Button variant="outline" className="text-lg py-6 w-full whitespace-nowrap" onClick={() => navigate('/browse/catalog')}>
             🔍 Search Catalog
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/sightings')}>
+          <Button variant="outline" className="text-lg py-6 w-full whitespace-nowrap" onClick={() => navigate('/browse/sightings')}>
             📍 Search Sightings
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/mantas')}>
+          <Button variant="outline" className="text-lg py-6 w-full whitespace-nowrap" onClick={() => navigate('/browse/mantas')}>
             🐠 Search Mantas
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/photos')}>
+          <Button variant="outline" className="text-lg py-6 w-full whitespace-nowrap" onClick={() => navigate('/browse/photos')}>
             📸 Search Photos
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/drone')}>
-            🚁 Drone Surveys
+          <Button variant="outline" className="text-lg py-6 w-full whitespace-nowrap" onClick={() => navigate('/browse/drone')}>
+            🚁 Search Drone Surveys
           </Button>
-          <Button variant="outline" className="text-lg py-6 col-span-full sm:col-span-2" onClick={() => navigate('/browse/sizes')}>
+          <Button variant="outline" className="text-lg py-6 col-span-full sm:col-span-2" onClick={() => navigate('/browse/sizes')} className="text-lg py-6 w-full whitespace-nowrap">
             🔎 Search Sizes
           </Button>
         </div>

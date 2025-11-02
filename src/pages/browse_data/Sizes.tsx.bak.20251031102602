@@ -1,0 +1,454 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import Layout from "@/components/layout/Layout";
+
+/** ----- Types that match the v3 views ----- */
+type SummaryRow = {
+  total_mantas: number;
+  catalog_ids: number;
+  males: number;
+  females: number;
+  adults: number;
+  juveniles: number;
+};
+
+type QuadRow = {
+  age_group: "Adult" | "Juvenile";
+  gender: "Male" | "Female";
+  mean_m: number | null;
+  min_m: number | null;
+  max_m: number | null;
+  n: number;
+  std_m: number | null;
+};
+
+type CardRow = {
+  pk_catalog_id: number;
+  name: string | null;
+  species: string | null;
+  gender: "Male" | "Female" | "Unknown" | null;
+  age_class: "Adult" | "Juvenile" | "Unknown" | null;
+  last_size_m: number | null;
+  thumbnail_url: string | null;
+  total_sizes: number | null;
+};
+
+type FacetCount = { facet: "species" | "gender" | "age_class"; value: string; count: number };
+
+/** Utilities */
+function fmtM(v: number | null | undefined) {
+  if (v == null) return "—";
+  return `${Number(v).toFixed(2)} m`;
+}
+
+function SectionStat({
+  title,
+  q,
+}: {
+  title: string;
+  q: QuadRow | undefined;
+}) {
+  return (
+    <div className="border rounded-lg p-3">
+      <div className="font-semibold text-sm mb-2">{title}</div>
+      <div className="text-xs space-y-1">
+        <div>Mean: {fmtM(q?.mean_m ?? null)}</div>
+        <div>Min: {fmtM(q?.min_m ?? null)}</div>
+        <div>Max: {fmtM(q?.max_m ?? null)}</div>
+        <div>N: {q?.n ?? 0}</div>
+        <div>STD: {q?.std_m != null ? `${q.std_m.toFixed(2)} m` : "—"}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Main page */
+export default function Sizes() {
+  const [loading, setLoading] = useState(true);
+
+  // header stats
+  const [summary, setSummary] = useState<SummaryRow | null>(null);
+  const [quad, setQuad] = useState<QuadRow[]>([]);
+
+  // cards
+  const [rows, setRows] = useState<CardRow[]>([]);
+
+  // facet counts for pills
+  const [facetCounts, setFacetCounts] = useState<Record<string, { value: string; count: number }[]>>(
+    {}
+  );
+
+  // UI state
+  const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(true);
+  const [openFacet, setOpenFacet] = useState<"" | "species" | "gender" | "age_class">("");
+
+  // selected filters
+  const [selectedSpecies, setSelectedSpecies] = useState<Set<string>>(new Set());
+  const [selectedGender, setSelectedGender] = useState<Set<string>>(new Set());
+  const [selectedAge, setSelectedAge] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const [s1, s2, s3, s4] = await Promise.all([
+          supabase.from("v_sizes_summary_stats_v3").select("*").single(),
+          supabase.from("v_sizes_quadrant_stats_v3").select("*"),
+          supabase.from("v_sizes_card_rows_v3").select("*"),
+          supabase.from("v_sizes_filter_basis_v3").select("*"),
+        ]);
+
+        if (!isMounted) return;
+
+        if (!s1.error) setSummary(s1.data as SummaryRow);
+        if (!s2.error) setQuad((s2.data as any[]) as QuadRow[]);
+        if (!s3.error) setRows((s3.data as any[]) as CardRow[]);
+        if (!s4.error) {
+          const arr = (s4.data as any[]) as FacetCount[];
+          const by: Record<string, { value: string; count: number }[]> = {};
+          for (const r of arr) {
+            (by[r.facet] ||= []).push({ value: r.value, count: Number(r.count) });
+          }
+          for (const k of Object.keys(by)) {
+            by[k].sort((a, b) => a.value.localeCompare(b.value));
+          }
+          setFacetCounts(by);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /** derived filters */
+  const filtered = useMemo(() => {
+    let list = rows.slice();
+
+    // text search
+    const t = search.trim().toLowerCase();
+    if (t) {
+      list = list.filter((r) => {
+        const id = String(r.pk_catalog_id ?? "").toLowerCase();
+        const nm = String(r.name ?? "").toLowerCase();
+        return id.includes(t) || nm.includes(t);
+      });
+    }
+
+    // species facet (normalize to lower)
+    if (selectedSpecies.size) {
+      list = list.filter((r) => selectedSpecies.has((r.species ?? "").toLowerCase()));
+    }
+
+    // gender facet
+    if (selectedGender.size) {
+      list = list.filter((r) => selectedGender.has(r.gender ?? "Unknown"));
+    }
+
+    // age facet
+    if (selectedAge.size) {
+      list = list.filter((r) => selectedAge.has(r.age_class ?? "Unknown"));
+    }
+
+    // sort
+    list.sort((a, b) =>
+      sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id
+    );
+    return list;
+  }, [rows, search, selectedSpecies, selectedGender, selectedAge, sortAsc]);
+
+  /** helpers to grab quadrants */
+  const adultMale = quad.find((q) => q.age_group === "Adult" && q.gender === "Male");
+  const adultFemale = quad.find((q) => q.age_group === "Adult" && q.gender === "Female");
+  const juvMale = quad.find((q) => q.age_group === "Juvenile" && q.gender === "Male");
+  const juvFemale = quad.find((q) => q.age_group === "Juvenile" && q.gender === "Female");
+
+  /** Labels for filter log */
+  const filterTags: string[] = [];
+  if (selectedSpecies.size) filterTags.push(`Species=${Array.from(selectedSpecies).join(",")}`);
+  if (selectedGender.size) filterTags.push(`Gender=${Array.from(selectedGender).join(",")}`);
+  if (selectedAge.size) filterTags.push(`Age Class=${Array.from(selectedAge).join(",")}`);
+
+  return (
+    <Layout title="Sizes">
+      {/* Hero */}
+      <div className="bg-[#1453E6] text-white rounded-lg px-6 py-8 mb-6">
+        <h1 className="text-3xl font-semibold text-center">Sizes</h1>
+      </div>
+
+      {/* Summary boxes */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-5 mb-4">
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-slate-500">Total Mantas Sized</div>
+          <div className="text-2xl font-semibold">{summary?.total_mantas ?? "—"}</div>
+        </div>
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-slate-500">Catalog IDs</div>
+          <div className="text-2xl font-semibold">{summary?.catalog_ids ?? "—"}</div>
+        </div>
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-slate-500">Males</div>
+          <div className="text-2xl font-semibold">{summary?.males ?? "—"}</div>
+        </div>
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-slate-500">Females</div>
+          <div className="text-2xl font-semibold">{summary?.females ?? "—"}</div>
+        </div>
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-slate-500">Adults</div>
+          <div className="text-2xl font-semibold">{summary?.adults ?? "—"}</div>
+        </div>
+      </div>
+
+      {/* Quadrant boxes */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-4 mb-6">
+        <SectionStat title="Adult Males" q={adultMale} />
+        <SectionStat title="Adult Females" q={adultFemale} />
+        <SectionStat title="Juvenile Males" q={juvMale} />
+        <SectionStat title="Juvenile Females" q={juvFemale} />
+      </div>
+
+      {/* Search - sits in the light blue band, outside the filter box */}
+      <div className="bg-slate-100 border rounded-lg px-3 py-3 mb-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by Catalog ID or Name..."
+          className="w-full border rounded-md px-3 py-2 bg-white"
+        />
+      </div>
+
+      {/* Filter pills + sort */}
+      <div className="bg-slate-100 border rounded-lg p-3 mb-4">
+        <div className="text-sm font-medium mb-2">Filter Size by:</div>
+
+        <div className="flex flex-wrap gap-2 items-start relative">
+          {/* Species pill */}
+          <div className="relative">
+            <button
+              type="button"
+              className="px-3 py-2 rounded border bg-white text-sm"
+              onClick={() => setOpenFacet(openFacet === "species" ? "" : "species")}
+            >
+              Species
+            </button>
+            {openFacet === "species" && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border rounded shadow">
+                <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
+                  <span>Species</span>
+                  <button
+                    className="border rounded px-2 py-0.5"
+                    onClick={() => setSelectedSpecies(new Set())}
+                  >
+                    All
+                  </button>
+                </div>
+                <div className="max-h-60 overflow-auto py-1">
+                  {(facetCounts["species"] ?? []).map((it) => {
+                    const v = (it.value || "").toLowerCase();
+                    const checked = selectedSpecies.has(v);
+                    return (
+                      <label key={v} className="flex items-center justify-between px-3 py-1 text-sm">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = new Set(selectedSpecies);
+                              if (e.target.checked) next.add(v);
+                              else next.delete(v);
+                              setSelectedSpecies(next);
+                            }}
+                          />
+                          <span className="capitalize">{v || "unknown"}</span>
+                        </span>
+                        <span className="text-slate-500">{it.count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Gender pill */}
+          <div className="relative">
+            <button
+              type="button"
+              className="px-3 py-2 rounded border bg-white text-sm"
+              onClick={() => setOpenFacet(openFacet === "gender" ? "" : "gender")}
+            >
+              Gender
+            </button>
+            {openFacet === "gender" && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border rounded shadow">
+                <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
+                  <span>Gender</span>
+                  <button
+                    className="border rounded px-2 py-0.5"
+                    onClick={() => setSelectedGender(new Set())}
+                  >
+                    All
+                  </button>
+                </div>
+                <div className="max-h-60 overflow-auto py-1">
+                  {(facetCounts["gender"] ?? []).map((it) => {
+                    const v = it.value || "Unknown";
+                    const checked = selectedGender.has(v);
+                    return (
+                      <label key={v} className="flex items-center justify-between px-3 py-1 text-sm">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = new Set(selectedGender);
+                              if (e.target.checked) next.add(v);
+                              else next.delete(v);
+                              setSelectedGender(next);
+                            }}
+                          />
+                          <span>{v}</span>
+                        </span>
+                        <span className="text-slate-500">{it.count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Age class pill */}
+          <div className="relative">
+            <button
+              type="button"
+              className="px-3 py-2 rounded border bg-white text-sm"
+              onClick={() => setOpenFacet(openFacet === "age_class" ? "" : "age_class")}
+            >
+              Age Class
+            </button>
+            {openFacet === "age_class" && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border rounded shadow">
+                <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
+                  <span>Age Class</span>
+                  <button
+                    className="border rounded px-2 py-0.5"
+                    onClick={() => setSelectedAge(new Set())}
+                  >
+                    All
+                  </button>
+                </div>
+                <div className="max-h-60 overflow-auto py-1">
+                  {(facetCounts["age_class"] ?? []).map((it) => {
+                    const v = it.value || "Unknown";
+                    const checked = selectedAge.has(v);
+                    return (
+                      <label key={v} className="flex items-center justify-between px-3 py-1 text-sm">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = new Set(selectedAge);
+                              if (e.target.checked) next.add(v);
+                              else next.delete(v);
+                              setSelectedAge(next);
+                            }}
+                          />
+                          <span>{v}</span>
+                        </span>
+                        <span className="text-slate-500">{it.count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sort control */}
+          <div className="ml-auto text-sm flex items-center gap-2">
+            <span className="text-slate-600">Sort by Catalog ID</span>
+            <button
+              type="button"
+              title="Ascending"
+              className={`p-0 leading-none ${sortAsc ? "text-sky-600" : "text-slate-500"}`}
+              onClick={() => setSortAsc(true)}
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              title="Descending"
+              className={`p-0 leading-none ${!sortAsc ? "text-sky-600" : "text-slate-500"}`}
+              onClick={() => setSortAsc(false)}
+            >
+              ▼
+            </button>
+
+            <button
+              type="button"
+              className="ml-4 border rounded px-3 py-2 text-sm hover:bg-white"
+              onClick={() => {
+                setSelectedSpecies(new Set());
+                setSelectedGender(new Set());
+                setSelectedAge(new Set());
+                setSearch("");
+              }}
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter log */}
+      <div className="text-xs text-slate-600 mb-3">
+        {filtered.length} records showing of {rows.length} total records
+        {filterTags.length ? ` (filtered by ${filterTags.join(", ")})` : ""}
+      </div>
+
+      {/* Cards grid */}
+      {loading ? (
+        <div className="text-sm text-slate-500">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-sm text-slate-500">No results found.</div>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {filtered.map((r) => (
+            <div key={r.pk_catalog_id} className="border rounded-lg overflow-hidden">
+              <div className="bg-white p-2 flex items-center justify-center">
+                {r.thumbnail_url ? (
+                  <img
+                    src={r.thumbnail_url}
+                    alt={r.name ?? `Catalog ${r.pk_catalog_id}`}
+                    className="max-h-56 object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-56 flex items-center justify-center text-slate-400 text-sm w-full">
+                    No Photo
+                  </div>
+                )}
+              </div>
+              <div className="p-3 text-xs space-y-1">
+                <div className="font-semibold">Catalog: {r.pk_catalog_id}</div>
+                <div>Name: {r.name ?? "—"}</div>
+                <div>Species: {r.species ?? "—"}</div>
+                <div>Gender: {r.gender ?? "—"}</div>
+                <div>Age: {r.age_class ?? "—"}</div>
+                <div>Total Sizes: {r.total_sizes ?? 0}</div>
+                <div>Last Size: {fmtM(r.last_size_m)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Layout>
+  );
+}

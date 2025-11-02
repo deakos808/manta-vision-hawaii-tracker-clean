@@ -326,7 +326,7 @@ async function handleAddFilesImmediate(files: FileList | null){
                 <div><span className="text-slate-500">Lens:</span> {sess.lens_type || "-"}</div>
                 <div><span className="text-slate-500">Laser setup:</span> {sess.laser_setup || "-"}</div>
                 <div><span className="text-slate-500">Default scale:</span> {fmtMeters(sess.default_scale_m)}</div>
-                <div><span className="text-slate-500">Created:</span> {new Date(sess.created_at).toLocaleString()}</div>
+                <div><span className="text-slate-500">Date:</span> {new Date(sess.created_at).toLocaleString()}</div>
               </div>
               <div className="mt-2 text-sm text-slate-600">
                 <span className="mr-4">Photos: {photos.length}</span>

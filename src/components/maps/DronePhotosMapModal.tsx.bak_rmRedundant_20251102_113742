@@ -1,0 +1,296 @@
+import * as React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import L, { Map as LeafletMap, LayerGroup, DivIcon } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { supabase } from "@/lib/supabase";
+
+type PhotoPoint = {
+  id: string | number;                  // pk_drone_photo (or similar)
+  lat: number;                          // drone_photo_lat
+  lon: number;                          // drone_photo_lon
+  ts?: string | null;                   // drone_photo_timestamp
+  pilot?: string | null;                // drone_pilot
+  mantas?: number | null;               // total_mantas
+};
+
+type Props = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title?: string;
+  points: PhotoPoint[];
+};
+
+type Group = { lat: number; lon: number; items: PhotoPoint[] };
+
+function round5(n: number) {
+  return Math.round(n * 1e5) / 1e5;
+}
+
+function groupByExactCoord(points: PhotoPoint[]): Map<string, Group> {
+  const m = new Map<string, Group>();
+  for (const p of points || []) {
+    const lat = Number(p.lat), lon = Number(p.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const key = `${round5(lat)},${round5(lon)}`;
+    if (!m.has(key)) m.set(key, { lat: round5(lat), lon: round5(lon), items: [] });
+    m.get(key)!.items.push(p);
+  }
+  return m;
+}
+
+function makeBadgeIcon(count?: number): DivIcon {
+  const txt = String(count ?? 0);
+  return L.divIcon({
+    html: `
+      <div style="position:relative;width:26px;height:26px;">
+        <div style="
+          position:absolute;left:0;top:0;width:26px;height:26px;
+          border-radius:9999px;background:#2563eb;color:#fff;
+          display:flex;align-items:center;justify-content:center;
+          font-weight:800;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.35);">
+          ${txt}
+        </div>
+      </div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  }) as unknown as DivIcon;
+}
+
+export default function DronePhotosMapModal({ open, onOpenChange, title = "Photo Map", points }: Props) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const mapRef = React.useRef<LeafletMap | null>(null);
+  const overlayRef = React.useRef<LayerGroup | null>(null);
+
+  const groups = React.useMemo(() => groupByExactCoord(points), [points]);
+
+  React.useEffect(() => {
+    if (!open) {
+      teardown();
+      return;
+    }
+    let raf: number | null = null;
+    const init = () => {
+      if (!containerRef.current) { raf = requestAnimationFrame(init); return; }
+      if (mapRef.current) { draw(); return; }
+      const arr = Array.from(groups.values());
+      const has = arr.length > 0;
+      const defaultCenter: [number, number] = [20.7984, -156.3319]; // Hawaiʻi
+      const center = has
+        ? ((): [number, number] => {
+            const lat = arr.reduce((s, g) => s + g.lat, 0) / arr.length;
+            const lon = arr.reduce((s, g) => s + g.lon, 0) / arr.length;
+            return [lat, lon];
+          })()
+        : defaultCenter;
+
+      const map = L.map(containerRef.current!, { center, zoom: has ? 11 : 7, zoomControl: false });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+      L.control.zoom({ position: "topleft" }).addTo(map);
+
+      mapRef.current = map;
+      overlayRef.current = L.layerGroup().addTo(map);
+
+      if (has) {
+        const bounds = L.latLngBounds(arr.map(g => L.latLng(g.lat, g.lon)));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+      }
+      draw();
+    };
+    raf = requestAnimationFrame(init);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [open, groups]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    draw();
+  }, [open, groups]);
+
+  function teardown() {
+    try { overlayRef.current?.remove(); } catch { /* noop */ }
+    overlayRef.current = null;
+    try { mapRef.current?.remove(); } catch { /* noop */ }
+    mapRef.current = null;
+  }
+
+  function draw() {
+    const toInt = (v:any) => { const n = parseInt(String(v ?? '').trim(), 10); return Number.isFinite(n) ? n : 0; };
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    if (!overlayRef.current) overlayRef.current = L.layerGroup().addTo(map);
+    overlayRef.current!.clearLayers();
+
+    groups.forEach((g) => {
+      const count = g.items.length;
+      const initialSum = g.items.reduce((a, it:any) => a + (typeof it?.mantas === 'number' ? it.mantas : (typeof it?.total_mantas === 'number' ? it.total_mantas : 0)), 0);
+      const badgeValue = (count === 1)
+        ? (() => { const v:any = g.items[0]; const m = toInt(v?.mantas ?? v?.total_mantas); return m > 0 ? m : 1; })()
+        : (initialSum > 0 ? initialSum : count);
+      const icon = makeBadgeIcon(badgeValue);
+      const marker = L.marker([g.lat, g.lon], { icon: icon as any, zIndexOffset: 1000 }).addTo(overlayRef.current!);
+
+      
+      // Set badge from mantas (single) or sum of mantas (multi)
+      {
+        const count = g.items.length;
+        let badgeValue = 1;
+        if (count === 1) {
+          const v:any = g.items[0];
+          const m = toInt(v?.mantas ?? v?.total_mantas);
+          badgeValue = m > 0 ? m : 1;
+        } else {
+          const sum = g.items.reduce((a:number, it:any) => {
+            const m = (typeof it?.mantas === 'number') ? it.mantas
+                    : (typeof it?.total_mantas === 'number') ? it.total_mantas
+                    : 0;
+            return a + (Number.isFinite(m) ? m : 0);
+          }, 0);
+          badgeValue = sum > 0 ? sum : count;
+        }
+        try { marker.setIcon(makeBadgeIcon(badgeValue)); } catch {}
+      }
+const rows = g.items.map((it) => {
+        const id = it?.id ?? "";
+        const idAttr = id ? ` data-id="${id}"` : "";
+        // Placeholders; we’ll fill from DB if needed
+        const date = it?.ts ? String(it.ts).slice(0,10) : "—";
+        const pilot = it?.pilot ?? "—";
+        const m = (typeof it?.mantas === "number") ? String(it.mantas) : "—";
+        return `
+          <div style="display:flex;gap:8px;align-items:center;padding:2px 0;">
+            <div style="min-width:90px"><span class="js-photo" data-id="${id}" data-field="date">${date}</span></div>
+            <div style="flex:1"><span class="js-photo" data-id="${id}" data-field="pilot">${pilot}</span></div>
+            <div style="min-width:30px;text-align:right;"><span class="js-photo" data-id="${id}" data-field="mantas">${m}</span></div>
+            ${id ? `<a href="#"${idAttr} style="margin-left:8px;color:#2563eb;text-decoration:none">open</a>` : ""}
+          </div>`;
+      }).join("");
+
+      const html = `
+        <div style="min-width:320px">
+          <div style="font-weight:700;margin-bottom:6px">${count} ${count === 1 ? "photo" : "photos"} at ${g.lat.toFixed(5)}, ${g.lon.toFixed(5)}</div>
+          <div style="font-size:12px;color:#111;max-height:240px;overflow:auto;">
+            <div style="display:flex;gap:8px;font-weight:600;opacity:.7;">
+              <div style="min-width:90px">Date</div>
+              <div style="flex:1">Drone Pilot</div>
+              <div style="min-width:30px;text-align:right;">M</div>
+              <div style="width:28px"></div>
+            </div>
+            ${rows || "<em>No details</em>"}
+          </div>
+        </div>`;
+
+      marker.bindPopup(html);
+
+      // Optional: fetch missing details for those rows from a photos table, if you want “source of truth”.
+      marker.on("popupopen", async (ev: any) => {
+        const __rebadgeFromPopup = () => {
+          try {
+            const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
+            if (!root) return;
+            const spans = Array.from(root.querySelectorAll('.js-photo[data-field="mantas"]')) as HTMLElement[];
+            const total = spans.reduce((a,el)=>{ const v=parseInt(String(el.textContent ?? '').trim(),10); return a + (Number.isFinite(v)?v:0); },0);
+            const val = total > 0 ? total : 1;
+            marker.setIcon(makeBadgeIcon(val));
+          } catch {}
+        };
+        setTimeout(__rebadgeFromPopup, 0);
+    const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
+        if (!root) return;
+
+        // Keep click-through for "open"
+        root.addEventListener("click", (e: Event) => {
+          const t = e.target as HTMLElement;
+          const link = t.closest("[data-id]") as HTMLElement | null;
+          if (link) {
+            e.preventDefault();
+            const pid = String(link.getAttribute("data-id") || "");
+            // wire to whatever you need (e.g., open a sidebar); no-op for now
+            console.info("[DroneMap] open photo", pid);
+          }
+        });
+
+        // Hydrate from DB
+        (async () => {
+          const spans = Array.from(root.querySelectorAll(".js-photo")) as HTMLElement[];
+          if (!spans.length) return;
+          const ids = Array.from(new Set(spans.map(el => String(el.getAttribute("data-id") || "")).filter(Boolean)));
+          if (!ids.length) return;
+          const { data, error } = await supabase
+            .from("drone_photos")
+            .select("pk_drone_photo, drone_photo_timestamp, drone_pilot, total_mantas")
+            .in("pk_drone_photo", ids);
+          if (error || !Array.isArray(data)) return;
+          const byId: Record<string, any> = {};
+          for (const r of data) byId[String(r.pk_drone_photo)] = r;
+          for (const el of spans) {
+            const id = String(el.getAttribute("data-id") || "");
+            const field = String(el.getAttribute("data-field") || "");
+            const r = byId[id];
+            if (!r) continue;
+            if (field === "date") {
+              el.textContent = r?.drone_photo_timestamp ? String(r.drone_photo_timestamp).slice(0,10) : "—";
+            } else if (field === "pilot") {
+              el.textContent = r?.drone_pilot ?? "—";
+            } else if (field === "mantas") {
+              el.textContent = (typeof r?.total_mantas === "number") ? String(r.total_mantas) : "—";
+            }
+          }
+        })();
+        setTimeout(__rebadgeFromPopup, 200);
+      /* __recompute badge from visible rows */
+      try {
+        const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
+        if (root) {
+          const spans = Array.from(root.querySelectorAll('.js-photo[data-field="mantas"]')) as HTMLElement[];
+          const total = spans.reduce((a, el) => {
+            const v = parseInt(String(el.textContent ?? '').trim(), 10);
+            return a + (Number.isFinite(v) ? v : 0);
+          }, 0);
+          if (total > 0) marker.setIcon(makeBadgeIcon(total));
+        }
+      } catch {}
+
+        // Update badge icon to sum of mantas from fetched rows (fallback current)
+        try {
+          const total = ids.reduce((a, id) => {
+            const r = byId[String(id)] || byId[id];
+            const v = (typeof r?.total_mantas === "number") ? r.total_mantas
+                    : (typeof r?.total_manta_ids === "number" ? r.total_manta_ids : 0);
+            return a + (Number.isFinite(v) ? v : 0);
+          }, 0);
+          if (total > 0 && marker && typeof marker.setIcon === "function") {
+            marker.setIcon(makeBadgeIcon(total));
+          }
+        } catch {}
+    
+      });
+    });
+        // Update badge to sum of mantas across these rows (fallback current value)
+        try {
+          const sum = ids.reduce((a, id) => {
+            const r = byId[String(id)] || byId[id];
+            const v = (typeof r?.total_mantas === "number") ? r.total_mantas
+                    : (typeof r?.total_manta_ids === "number") ? r.total_manta_ids
+                    : 0;
+            return a + (Number.isFinite(v) ? v : 0);
+          }, 0);
+          if (sum > 0) {
+            ev?.target?.setIcon && ev.target.setIcon(makeBadgeIcon(sum));
+          }
+        } catch {}
+    
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div ref={containerRef} className="h-[60vh] w-full rounded overflow-hidden" />
+      </DialogContent>
+    </Dialog>
+  );
+}
