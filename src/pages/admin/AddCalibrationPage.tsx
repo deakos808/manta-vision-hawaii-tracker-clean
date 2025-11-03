@@ -1,15 +1,25 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 import { fmtMeters } from "../../utils/format";
 import CalibrationPhotoCard, { PhotoResult } from "../../components/calibration/CalibrationPhotoCard";
 import { saveCalibrationSession } from "../../services/calibration";
 
+
+// derive a friendly filename from common fields
+function getFileLabel(item:any): string {
+  const c = [item?.file?.name, item?.name, item?.filename, item?.file_name, item?.storage_path, item?.url, item?.src, item?.path].filter(Boolean) as string[];
+  const raw = c[0] ?? '';
+  const base = raw.split('/').pop() ?? raw;
+  return base.split('?')[0];
+}
 export default function AddCalibrationPage(){
   const navigate = useNavigate();
   const [photographerName, setPhotographerName] = useState("");
   const [cameraModel, setCameraModel] = useState("");
   const [lensType, setLensType] = useState("");
   const [laserSetup, setLaserSetup] = useState("");
+  const [measurementDate, setMeasurementDate] = useState<string>("");
   const [defaultScaleM, setDefaultScaleM] = useState<number>(0.60);
   const [editingScale, setEditingScale] = useState(false);
 
@@ -46,6 +56,10 @@ export default function AddCalibrationPage(){
             <span className="text-sm font-medium">Paired-Laser Setup</span>
             <input value={laserSetup} onChange={e=>setLaserSetup(e.target.value)} className="border rounded-md px-3 py-2" placeholder="e.g., 60 cm Alum V2" />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Date of Measurements</span>
+            <input type="date" value={measurementDate} onChange={e=>setMeasurementDate(e.target.value)} className="border rounded-md px-3 py-2" />
+          </label>
         </div>
 
         <div className="mt-4">
@@ -79,6 +93,7 @@ export default function AddCalibrationPage(){
               lens_type: lensType,
               laser_setup: laserSetup,
               default_scale_m: defaultScaleM,
+              measurement_date: measurementDate || null,
             }, payload);
             navigate("/admin/calibration");
           }}
@@ -126,6 +141,11 @@ function PhotosSection({
 }) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [results, setResults] = useState<Record<string, PhotoResult>>({});
+
+  function removePhoto(id: string) {
+    setPhotos(prev => prev.filter(p => p.id !== id));
+    setResults(prev => { const c = { ...prev }; delete c[id]; return c; });
+  }
   const [saving, setSaving] = useState(false);
 
   async function onFiles(files: FileList | null) {
@@ -206,12 +226,17 @@ function PhotosSection({
       ) : (
         <div className="space-y-6">
           {photos.map((p, idx) => (
-            <CalibrationPhotoCard
-              key={p.id}
-              photo={{ id:p.id, url:p.url, width:p.width, height:p.height, file:p.file, label:`#${idx+1}` }}
-              defaultScaleM={defaultScaleM}
-              onChange={(r)=>onCardChange(p.id, r)}
-            />
+            <div key={p.id} className="space-y-1">
+              <CalibrationPhotoCard
+                photo={{ id:p.id, url:p.url, width:p.width, height:p.height, file:p.file, label:`#${idx+1}` }}
+                defaultScaleM={defaultScaleM}
+                onChange={(r)=>onCardChange(p.id, r)}
+              />
+              {/* left-justified filename under the image */}
+              <div className="text-xs text-left text-slate-600 truncate">
+                {getFileLabel(p)}
+              </div>
+            </div>
           ))}
         </div>
       )}

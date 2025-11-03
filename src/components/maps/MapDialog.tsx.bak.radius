@@ -1,0 +1,275 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import "leaflet/dist/leaflet.css";
+import "@/styles/leaflet-fixes.css";
+import Supercluster from "supercluster";
+import { supabase } from "@/lib/supabase";
+
+type Point = { id?: number; lat: number; lon: number; date?: string | null; photographer?: string | null; total?: number | null };
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  points: Point[];
+  totalFiltered?: number;
+  children?: React.ReactNode;
+  onSelect?: (sid: number) => void;
+};
+
+export default function MapDialog({ open, onOpenChange, points, totalFiltered, children, onSelect }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inst = useRef<{ map: any; layer: any; index: any; setData: (pts: Point[]) => void; render: () => void } | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    (window as any).__map_onSelect = (sid: number) => onSelect?.(sid);
+    (window as any).handleSelectFromMap = (sid: number) => onSelect?.(sid);
+    return () => {
+      try {
+        delete (window as any).__map_onSelect;
+        delete (window as any).handleSelectFromMap;
+      } catch {}
+    };
+  }, [onSelect]);
+
+  useEffect(() => {
+    if (open) {
+      setReady(true);
+    } else {
+      setReady(false);
+      if (inst.current?.map) { try { inst.current.map.remove(); } catch {} }
+      inst.current = null;
+      if (containerRef.current) try { containerRef.current.innerHTML = ""; } catch {}
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !ready) return;
+    mountLeaflet();
+  }, [open, ready]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!inst.current?.setData) return;
+    inst.current.setData(points);
+    try { inst.current.render(); } catch {}
+  }, [open, points]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-3 pb-2">
+          <DialogTitle>Map</DialogTitle>
+          {typeof totalFiltered === "number" && (
+            <div className="text-xs text-muted-foreground">
+              Showing {points?.length ?? 0} of {totalFiltered} filtered records with coordinates
+            </div>
+          )}
+        </DialogHeader>
+        {children && <div className="px-4 pb-3 border-b bg-muted/30">{children}</div>}
+        <div className="w-full h-[540px]">
+          {!points || points.length === 0 ? (
+            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No mappable points.</div>
+          ) : (
+            <div ref={containerRef} className="w-full h-full" />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  async function mountLeaflet() {
+    const Lmod: any = await import("leaflet");
+    const L = Lmod.default ?? Lmod;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const map = L.map(el, { zoomControl: true }).setView([20, -155], 6);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+      detectRetina: true,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      crossOrigin: true
+    }).addTo(map);
+
+    const layer = L.layerGroup().addTo(map);
+    const index = new Supercluster({ radius: 50, maxZoom: 18, minPoints: 2 });
+
+    const makeBadge = (text: string, size = 28) => {
+      const r = Math.round(size / 2);
+      const html =
+        '<div style="background:#2563eb;color:#fff;border:1px solid #fff;' +
+        `width:${size}px;height:${size}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;` +
+        'font-size:12px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.25);">' +
+        text +
+        "</div>";
+      return L.divIcon({ className: "cluster-pin", html, iconSize: [size, size], iconAnchor: [r, r] });
+    };
+
+    function setData(pts: Point[]) {
+      const feats = (pts || []).map((p) => ({
+        type: "Feature" as const,
+        properties: { id: p.id ?? null, date: p.date ?? null, photographer: p.photographer ?? null, total: p.total ?? null },
+        geometry: { type: "Point" as const, coordinates: [p.lon, p.lat] }
+      }));
+      index.load(feats as any);
+      render();
+      if (pts && pts.length) {
+        const bounds = (L as any).latLngBounds(pts.map((p) => (L as any).latLng(p.lat, p.lon)));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+      }
+    }
+
+    function render() {
+      layer.clearLayers();
+      const b = map.getBounds();
+      const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const clusters = index.getClusters(bbox, map.getZoom());
+
+      const counts: Record<string, number> = {};
+      for (const c of clusters) {
+        if (!c.properties.cluster) {
+          const [lon, lat] = c.geometry.coordinates as [number, number];
+          const key = `${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+
+      const dupIndex: Record<string, Point[]> = {};
+      for (const p of points || []) {
+        const key = `${(p.lat ?? 0).toFixed(5)}|${(p.lon ?? 0).toFixed(5)}`;
+        (dupIndex[key] ||= []).push(p);
+      }
+
+      clusters.forEach((c: any) => {
+        const [lon, lat] = c.geometry.coordinates as [number, number];
+        if (c.properties.cluster) {
+          const m = L.marker([lat, lon], { icon: makeBadge(String(c.properties.point_count), 28), zIndexOffset: 100 }).addTo(layer);
+          m.on("click", () => {
+  const targetZoom = Math.min(index.getClusterExpansionZoom(c.id), map.getMaxZoom());
+  const z = Math.max(targetZoom, map.getZoom() + 2);
+  map.setView([lat, lon], z, { animate: true });
+});
+          m.on("popupopen", async (ev) => {
+            const root = ev?.popup?.getElement?.();
+            if (!root) return;
+            // Click-to-scroll binding (same behavior as single pin)
+            root.addEventListener("click", (e) => {
+              const a = (e.target.closest && e.target.closest('a[data-sid]')) || null;
+              if (!a) return;
+              e.preventDefault();
+              const sid = Number(a.getAttribute("data-sid") || "0");
+              (window).__map_onSelect?.(sid);
+            });
+            // Batch-fill details for all rows in this popup
+            const spans = Array.from(root.querySelectorAll(".js-sighting-details"));
+            if (!spans.length) return;
+            const ids = Array.from(new Set(spans.map(el => Number(el.getAttribute("data-sid") || "0")).filter(Boolean)));
+            if (!ids.length) return;
+            const { data, error } = await supabase
+              .from("sightings")
+              .select("pk_sighting_id, sighting_date, photographer, total_mantas, total_manta_ids")
+              .in("pk_sighting_id", ids);
+            if (error || !Array.isArray(data)) return;
+            const byId = {};
+            for (const r of data) byId[Number(r.pk_sighting_id)] = r;
+            for (const el of spans) {
+              const id = Number(el.getAttribute("data-sid") || "0");
+              const r = byId[id];
+              const dateStr = r?.sighting_date ? new Date(r.sighting_date).toLocaleDateString() : "—";
+              const who = r?.photographer ?? "—";
+              const totNum = (typeof r?.total_mantas === "number" ? r.total_mantas
+                             : (typeof r?.total_manta_ids === "number" ? r.total_manta_ids : undefined));
+              const tot = typeof totNum === "number" ? String(totNum) : "—";
+              el.textContent = `| ${dateStr} · ${who} · ${tot} manta(s)`;
+            }
+          });
+        } else {
+          const key = `${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          const countHere = counts[key] || 1;
+          const m = L.marker([lat, lon], { icon: makeBadge(String(countHere), countHere > 1 ? 28 : 24), zIndexOffset: 90 }).addTo(layer);
+
+          
+          const list = dupIndex[key] || [];
+          let html = '<div style="font-size:12px;line-height:1.25;white-space:nowrap;min-width:260px">';
+          if (countHere > 1 && list.length > 0) {
+            html += `<div style="font-weight:600;margin-bottom:4px">${countHere} sightings here</div><div style="max-height:200px;overflow:auto">`;
+            for (const p of list) {
+              const sid = String(p.id ?? "");
+              html += `<div style="display:flex;gap:6px;align-items:center;margin:2px 0">
+                <a href="#" data-sid="${sid}" style="color:#2563eb;text-decoration:underline">#${sid}</a>
+                <span class="js-sighting-details" data-sid="${sid}" style="color:#6b7280;white-space:nowrap">| loading…</span>
+              </div>`;
+            }
+            html += `</div>`;
+          } else {
+            const sid = String(c.properties?.id ?? "");
+            html += `<div style="display:flex;gap:6px;align-items:center;margin:2px 0">
+              <a href="#" data-sid="${sid}" style="color:#2563eb;text-decoration:underline">#${sid}</a>
+              <span class="js-sighting-details" data-sid="${sid}" style="color:#6b7280;white-space:nowrap">| loading…</span>
+            </div>`;
+          }
+          html += `</div>`;
+
+          m.bindPopup(html);
+          m.on("popupopen", (ev) => {
+            const root = ev?.popup?.getElement?.();
+            if (!root) return;
+
+            root.addEventListener("click", (e) => {
+              const a = (e.target.closest && e.target.closest('a[data-sid]')) || null;
+              if (!a) return;
+              e.preventDefault();
+              const sid = Number(a.getAttribute("data-sid") || "0");
+              (window).__map_onSelect?.(sid);
+            });
+
+            (async () => {
+              const spans = Array.from(root.querySelectorAll(".js-sighting-details"));
+              if (!spans.length) return;
+              const ids = Array.from(new Set(spans.map(el => Number(el.getAttribute("data-sid") || "0")).filter(Boolean)));
+              if (!ids.length) return;
+
+              const { data, error } = await supabase
+                .from("sightings")
+                .select("pk_sighting_id, sighting_date, photographer, total_mantas, total_manta_ids")
+                .in("pk_sighting_id", ids);
+
+              if (error || !Array.isArray(data)) return;
+
+              const byId = {};
+              for (const r of data) byId[Number(r.pk_sighting_id)] = r;
+
+              for (const el of spans) {
+                const id = Number(el.getAttribute("data-sid") || "0");
+                const r = byId[id];
+                const dateStr = r?.sighting_date ? new Date(r.sighting_date).toLocaleDateString() : "—";
+                const who = r?.photographer ?? "—";
+                const totNum = (typeof r?.total_mantas === "number" ? r.total_mantas : (typeof r?.total_manta_ids === "number" ? r.total_manta_ids : undefined));
+       const tot = typeof totNum === "number" ? String(totNum) : "—";
+                el.textContent = `| ${dateStr} · ${who} · ${tot} manta(s)`;
+              }
+            })();
+          });
+
+          m.on("popupopen", (ev: any) => {
+            const root = ev?.popup?.getElement?.() as HTMLElement;
+            if (!root) return;
+            root.addEventListener("click", (e: any) => {
+              const a = (e.target as HTMLElement).closest('a[data-sid]') as HTMLElement | null;
+              if (!a) return;
+              e.preventDefault();
+              const sid = Number(a.getAttribute("data-sid"));
+              (window as any).__map_onSelect?.(sid);
+            });
+          });
+        }
+      });
+    }
+
+    inst.current = { map, layer, index, setData, render };
+    setData(points || []);
+  }
+}

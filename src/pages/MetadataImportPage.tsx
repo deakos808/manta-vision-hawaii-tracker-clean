@@ -8,8 +8,10 @@ import Layout from '@/components/layout/Layout';
 import { TABLES_WITH_CSV_SCHEMA, type TableWithCsvSchema, csvSchemas } from '@/utils/csvSchemas';
 import { validateCsvRows } from '@/utils/ValidateCsvRows';
 import CsvImportPreview from '@/components/importTools/CsvImportPreview';
+import StagingCsvPanel from '@/components/importTools/StagingCsvPanel';
 
 export default function MetadataImportPage() {
+  const [mode, setMode] = useState<'staging'|'legacy'>('staging');
   const [selectedTable, setSelectedTable] = useState<TableWithCsvSchema | ''>('');
   const [file, setFile] = useState<File | null>(null);
   const [validRows, setValidRows] = useState<any[]>([]);
@@ -91,54 +93,78 @@ export default function MetadataImportPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="max-w-5xl mx-auto py-8">
         <h1 className="text-2xl font-bold mb-4">Metadata Import</h1>
 
-        <label className="block font-medium mb-1">Choose table</label>
-        <select
-          value={selectedTable}
-          onChange={handleTableChange}
-          className="mb-4 w-full border px-2 py-1"
-        >
-          <option value="">Select table</option>
-          {TABLES_WITH_CSV_SCHEMA.map(table => (
-            <option key={table} value={table}>{table}</option>
-          ))}
-        </select>
+        <div className="mb-6 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Mode:</span>
+          <div className="inline-flex rounded border overflow-hidden">
+            <button
+              className={`px-3 py-1 text-sm ${mode === 'staging' ? 'bg-blue-600 text-white' : 'bg-white'}`}
+              onClick={() => setMode('staging')}
+            >
+              Staging (safe)
+            </button>
+            <button
+              className={`px-3 py-1 text-sm ${mode === 'legacy' ? 'bg-blue-600 text-white' : 'bg-white'}`}
+              onClick={() => setMode('legacy')}
+            >
+              Legacy direct
+            </button>
+          </div>
+        </div>
 
-        <label className="block font-medium mb-1">Upload .csv file</label>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleFileChange}
-          className="mb-4"
-        />
+        {mode === 'staging' ? (
+          <StagingCsvPanel />
+        ) : (
+          <>
+            <label className="block font-medium mb-1">Choose table</label>
+            <select
+              value={selectedTable}
+              onChange={handleTableChange}
+              className="mb-4 w-full border px-2 py-1"
+            >
+              <option value="">Select table</option>
+              {TABLES_WITH_CSV_SCHEMA.map(table => (
+                <option key={table} value={table}>{table}</option>
+              ))}
+            </select>
 
-        {(validRows.length > 0 || invalidRows.length > 0) && (
-          <div className="mb-4">
-            <p className="text-green-600">✅ Valid rows: {validRows.length}</p>
-            <p className="text-yellow-600">⚠️ Invalid rows: {invalidRows.length}</p>
-            {invalidRows.length > 0 && (
+            <label className="block font-medium mb-1">Upload .csv file</label>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="mb-4"
+            />
+
+            {(validRows.length > 0 || invalidRows.length > 0) && (
+              <div className="mb-4">
+                <p className="text-green-600">✅ Valid rows: {validRows.length}</p>
+                <p className="text-yellow-600">⚠️ Invalid rows: {invalidRows.length}</p>
+                {invalidRows.length > 0 && (
+                  <button
+                    onClick={handleExportInvalidRows}
+                    className="bg-yellow-500 text-white px-4 py-2 rounded mt-2"
+                  >
+                    Download Invalid Rows
+                  </button>
+                )}
+                {validRows.length > 0 && (
+                  <CsvImportPreview headers={Object.keys(validRows[0])} rows={validRows.slice(0, 5)} />
+                )}
+              </div>
+            )}
+
+            {validRows.length > 0 && (
               <button
-                onClick={handleExportInvalidRows}
-                className="bg-yellow-500 text-white px-4 py-2 rounded mt-2"
+                onClick={handleImport}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
               >
-                Download Invalid Rows
+                Import {validRows.length} Records
               </button>
             )}
-            {validRows.length > 0 && (
-              <CsvImportPreview headers={Object.keys(validRows[0])} rows={validRows.slice(0, 5)} />
-            )}
-          </div>
-        )}
-
-        {validRows.length > 0 && (
-          <button
-            onClick={handleImport}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Import {validRows.length} Records
-          </button>
+          </>
         )}
       </div>
     </Layout>

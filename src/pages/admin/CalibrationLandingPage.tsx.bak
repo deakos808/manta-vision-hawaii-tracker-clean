@@ -1,0 +1,153 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Pencil, Trash2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import Layout from "@/components/layout/Layout";
+
+type SessionRow = {
+  session_id: number | string;
+  created_at: string | null;
+  measurement_date?: string | null;
+  photographer_name?: string | null;
+  camera_model?: string | null;
+  lens_type?: string | null;
+  laser_setup?: string | null;
+  photos?: number | null;
+  mean_error?: number | null;
+  mean_error_pct?: number | null; // fallback if your view exposes a different name
+};
+
+export default function CalibrationLandingPage() {
+  const [rows, setRows] = useState<SessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("calibration_session_stats")
+          .select("*");
+        if (error) throw error;
+        const list = (data ?? []) as SessionRow[];
+        // sort by measurement_date desc, fallback to created_at
+        const sorted = [...list].sort((a, b) => {
+          const ad = (a.measurement_date || a.created_at || "") as string;
+          const bd = (b.measurement_date || b.created_at || "") as string;
+          return bd.localeCompare(ad);
+        });
+        setRows(sorted);
+      } catch (e) {
+        console.error("[Calibration] fetch error", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <Layout title="Calibration">
+      <div className="p-4">
+        <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center mb-4">
+          <h1 className="text-3xl font-bold">Calibration Sessions</h1>
+        </div>
+
+        <div className="px-4 sm:px-8 lg:px-16 -mt-2 mb-3">
+          <span className="text-sm">
+            <Link to="/browse/data" className="underline">← Return to Browse Data</Link>
+            <span className="mx-2">/</span>
+            <span>Calibration</span>
+          </span>
+        </div>
+
+        <div className="px-4 sm:px-8 lg:px-16">
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-sm text-muted-foreground">
+              View and manage uploaded calibration sessions.
+            </p>
+            <button
+              className="border rounded px-3 py-2 text-sm"
+              onClick={() => navigate("/admin/calibration/new")}
+            >
+              + New Calibration
+            </button>
+          </div>
+
+          <div className="bg-white rounded border">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gray-50 text-left text-sm">
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Photographer</th>
+                  <th className="px-3 py-2 text-center">Camera</th>
+                  <th className="px-3 py-2 text-center">Lens</th>
+                  <th className="px-3 py-2 text-center">Laser setup</th>
+                  <th className="px-3 py-2 text-center">Photos</th>
+                  <th className="px-3 py-2 text-center">Mean error</th>
+                  <th className="px-3 py-2 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!loading && rows.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-4 text-sm text-gray-500" colSpan={7}>
+                      No sessions found.
+                    </td>
+                  </tr>
+                )}
+                {rows.map((r) => {
+                  const date = (r as any).measurement_date || (r as any).created_at || null;
+                  const mean =
+                    typeof r.mean_error === "number"
+                      ? r.mean_error
+                      : typeof r.mean_error_pct === "number"
+                      ? r.mean_error_pct
+                      : null;
+                  return (
+                    <tr key={String(r.session_id)} className="border-t text-sm">
+                      <td className="px-3 py-2">
+                        {date ? new Date(date).toLocaleString() : "—"}
+                      </td>
+                      <td className="px-3 py-2">{r.photographer_name || "—"}</td>
+                      <td className="px-3 py-2 text-center">{r.camera_model || "—"}</td>
+                      <td className="px-3 py-2 text-center">{r.lens_type || "—"}</td>
+                      <td className="px-3 py-2 text-center">{r.laser_setup || "—"}</td>
+                      <td className="px-3 py-2 text-center">{r.photos ?? 0}</td>
+                      <td className="px-3 py-2 text-center">
+                        {typeof r.mean_error_pct === "number" ? r.mean_error_pct.toFixed(2) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-center whitespace-nowrap">
+                        <button data-action-edit
+                                className="inline-flex items-center p-1 rounded hover:bg-gray-100 mr-2"
+                                title="Edit"
+                                onClick={() => navigate(`/admin/calibration/${r.session_id}`)}>
+                          <i className="sr-only">Edit</i>
+                          <span className="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path d="M11 4h2M4 13v7h7l9-9a2 2 0 0 0-2.83-2.83l-9 9H4z"/></svg></span>
+                        </button>
+                        <button data-action-delete
+                                className="inline-flex items-center p-1 rounded hover:bg-red-50 text-red-600"
+                                title="Delete"
+                                onClick={async () => { if (confirm("Delete this calibration and its photos?")) { try { await supabase.from("calibration_photos").delete().eq("session_id", r.session_id); await supabase.from("calibration_sessions").delete().eq("id", r.session_id); const { data, error } = await supabase.from("calibration_session_stats").select("*"); if (!error) { const list = (data||[]); const sorted = [...list].sort((a:any,b:any)=> String(b.measurement_date||b.created_at||"").localeCompare(String(a.measurement_date||a.created_at||""))); (window as any).scrollTo(0,0); }} catch(e) { console.error(e); } }}>
+                          <i className="sr-only">Delete</i>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6v12m8-12v12M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14M10 6h4m-4 0V4h4v2"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {loading && (
+                  <tr>
+                    <td className="px-3 py-4 text-sm text-gray-500" colSpan={7}>
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}

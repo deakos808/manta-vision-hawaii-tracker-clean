@@ -1,0 +1,104 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+// @ts-ignore
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+export type PhotoPoint = {
+  id: string;
+  lat: number;
+  lon: number;
+  count?: number | null;      // mantas in photo → number on pin
+  dateISO?: string | null;    // popup
+  pilot?: string | null;      // popup
+};
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "—" : d.toISOString().slice(0,10);
+}
+
+/** DivIcon that renders the default pin image with an inline number overlay */
+function makeCountIcon(count?: number | null) {
+  const txt = String(count ?? 0);
+  const html =
+    `<div style="position:relative;width:25px;height:41px">
+       <img src="${markerIcon}" srcset="${markerIcon2x} 2x"
+            style="position:absolute;inset:0;width:25px;height:41px;display:block"/>
+       <!-- blue disc over the white dot -->
+       <div style="
+            position:absolute;left:50%;top:13px;transform:translateX(-50%);
+            width:16px;height:16px;border-radius:9999px;
+            background:#2563eb;box-shadow:0 1px 2px rgba(0,0,0,.3);">
+       </div>
+       <!-- white number, centered -->
+       <span style="
+            position:absolute;left:50%;top:13px;transform:translateX(-50%);
+            width:16px;height:16px;line-height:16px;text-align:center;
+            color:#fff;font-weight:800;font-size:11px;pointer-events:none;">
+         ${txt}
+       </span>
+     </div>`;
+  return L.divIcon({
+    className: "",              // no external CSS
+    html,
+    iconSize: [25,41],          // Leaflet defaults (stable anchoring)
+    iconAnchor: [12,41],
+    popupAnchor: [1,-34],
+    shadowUrl: markerShadow,
+    shadowSize: [41,41],
+    shadowAnchor: [12,41],
+  });
+}
+
+export default function DronePhotosMapModal({
+  open, onOpenChange, title = "Photo Map", points,
+}: {
+  open: boolean;
+  onOpenChange: (v:boolean)=>void;
+  title?: string;
+  points: PhotoPoint[];
+}) {
+  // sanity log so we can confirm this file is active
+  console.info("[DronePhotosMapModal] inline-icon v1, points:", points?.length ?? 0);
+
+  const center = useMemo<[number,number]>(() => {
+    if (points?.length) {
+      const lat = points.reduce((s,p)=>s+p.lat,0)/points.length;
+      const lon = points.reduce((s,p)=>s+p.lon,0)/points.length;
+      return [lat,lon];
+    }
+    return [20.7984,-156.3319];
+  }, [points]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <div className="h-[60vh] w-full rounded overflow-hidden">
+          <MapContainer center={center} zoom={10} style={{height:"100%",width:"100%"}}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            />
+            {points?.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)).map(p=>(
+              <Marker key={p.id} position={[p.lat,p.lon]} icon={makeCountIcon(p.count)}>
+                <Popup>
+                  <div style="font-weight:700;font-size:14px;line-height:1.1;margin-bottom:2px">
+                    {fmtDate(p.dateISO)}
+                  </div>
+                  <div style="font-size:13px;color:#374151">{p.pilot || "—"}</div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
