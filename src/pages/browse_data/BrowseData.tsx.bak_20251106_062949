@@ -33,11 +33,11 @@ export default function BrowseData() {
           <Button variant="outline" onClick={() => navigate('/browse/photos')}>
             📸 Search Photos
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/sizes')}>
-            🔎 Search Sizes
-          </Button>
           <Button variant="outline" onClick={() => navigate('/browse/drone')}>
             🚁 Drone Surveys
+          </Button>
+          <Button variant="outline" className="text-lg py-6 col-span-full sm:col-span-2" onClick={() => navigate('/browse/sizes')}>
+            🔎 Search Sizes
           </Button>
         </div>
 

@@ -116,9 +116,7 @@ export default function MantasPage() {
               "photographer", // fallback if sightings.photographer is null
               "catalog:fk_catalog_id ( name )",
               "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
-            
-  "best_thumb_url"
-].join(",")
+            ].join(",")
           )
           .range(from, from + PAGE - 1);
 
@@ -425,7 +423,7 @@ export default function MantasPage() {
                 >
                   <div className="w-full aspect-square overflow-hidden rounded-lg border bg-gray-50">
                     <img
-                      src={ m.best_thumb_url || fallbackImage }
+                      src={ (m?.preferred_thumb_url || e?.preferred_thumb_url || fallbackImage) }
                       alt={m.name ?? `Manta ${m.pk_manta_id}`}
                       className="h-full w-full object-cover"
                       onError={(e) =>

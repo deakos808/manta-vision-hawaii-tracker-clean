@@ -91,7 +91,7 @@ export default function MantasPage() {
 
     async function fetchTotal() {
       const { count } = await supabase
-        .from("mantas_preferred_for_browse")
+        .from("mantas")
         .select("*", { count: "exact", head: true });
       if (!active) return;
       setTotalMantas(count ?? 0);
@@ -107,7 +107,7 @@ export default function MantasPage() {
 
       for (let from = 0; ; from += PAGE) {
         let q = supabase
-          .from("mantas_preferred_for_browse")
+          .from("mantas")
           .select(
             [
               "pk_manta_id",
@@ -116,9 +116,7 @@ export default function MantasPage() {
               "photographer", // fallback if sightings.photographer is null
               "catalog:fk_catalog_id ( name )",
               "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
-            
-  "best_thumb_url"
-].join(",")
+            ].join(",")
           )
           .range(from, from + PAGE - 1);
 
@@ -346,7 +344,7 @@ export default function MantasPage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search name || ID…"
+              placeholder="Search name or ID…"
               aria-label="Search mantas"
               className="max-w-md mb-3 bg-white"
             />
@@ -425,12 +423,10 @@ export default function MantasPage() {
                 >
                   <div className="w-full aspect-square overflow-hidden rounded-lg border bg-gray-50">
                     <img
-                      src={ m.best_thumb_url || fallbackImage }
+                      src={(m.best_manta_ventral_thumb_url || m.best_manta_thumb_url || m.ventral_thumb_url || m.thumbnail_url || fallbackImage)}
                       alt={m.name ?? `Manta ${m.pk_manta_id}`}
                       className="h-full w-full object-cover"
-                      onError={(e) =>
-                        ((e.target as HTMLImageElement).src = fallbackImage)
-                      }
+                      onError={(e)=>{const img=e.currentTarget; if(img.src!==fallbackImage) img.src=fallbackImage;}}
                     />
                   </div>
 

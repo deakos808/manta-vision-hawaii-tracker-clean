@@ -14,9 +14,9 @@ import {
 const keyFeatures = [
   {
     icon: '📷',
-    title: 'Image Matching',
+    title: 'Image Recognition',
     description:
-      'Upload photos of manta rays to match against the Hawaii catalog. Automated pattern matching coming soon! ',
+      'Upload photos of manta rays for automatic identification using our advanced pattern matching algorithm.',
   },
   {
     icon: '🗂',
@@ -136,25 +136,25 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Group */}
-      <div className="max-w-6xl mx-auto mt-8 px-4 text-center">
-        <div className="inline-block bg-gray-50 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto justify-items-center justify-center place-items-center">
+      <div className="max-w-6xl mx-auto mt-8 px-4">
+        <div className="bg-gray-50 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Total Mantas</CardTitle>
+              <CardTitle>Total Mantas</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold text-center">{stats.totalMantas}</CardContent>
+            <CardContent className="text-3xl font-bold">{stats.totalMantas}</CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Total Sightings</CardTitle>
+              <CardTitle>Total Sightings</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold text-center">{stats.totalSightings}</CardContent>
+            <CardContent className="text-3xl font-bold">{stats.totalSightings}</CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Latest Activity</CardTitle>
+              <CardTitle>Latest Activity</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold text-center">{latestActivity ?? stats.latestActivity ?? "—"}</CardContent>
+            <CardContent className="text-3xl font-bold">{latestActivity ?? stats.latestActivity ?? "—"}</CardContent>
           </Card>
         </div>
       </div>

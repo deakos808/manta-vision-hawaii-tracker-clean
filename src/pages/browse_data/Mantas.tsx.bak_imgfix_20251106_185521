@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from '@/lib/supabase';
 import fallbackImage from "@/assets/hamer_logo_1.png";
 import { Link, useSearchParams } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { deleteManta } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,34 @@ type MantaFacetRow = {
 const PAGE = 1000;
 
 export default function MantasPage() {
-  const isAdmin = useIsAdmin();
+    const [thumbByManta, setThumbByManta] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    try {
+      const ids = (filtered || []).map((m:any) => m.pk_manta_id).filter((x:any)=>Number.isFinite(x));
+      if (!ids.length) { setThumbByManta({}); return; }
+      (async () => {
+        // fetch preferred thumbnail for all ids with one query using IN + DISTINCT ON view
+        const { data, error } = await supabase
+          .from('manta_preferred_thumb')
+          .select('fk_manta_id,thumbnail_url,storage_path');
+        if (error || !Array.isArray(data)) { console.warn('[Mantas] pref thumb load', error); return; }
+        const pick: Record<number,string> = {};
+        for (const r of data) {
+          const id = Number(r.fk_manta_id);
+          if (!ids.includes(id)) continue; // only current page
+          const url = (r.thumbnail_url && String(r.thumbnail_url).trim()) || '';
+          const path = (r.storage_path && String(r.storage_path).trim()) || '';
+          pick[id] = url || path || '';
+        }
+        setThumbByManta(pick);
+      })();
+    } catch (e) {
+      console.warn('[Mantas] pref thumb effect error', e);
+    }
+  }, [filtered]);
+
+const isAdmin = useIsAdmin();
   const [searchParams] = useSearchParams();
 
   // Optional scoping context from the URL
@@ -91,7 +118,7 @@ export default function MantasPage() {
 
     async function fetchTotal() {
       const { count } = await supabase
-        .from("mantas_preferred_for_browse")
+        .from('mantas_with_preferred_thumb')
         .select("*", { count: "exact", head: true });
       if (!active) return;
       setTotalMantas(count ?? 0);
@@ -107,7 +134,7 @@ export default function MantasPage() {
 
       for (let from = 0; ; from += PAGE) {
         let q = supabase
-          .from("mantas_preferred_for_browse")
+          .from('mantas_with_preferred_thumb')
           .select(
             [
               "pk_manta_id",
@@ -116,9 +143,7 @@ export default function MantasPage() {
               "photographer", // fallback if sightings.photographer is null
               "catalog:fk_catalog_id ( name )",
               "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
-            
-  "best_thumb_url"
-].join(",")
+            ].join(",")
           )
           .range(from, from + PAGE - 1);
 
@@ -346,7 +371,7 @@ export default function MantasPage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search name || ID…"
+              placeholder="Search name or ID…"
               aria-label="Search mantas"
               className="max-w-md mb-3 bg-white"
             />
@@ -423,14 +448,22 @@ export default function MantasPage() {
                   key={m.pk_manta_id}
                   className="flex flex-col rounded-xl border bg-white p-4 shadow-sm"
                 >
-                  <div className="w-full aspect-square overflow-hidden rounded-lg border bg-gray-50">
+                  <div className="relative w-full aspect-square overflow-hidden rounded-lg border bg-gray-50">
                     <img
-                      src={ m.best_thumb_url || fallbackImage }
-                      alt={m.name ?? `Manta ${m.pk_manta_id}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) =>
-                        ((e.target as HTMLImageElement).src = fallbackImage)
-                      }
+      src={m?.preferred_thumb_url || fallbackImage}
+      alt={m?.name ?? `Manta ${m?.pk_manta_id}`}
+      className="relative w-full aspect-square object-cover rounded border"
+      onError={(e)=>{const img=e.currentTarget; if(img.src!==fallbackImage) img.src=fallbackImage;}}
+    />
+    {!m?.preferred_thumb_url && (
+      <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-slate-500">
+        no photos
+      </div>
+    )}
+    </div>
+                ) : null}
+
+{const img=e.currentTarget; if(img.src!==fallbackImage) img.src=fallbackImage;}}
                     />
                   </div>
 

@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from '@/lib/supabase';
+import { useIsAdmin } from '@/lib/isAdmin';
 import { Link, useSearchParams } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import { deletePhoto } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
 import { ChevronUp } from "lucide-react";
@@ -55,6 +57,7 @@ const PAGE_SIZE = 80;
 type PillOption = { value: string; count: number };
 
 export default function PhotosPage() {
+    const isAdmin = useIsAdmin();
 const [searchParams] = useSearchParams();
   const mantaIdParam = searchParams.get("mantaId");
   const catalogIdParam = searchParams.get("catalogId");
@@ -620,44 +623,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
                   <p><strong>Manta:</strong> {photo.fk_manta_id ?? "n/a"}</p>
                   <p><strong>Photo:</strong> {photo.pk_photo_id}</p>
                   <p><strong>Photographer:</strong> {photo.photographer ?? "n/a"}</p>
-                  {isAdmin ? (
-  <div className="mt-1 text-xs">
-    <label className="mr-2 font-semibold">View:</label>
-    <select
-      className="border rounded px-2 py-1 text-xs"
-      value={(photo.photo_view ?? '').toString().toLowerCase()}
-      onChange={async (e) => {
-        const newVal = (e.target.value || null) as any;
-        const prev = photo.photo_view ?? null;
-        try {
-          // optimistic update
-          setPhotos((arr) => arr.map(x => x.pk_photo_id === photo.pk_photo_id ? { ...x, photo_view: newVal } : x));
-          const { error } = await supabase
-            .from('photos')
-            .update({ photo_view: newVal })
-            .eq('pk_photo_id', photo.pk_photo_id);
-          if (error) {
-            // rollback on error
-            setPhotos((arr) => arr.map(x => x.pk_photo_id === photo.pk_photo_id ? { ...x, photo_view: prev as any } : x));
-            console.error('[photos] update photo_view failed', error);
-            alert('Failed to update view.');
-          }
-        } catch (err) {
-          setPhotos((arr) => arr.map(x => x.pk_photo_id === photo.pk_photo_id ? { ...x, photo_view: prev as any } : x));
-          console.error('[photos] update photo_view threw', err);
-          alert('Failed to update view.');
-        }
-      }}
-    >
-      <option value="">—</option>
-      <option value="ventral">ventral</option>
-      <option value="dorsal">dorsal</option>
-      <option value="other">other</option>
-    </select>
-  </div>
-) : (
-  <p><strong>View:</strong> {photo.photo_view ?? '—'}</p>
-)}
+                  <p><strong>View:</strong> {photo.photo_view}</p>
           {isAdmin && (
             <div className="mt-1">
               <button

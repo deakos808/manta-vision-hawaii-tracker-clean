@@ -3,7 +3,6 @@ import { ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navigation from './Navigation';
 import { Toaster } from 'sonner';
-import hamerLogo from "@/assets/hamer_logo_1.png";
 
 interface AppLayoutProps {
   children?: ReactNode;
@@ -18,7 +17,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       </main>
       <footer className="bg-muted py-6 mt-auto">
         <div className="container px-4 text-center text-muted-foreground text-sm">
-          <p>© {new Date().getFullYear()} <span className="inline-flex items-center gap-2"><img src={hamerLogo} alt="Logo" className="h-7 w-7" /><span>Hawaii Manta Tracker</span></span>. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Hawaii Manta Tracker. All rights reserved.</p>
           <p className="mt-1">Developed to protect and study manta ray populations in Hawaiian waters.</p>
         </div>
       </footer>
