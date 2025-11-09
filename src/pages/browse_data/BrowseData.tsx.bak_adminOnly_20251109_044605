@@ -3,10 +3,8 @@ import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import hamerLogo from '@/assets/hamer_logo_1.png';
-import { useIsAdmin } from "@/lib/isAdmin";
 
 export default function BrowseData() {
-  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   return (
