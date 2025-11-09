@@ -391,7 +391,7 @@ export default function MantasPage() {
         <div className="text-sm text-gray-700 mb-4">{headerSubtitle}</div>
 
         {/* Results */}
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {loading && (
             <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground shadow-sm">
               Loading mantas…

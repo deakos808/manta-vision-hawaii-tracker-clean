@@ -1,0 +1,84 @@
+import React, { useRef, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { readBasicExif } from '@/lib/exif';
+
+export type DroneExifSuggestion = {
+  takenAt?: Date;
+  date?: string;
+  time?: string;
+  lat?: number;
+  lon?: number;
+};
+
+type Props = {
+  onSuggest: (s: DroneExifSuggestion) => void;
+  onHint?: (msg: string) => void;
+  /** NEW: also hand the file back so caller can import/upload it */
+  onAdd?: (file: File, s: DroneExifSuggestion) => void | Promise<void>;
+  accept?: string;
+  label?: string;
+};
+
+function pad2(n: number) { return String(n).padStart(2, '0'); }
+function toLocalYmd(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function toLocalHm(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
+export default function DroneExifPicker({
+  onSuggest,
+  onHint,
+  onAdd,
+  accept = 'image/*',
+  label = 'Drone Photo (extract EXIF date/time + GPS)',
+}: Props) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [hint, setHint] = useState<string>('');
+
+  const setTinyHint = (msg: string) => {
+    onHint?.(msg);
+    setHint(msg);
+  };
+
+  const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) { setTinyHint('No file selected'); return; }
+
+    const { takenAt, lat, lon } = await readBasicExif(file);
+    const sug: DroneExifSuggestion = {
+      takenAt,
+      date: takenAt ? toLocalYmd(takenAt) : undefined,
+      time: takenAt ? toLocalHm(takenAt) : undefined,
+      lat, lon
+    };
+
+    // always suggest (even if empty)
+    onSuggest(sug);
+
+    // hint text
+    if (!takenAt && lat == null && lon == null) {
+      setTinyHint('No EXIF GPS/Date in photo');
+      if (typeof window !== "undefined" && window.alert) window.alert("No EXIF GPS/Date in photo");
+    } else {
+      const parts = [
+        sug.date ?? '',
+        sug.time ? ` ${sug.time}` : '',
+        (lat != null && lon != null) ? ` • ${lat.toFixed(6)}, ${lon.toFixed(6)}` : '',
+      ].join('').trim();
+      if (parts) setTinyHint(parts);
+    }
+
+    // NEW: let parent import/upload the file regardless of EXIF presence
+    try { await onAdd?.(file, sug); } catch {}
+
+    // allow re-selecting same file
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-sm">{label}</Label>
+      <Input ref={inputRef} type="file" accept={accept} onChange={onChange} />
+      {!onHint && hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+    </div>
+  );
+}

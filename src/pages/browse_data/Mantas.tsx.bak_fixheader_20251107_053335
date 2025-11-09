@@ -1,0 +1,246 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from '@/lib/supabase';import { useEffect, useMemo, useState } from "react";
+
+import { supabase } from '@/lib/supabase';
+iimport { Link, useSearchParams } from "react-router-dom";
+
+import { deleteManta } from "@/lib/adminApi";
+import Layout from "@/components/layout/Layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import MantaFilterBox from "@/components/mantas/MantaFilterBox";
+import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
+import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
+
+import { useIsAdmin } from "@/lib/isAdmin";
+type MantaRow = {
+  pk_manta_id: number;
+  fk_catalog_id: number;
+  fk_sighting_id: number;
+  name: string | null;
+  population: string | null;
+  island: string | null;
+  location: string | null;
+  photographer: string | null;
+  photo_count?: number;
+  best_thumb_url?: string | null;
+};
+
+type MantaFacetRow = {
+  population: string | null;
+  island: string | null;
+  location: string | null;
+  photographer: string | null;
+};
+
+const PAGE = 1000;
+
+function SmartThumb({
+  mantaId,
+  bestUrl,
+  count,
+  alt,
+  className,
+}: {
+  mantaId: number;
+  bestUrl: string | null;
+  count: number | null;
+  alt: string;
+  className?: string;
+}) {
+  const [src, setSrc] = useState<string>(bestUrl ?? "/manta-logo.svg");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      // Only fetch if exactly one photo and we don't already have a real thumb
+      if (count === 1 && (!bestUrl || bestUrl.endsWith("manta-logo.svg"))) {
+        const { data, error } = await supabase
+          .from("photos_with_photo_view")
+          .select("thumbnail_url")
+          .eq("fk_manta_id", mantaId)
+          .limit(1);
+        if (!error && data && data[0]?.thumbnail_url && alive) {
+          setSrc(String(data[0].thumbnail_url));
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [mantaId, count, bestUrl]);
+
+  return (
+    <SmartThumb
+  mantaId={m.pk_manta_id as number}
+  bestUrl={m.best_thumb_url ?? null}
+  count={photoCount}
+  alt={m.name ?? `Manta ${m.pk_manta_id}`}
+  className="w-full h-[140px] object-cover rounded"
+/>
+          </div>
+
+<MantaFilterBox rows={facetRows}
+              population={population}
+              setPopulation={setPopulation}
+              island={island}
+              setIsland={setIsland}
+              location={location}
+              setLocation={setLocation}
+              photographer={photographer}
+              setPhotographer={setPhotographer}
+              onClear={handleClearFilters} />
+
+{/* Sort row (Catalog style) */}
+          <div className="flex items-center text-sm text-gray-700 mt-1 gap-2">
+            <span>Sort by Manta&nbsp;ID</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "" : "text-blue-600"}
+              onClick={() => setSortAsc(false)}
+              title="Newest first"
+            >
+              ▲
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={sortAsc ? "text-blue-600" : ""}
+              onClick={() => setSortAsc(true)}
+              title="Oldest first"
+            >
+              ▼
+            </Button>
+          </div>
+
+          {/* Summary below */}
+        </div>
+
+        <div className="text-sm text-gray-700 mb-4">{headerSubtitle}</div>
+
+        {/* Results */}
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
+          {loading && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground shadow-sm">
+              Loading mantas…
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-red-600 shadow-sm">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && filteredMantas.length === 0 && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground shadow-sm">
+              No mantas found{sightingId ? " for this sighting." : "."}
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            sortedMantas.map((m) => {
+                const photoCount = photoCounts[m.pk_manta_id as number] ?? null;
+              return (
+                <div
+                  id={`m${m.pk_manta_id}`}
+                  key={m.pk_manta_id}
+                  className="flex flex-col rounded border bg-white p-2 shadow-sm"
+                >
+                  <div className="w-full overflow-hidden rounded-lg border bg-gray-50">
+                    <img
+                      src={m.best_thumb_url || "/manta-logo.svg"}
+                      alt={m.name ?? `Manta ${m.pk_manta_id}`}
+                      className="w-full h-[140px] object-cover rounded"
+                      onError={(e) =>
+                        ((e.target as HTMLImageElement).src = "/manta-logo.svg")
+                      }
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="grid gap-1 text-xs">
+                      <div className="font-semibold text-sky-700">
+                        {m.name ?? `Manta — ${m.pk_manta_id}`}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-1 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Catalog ID:</span> {m.fk_catalog_id}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Manta ID:</span> {m.pk_manta_id}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Sighting ID:</span> {m.fk_sighting_id}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-1 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Population:</span>{" "}
+                          {m.population ?? "—"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Island:</span> {m.island ?? "—"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Location:</span>{" "}
+                          {m.location ?? "—"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-muted-foreground">Photographer:</span>{" "}
+                        {m.photographer ?? "—"}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+  <Button
+    className="w-full justify-center"
+    size="sm"
+    onClick={() => {
+      setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
+      setShowPhotos(true);
+    }}
+  >
+    View Photos
+    {typeof m.photo_count === "number" ? ` (${m.photo_count})` : ""}
+  </Button>
+
+  {isAdmin && (
+    <button
+      className="text-red-600 text-xs underline flex items-center gap-1"
+      title="Delete manta and photos"
+      onClick={async () => {
+        if (!confirm("Are you sure you want to delete this manta and associated photos?")) return;
+        try { await deleteManta(m.pk_manta_id); window.location.reload(); }
+        catch (e) { alert('Delete failed: ' + (e?.message || e)); }
+      }}
+    >
+      <Trash2 className="h-3 w-3" /> delete
+    </button>
+  )}
+</div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Photos modal */}
+      <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />
+    </Layout>
+  );
+}

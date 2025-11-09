@@ -1,0 +1,180 @@
+import React, { useMemo, useState } from "react";
+import Layout from "@/components/layout/Layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import DroneExifPicker from "@/components/drone/DroneExifPicker";
+
+function uuid() {
+  try { return (crypto as any).randomUUID(); }
+  catch { return Math.random().toString(36).slice(2); }
+}
+function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`\${String(h).padStart(2,"0")}:\${String(m).padStart(2,"0")}`);} } return out; }
+const TIME_OPTIONS = buildTimes(5);
+
+export default function AddDroneSightingPage() {
+  // Basic fields we’ll auto-fill from EXIF when blank
+  const [date, setDate] = useState<string>("");
+  const [time, setTime] = useState<string>("");
+  const [lat, setLat]   = useState<string>("");
+  const [lon, setLon]   = useState<string>("");
+
+  // Optional fields (non-blocking)
+  const [pilot, setPilot] = useState<string>("");
+  const [island, setIsland] = useState<string>("");
+  const [location, setLocation] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+
+  // Small hint from the EXIF picker
+  const [hint, setHint] = useState<string>("");
+
+  // Simple local probe id
+  const draftId = useMemo(()=> uuid(), []);
+
+  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
+  const timeValid = /^(\d{2}):(\d{2})$/.test(String(time || "").trim());
+
+  function applyExifSuggestion(s: { date?: string; time?: string; lat?: number; lon?: number }) {
+    // Only fill blanks; never overwrite user-entered values
+    if (s.date && !date) setDate(s.date);
+    if (s.time && !time) setTime(s.time);
+    if (typeof s.lat === "number" && !lat) setLat(s.lat.toFixed(6));
+    if (typeof s.lon === "number" && !lon) setLon(s.lon.toFixed(6));
+  }
+
+  function handleSubmitLocal() {
+    // Client-only demo: just show the payload. Later we can POST or upsert if desired.
+    const payload = {
+      draftId,
+      date: date || null,
+      time: time || null,
+      latitude: lat || null,
+      longitude: lon || null,
+      pilot: pilot || null,
+      island: island || null,
+      location: location || null,
+      notes: notes || null,
+    };
+    console.log("[AddDroneSighting][submit-preview]", payload);
+    window.alert("Draft captured in console.\nThis page is client-only for now.");
+  }
+
+  return (
+    <Layout>
+      {/* Hero */}
+      <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-8 text-white text-center">
+        <h1 className="text-3xl font-semibold">Add Drone Sighting</h1>
+        <div className="text-xs opacity-90 mt-1">draft: {draftId.slice(0,8)}</div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        {/* EXIF Picker (drone JPEGs) */}
+        <Card>
+          <CardHeader><CardTitle>Photo (EXIF Autofill)</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <DroneExifPicker
+              onSuggest={applyExifSuggestion}
+              onHint={(msg) => setHint(msg)}
+              accept="image/jpeg,image/jpg,image/heic,image/png"
+              label="Select a drone photo to extract Date/Time + GPS"
+            />
+            {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+            <div className="text-xs text-slate-500">
+              • We prefer <span className="font-mono">DateTimeOriginal</span>, fallback <span className="font-mono">CreateDate</span>.<br/>
+              • Only blank fields are auto-filled. Changing the file won’t overwrite existing values.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* When */}
+        <Card>
+          <CardHeader><CardTitle>Date &amp; Time</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-3">
+            <input
+              type="date"
+              value={date}
+              onChange={(e)=>setDate(e.target.value)}
+              className="border rounded px-3 py-2"
+            />
+            <select
+              value={time}
+              onChange={(e)=>setTime(e.target.value)}
+              className="border rounded px-3 py-2"
+            >
+              <option value="">Time (HH:mm)</option>
+              {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input
+              placeholder="Drone Pilot"
+              value={pilot}
+              onChange={(e)=>setPilot(e.target.value)}
+              className="border rounded px-3 py-2"
+            />
+            {(!dateValid && date) && <div className="text-xs text-red-500 md:col-span-3">Invalid date</div>}
+            {(!timeValid && time) && <div className="text-xs text-red-500 md:col-span-3">Invalid time (HH:mm)</div>}
+          </CardContent>
+        </Card>
+
+        {/* Where */}
+        <Card>
+          <CardHeader><CardTitle>Location</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3">
+              <input
+                placeholder="Island"
+                value={island}
+                onChange={(e)=>setIsland(e.target.value)}
+                className="border rounded px-3 py-2"
+              />
+              <input
+                placeholder="Location (name)"
+                value={location}
+                onChange={(e)=>setLocation(e.target.value)}
+                className="border rounded px-3 py-2"
+              />
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <input
+                placeholder="Latitude"
+                value={lat}
+                onChange={(e)=>setLat(e.target.value)}
+                className="border rounded px-3 py-2"
+                inputMode="decimal"
+              />
+              <input
+                placeholder="Longitude"
+                value={lon}
+                onChange={(e)=>setLon(e.target.value)}
+                className="border rounded px-3 py-2"
+                inputMode="decimal"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notes */}
+        <Card>
+          <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+          <CardContent>
+            <textarea
+              className="w-full min-h-[120px] border rounded px-3 py-2"
+              placeholder="Observations, weather, etc."
+              value={notes}
+              onChange={(e)=>setNotes(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="flex justify-center mt-6 gap-2">
+          <Button variant="outline" onClick={()=>window.history.back()}>Cancel</Button>
+          <Button onClick={handleSubmitLocal} disabled={!dateValid}>
+            Save Draft (Client Only)
+          </Button>
+        </div>
+        <div id="probe-add-drone-sighting" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">
+          probe:add-drone-sighting v1 · exif-wired
+        </div>
+      </div>
+    </Layout>
+  );
+}

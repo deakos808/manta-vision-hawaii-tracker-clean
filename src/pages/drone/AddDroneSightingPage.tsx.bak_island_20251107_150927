@@ -1,0 +1,51 @@
+import React, { useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import Layout from "@/components/layout/Layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import DroneExifPicker from "@/components/drone/DroneExifPicker";
+import DronePhotosModal, { type UploadedDronePhoto } from "@/components/drone/DronePhotosModal";
+
+function uuid() {
+  try { return (crypto as any).randomUUID(); }
+  catch { return Math.random().toString(36).slice(2); }
+}
+function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
+const TIME_OPTIONS = buildTimes(5);
+
+  async function uploadOne(file: File, exif: {date?: string; time?: string; lat?: number; lon?: number}) {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const id = (typeof crypto !== "undefined" && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2);
+    const path = `drone//.`;
+    const { error } = await supabase.storage.from("temp-images").upload(path, file, { upsert: false, cacheControl: "3600" });
+    if (error) { console.warn("[AddDrone] upload error", error.message); return; }
+    const { data: pub } = supabase.storage.from("temp-images").getPublicUrl(path);
+    const url = pub?.publicUrl || "";
+    setPhotos(prev =>þƒ°§¹¾½? Delete</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="flex justify-center mt-6 gap-2">
+          <Button variant="outline" onClick={()=>window.history.back()}>Cancel</Button>
+          <Button onClick={handleSubmitLocal} disabled={!dateValid}>Submit Sighting (Preview)</Button>
+        </div>
+
+        <div id="probe-add-drone-sighting" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">
+          probe:add-drone-sighting v2 Ã‚Â· exif+uploads(temp-images)
+        </div>
+      </div>
+
+      <DronePhotosModal
+        open={modalOpen}
+        onClose={()=>setModalOpen(false)}
+        draftId={draftId}
+        onAdd={onAddPhotos}
+      />
+    </Layout>
+  );
+}

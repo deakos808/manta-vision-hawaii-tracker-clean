@@ -46,22 +46,6 @@ export default function AdminDashboardPage() {
         {/* Sighting Submissions */}
         <Section title="Sighting Submissions">
   <ReviewSubmissionsTile />
-
-  {/* Drone Drafts (moved next to Submitted Sightings) */}
-  <Card>
-    <CardContent className="p-4 space-y-2">
-      <h3 className="font-semibold flex items-center gap-2">
-        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="text-sky-700">
-          <path fill="currentColor" d="M3 6h7l2 2h9v2h-9l-2 2H3zM3 14h9l2-2h7v2h-7l-2 2H3z"/>
-        </svg>
-        <span>Review Submitted Drone Sightings ({droneDraftCount})</span>
-      </h3>
-      <p className="text-sm text-muted-foreground">
-        Review, edit, mark committed, or delete draft drone sightings.
-      </p>
-      <Button variant="outline" onClick={()=>navigate("/admin/drone-drafts")}>Review</Button>
-    </CardContent>
-  </Card>
 </Section>
 
         {/* Photogrammetry */}
@@ -134,8 +118,26 @@ export default function AdminDashboardPage() {
           />
         </Section>
       </div>
-          </Layout>
-
+          <div className="max-w-6xl mx-auto px-4 py-6">
+        <h2 className="text-xl font-semibold mb-3">Drone Surveys</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="border rounded p-4 bg-white">
+                        <div className="font-medium mb-1 flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="text-sky-700">
+                <path fill="currentColor" d="M3 6h7l2 2h9v2h-9l-2 2H3zM3 14h9l2-2h7v2h-7l-2 2H3z"/>
+              </svg>
+              <span>Review Submitted Drone Sightings ({'{'}droneDraftCount{'}'})</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Review, edit, mark committed, or delete draft drone sightings.
+            </p>
+            <a href="/admin/drone-drafts">
+              <button className="px-3 py-2 rounded border bg-white hover:bg-muted text-gray-900">Open</button>
+            </a>
+          </div>
+        </div>
+      </div>
+</Layout>
   );
 }
 

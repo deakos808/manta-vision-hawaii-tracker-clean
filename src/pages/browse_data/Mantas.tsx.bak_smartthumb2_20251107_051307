@@ -469,29 +469,33 @@ export default function MantasPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center gap-2">
-      {isAdmin && (
-        <button
-          className="text-red-600 text-xs underline flex items-center gap-1"
-          title="Delete manta and photos"
-          onClick={async () => {
-            if (!confirm("Are you sure you want to delete this manta and associated photos?")) return;
-            try { await deleteManta(m.pk_manta_id); window.location.reload(); }
-            catch (e) { alert('Delete failed: ' + (e?.message || e)); }
-          }}
-        >
-          <Trash2 className="h-4 w-4" /></button>
-      )}
-                      <Button
-                        onClick={() => {
-                          setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
-                          setShowPhotos(true);
-                        }}
-                      >
-                        View All Photos
-                        {typeof m.photo_count === "number" ? ` (${m.photo_count})` : ""}
-                      </Button>
-                    </div>
+                    <div className="mt-3 space-y-2">
+  <Button
+    className="w-full justify-center"
+    size="sm"
+    onClick={() => {
+      setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
+      setShowPhotos(true);
+    }}
+  >
+    View Photos
+    {typeof m.photo_count === "number" ? ` (${m.photo_count})` : ""}
+  </Button>
+
+  {isAdmin && (
+    <button
+      className="text-red-600 text-xs underline flex items-center gap-1"
+      title="Delete manta and photos"
+      onClick={async () => {
+        if (!confirm("Are you sure you want to delete this manta and associated photos?")) return;
+        try { await deleteManta(m.pk_manta_id); window.location.reload(); }
+        catch (e) { alert('Delete failed: ' + (e?.message || e)); }
+      }}
+    >
+      <Trash2 className="h-3 w-3" /> delete
+    </button>
+  )}
+</div>
                   </div>
                 </div>
               );

@@ -1,0 +1,107 @@
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+function mustEnv(...names: string[]) {
+  for (const n of names) {
+    const v = Deno.env.get(n);
+    if (v) return v;
+  }
+  throw new Error(`Missing required secret: one of ${names.join(", ")}`);
+}
+function composeTimestamp(d?: string | null, t?: string | null) {
+  if (!d) return null;
+  if (!t) return d;
+  return `${d}T${t}:00Z`;
+}
+
+serve(async (req) => {
+  try {
+    const { draft_id } = await req.json().catch(() => ({}));
+    if (!draft_id) return new Response(JSON.stringify({ error: "draft_id required" }), { status: 400 });
+
+    const url = mustEnv("PROJECT_URL", "SUPABASE_URL");
+    const key = mustEnv("SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"); // service-role
+    const sb = createClient(url, key, { auth: { persistSession: false } });
+
+    // load draft
+    const { data: draft, error: e1 } = await sb.from("temp_drone_sightings").select("*").eq("id", draft_id).single();
+    if (e1 || !draft) return new Response(JSON.stringify({ error: e1?.message || "Draft not found" }), { status: 404 });
+
+    // load photos
+    const { data: photos, error: e2 } = await sb
+      .from("temp_drone_photos")
+      .select("id,path,url,taken_date,taken_time,lat,lon,total_mantas")
+      .eq("draft_id", draft_id)
+      .order("created_at", { ascending: true });
+    if (e2) return new Response(JSON.stringify({ error: e2.message }), { status: 400 });
+
+    const pk_drone_survey = crypto.randomUUID();
+
+    // copy files + prepare live photo rows
+    const results: any[] = [];
+    const livePhotos: any[] = [];
+    for (const p of (photos ?? [])) {
+      const srcPath = String(p.path || "");
+      if (!srcPath) { results.push({ src: "", ok: false, msg: "missing path" }); continue; }
+      const fileName = srcPath.split("/").pop() || `${crypto.randomUUID()}.jpg`;
+      const destPath = `surveys/${pk_drone_survey}/${fileName}`;
+
+      const dl = await sb.storage.from("temp-images").download(srcPath);
+      if ((dl as any).error || !dl.data) {
+        results.push({ src: srcPath, ok: false, msg: (dl as any).error?.message || "download failed" });
+        continue;
+      }
+      const contentType = dl.data.type || "application/octet-stream";
+      const up = await sb.storage.from("drone-photo").upload(destPath, dl.data, { contentType, upsert: true });
+      if (up.error) { results.push({ src: srcPath, ok: false, msg: up.error.message }); continue; }
+      await sb.storage.from("temp-images").remove([srcPath]).catch(() => {});
+      results.push({ src: srcPath, dest: destPath, ok: true });
+
+      livePhotos.push({
+        pk_drone_photo: destPath,
+        fk_drone_survey: pk_drone_survey,
+        drone_photo_lat: typeof p.lat === "number" ? p.lat : null,
+        drone_photo_lon: typeof p.lon === "number" ? p.lon : null,
+        drone_photo_timestamp: composeTimestamp(p.taken_date, p.taken_time),
+        total_mantas: Number.isFinite(p.total_mantas) ? p.total_mantas : null,
+        author: draft?.email ?? null,
+        drone_pilot: draft?.pilot ?? null,
+        island: draft?.island ?? null,
+      });
+    }
+
+    // seed survey lat/lon/time from first GPS photo
+    const seed = livePhotos.find(ph => ph.drone_photo_lat != null && ph.drone_photo_lon != null) || null;
+
+    // insert survey
+    const surveyRow: any = {
+      pk_drone_survey,
+      survey_date: draft?.date ?? new Date().toISOString().slice(0,10),
+      drone_pilot: draft?.pilot ?? null,
+      island: draft?.island ?? null,
+      location: draft?.location ?? null,
+      notes: draft?.notes ?? null,
+      drone_photo_lat: seed?.drone_photo_lat ?? null,
+      drone_photo_lon: seed?.drone_photo_lon ?? null,
+      drone_photo_timestamp: seed?.drone_photo_timestamp ?? null,
+      created_at: new Date().toISOString(),
+      created_by: draft?.email ?? null,
+    };
+    const insSurvey = await sb.from("drone_surveys").insert(surveyRow).select("pk_drone_survey").single();
+    if (insSurvey.error) return new Response(JSON.stringify({ error: insSurvey.error.message, where: "drone_surveys" }), { status: 400 });
+
+    // insert photos
+    if (livePhotos.length) {
+      const insPhotos = await sb.from("drone_photos").insert(livePhotos).select("fk_drone_survey");
+      if (insPhotos.error) return new Response(JSON.stringify({ error: insPhotos.error.message, where: "drone_photos" }), { status: 400 });
+    }
+
+    // delete drafts
+    await sb.from("temp_drone_photos").delete().eq("draft_id", draft_id);
+    await sb.from("temp_drone_sightings").delete().eq("id", draft_id);
+
+    return new Response(JSON.stringify({ ok: true, pk_drone_survey, results }), { headers: { "content-type": "application/json" }, status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err?.message || err) }), { status: 500 });
+  }
+});

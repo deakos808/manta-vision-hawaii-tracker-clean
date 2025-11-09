@@ -23,9 +23,7 @@ const POP_ISLANDS: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
   "Oahu": ["Oahu"],
   "Kauai": ["Kauai", "Niihau"],
-  "Big Island": [
-    "Big Island"
-  ],
+  "Big Island": ["Big Island", "Hawaii", "Hawaiʻi"],
 };
 
 serve(async (req) => {
