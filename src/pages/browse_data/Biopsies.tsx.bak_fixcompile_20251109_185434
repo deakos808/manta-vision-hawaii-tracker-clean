@@ -1,0 +1,198 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+
+type Row = {
+  pk_biopsy_id: string | number;
+  fk_catalog_id: number | null;
+  fk_manta_id: number | null;
+  sample_date: string | null;
+  catalog: {
+    pk_catalog_id: number | null;
+    name: string | null;
+    species?: string | null;
+    population?: string | null;
+    island?: string | null;
+    gender?: string | null;
+    age_class?: string | null;
+  } | null;
+  bestPhotoUrl?: string | null;
+};
+
+export default function Biopsies() {
+  // compute counts for a string field on catalog
+  const countBy = (rows: Row[], get: (r: Row)=>string|undefined|null) => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const v = (get(r) || "").toString().trim();
+      if (!v) continue;
+      m.set(v, (m.get(v) ?? 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
+  };
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [flt, setFlt] = useState({ species:[] as string[], population:[] as string[], island:[] as string[], gender:[] as string[], ageClass:[] as string[] });
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("biopsies")
+        .select(`
+          pk_biopsy_id,
+          fk_catalog_id,
+          fk_manta_id,
+          sample_date,
+          catalog:fk_catalog_id (
+            pk_catalog_id,
+            name
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) { console.error(error); setRows([]); setLoading(false); return; }
+      const base: Row[] = (data ?? []).map((r:any)=>({
+        pk_biopsy_id:r.pk_biopsy_id, fk_catalog_id:r.fk_catalog_id, fk_manta_id:r.fk_manta_id, sample_date:r.sample_date, catalog:r.catalog ?? null
+      }));
+      try {
+        const ids = Array.from(new Set(base.map(b=>b.fk_catalog_id).filter(Boolean))) as number[];
+        if (ids.length) {
+          const { data: photos } = await supabase
+            .from("photos")
+            .select("storage_path,fk_catalog_id,is_best_catalog_ventral_photo")
+            .in("fk_catalog_id", ids)
+            .eq("is_best_catalog_ventral_photo", true)
+            .limit(2000);
+          const map = new Map<number,string>();
+          (photos||[]).forEach(ph=>{ if(ph?.fk_catalog_id && ph?.storage_path) map.set(ph.fk_catalog_id, `/${ph.storage_path}`); });
+          base.forEach(b=>{ b.bestPhotoUrl = b.fk_catalog_id && map.has(b.fk_catalog_id) ? map.get(b.fk_catalog_id)! : null; });
+        }
+      } catch(_){}
+      setRows(base); setLoading(false);
+    })();
+  }, []);
+
+  const distinct = useMemo(()=> {
+    const d={species:new Set<string>(),population:new Set<string>(),island:new Set<string>(),gender:new Set<string>(),ageClass:new Set<string>()};
+    rows.forEach(r=>{ const c=r.catalog||{} as any; if(c.species)d.species.add(c.species); if(c.population)d.population.add(c.population); if(c.island)d.island.add(c.island); if(c.gender)d.gender.add(c.gender); if(c.age_class)d.ageClass.add(c.age_class); });
+    return { species:[...d.species].sort(), population:[...d.population].sort(), island:[...d.island].sort(), gender:[...d.gender].sort(), ageClass:[...d.ageClass].sort() };
+  },[rows]);
+
+  const filtered = useMemo(()=> {
+    const needle=q.trim().toLowerCase();
+    return rows.filter(r=>{
+      const c=r.catalog||{} as any;
+      const inText = !needle ||
+        String(r.pk_biopsy_id??"").toLowerCase().includes(needle) ||
+        String(r.fk_catalog_id??"").toLowerCase().includes(needle) ||
+        String(c?.name??"").toLowerCase().includes(needle);
+      const pass=(vals:string[],v?:string|null)=> vals.length===0 || (v && vals.includes(v));
+      return inText
+        && pass(flt.species,(c?.species??null))
+        && pass(flt.population,(c?.population??null))
+        && pass(flt.island,(c?.island??null))
+        && pass(flt.gender,(c?.gender??null))
+        && pass(flt.ageClass,(c?.age_class??null));
+    });
+  },[rows,q,flt]);
+
+  return (
+      <div className="min-h-screen">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-10">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-semibold text-center">Biopsies</h1>
+          <div className="mt-2 text-sm"><Link to="/browse/data" className="underline">Search Database</Link><span className="opacity-70"> / Biopsies</span></div>
+        </div>
+      </div>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-4">
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by Biopsy ID, Catalog ID, or Name…" className="w-full border rounded px-3 py-2" />
+        </div>
+        <div className="mb-2 text-sm font-medium text-gray-700">Filter biopsies by:</div>
+<div className="flex flex-wrap gap-2 mb-3">
+  <FilterPill label="Species"    options={distinct.species}    selected={flt.species}    onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
+  <FilterPill label="Population" options={distinct.population} selected={flt.population} onChange={(v)=>setFlt(f=>({...f,population:v}))}/>
+  <FilterPill label="Island"     options={distinct.island}     selected={flt.island}     onChange={(v)=>setFlt(f=>({...f,island:v}))}/>
+  <FilterPill label="Gender"     options={distinct.gender}     selected={flt.gender}     onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
+  <FilterPill label="Age Class"  options={distinct.ageClass}   selected={flt.ageClass}   onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
+</div>
+        <div className="text-sm text-gray-600 mb-4">Showing <b>{filtered.length}</b> of <b>{rows.length}</b>{q || filtered.length!==rows.length ? " (filtered)" : ""}.</div>
+        {loading ? <div className="text-gray-500">Loading…</div> : filtered.length===0 ? <div className="text-gray-500">No biopsies found.</div> : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((r,i)=><Card key={String(r.pk_biopsy_id)+'-'+i} row={r}/>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FilterPill({
+  label, options, selected, onChange
+}: {
+  label: string;
+  options: Array<string | [string, number]>; // allow `[value,count]`
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open,setOpen]=useState(false);
+  const normalized = Array.from(options ?? []).map((o:any)=>Array.isArray(o)? o : [o, undefined]) as [string, number|undefined][];
+  return (
+    <div className="relative">
+      <button onClick={()=>setOpen(o=>!o)}
+        className="px-3 py-1 rounded-full border bg-white shadow-sm text-xs">
+        {label}
+        {selected.length ? ` • ${selected.length}` : ""}
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-2 w-64 rounded border bg-white shadow p-2 max-h-72 overflow-auto">
+          {normalized.length===0 ? (
+            <div className="text-xs text-gray-500 px-2 py-1">No options yet</div>
+          ) : normalized.map(([opt,count])=>{
+              const on = selected.includes(opt);
+              return (
+                <label key={opt} className="flex items-center justify-between gap-3 px-2 py-1 text-xs">
+                  <span className="flex items-center gap-2">
+                    <input type="checkbox" checked={on}
+                      onChange={(e)=>{
+                        if(e.target.checked) onChange([...selected, opt]);
+                        else onChange(selected.filter(x=>x!==opt));
+                      }}/>
+                    <span>{opt}</span>
+                  </span>
+                  {typeof count === 'number' ? <span className="text-[11px] text-gray-500">{count}</span> : null}
+                </label>
+              );
+            })}
+          <div className="flex justify-end gap-2 mt-2">
+            <button className="text-[11px] text-gray-600" onClick={()=>onChange([])}>Clear</button>
+            <button className="text-[11px] text-blue-600" onClick={()=>setOpen(false)}>Done</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Card({ row }:{row:Row}) {
+  const c=row.catalog||{} as any;
+  const photo=row.bestPhotoUrl??null;
+  return (
+    <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
+      <div className="h-32 bg-gray-100 flex items-center justify-center overflow-hidden">
+        {photo ? <img src={photo} alt={String(c?.name??"") } className="w-full h-full object-cover"/> : <div className="text-gray-400 text-sm">No photo</div>}
+      </div>
+      <div className="p-3 text-sm">
+        <div className="font-medium">{c?.name ?? "Unknown name"}</div>
+        <div className="text-gray-600">Catalog ID: {c?.pk_catalog_id ?? row.fk_catalog_id ?? "—"}</div>
+        <div className="text-gray-600">Biopsy ID: {row.pk_biopsy_id}</div>
+        <div className="text-gray-600">Gender: {c?.gender ?? "—"}</div>
+        <div className="text-gray-600">Age Class: {c?.age_class ?? "—"}</div>
+      </div>
+    </div>
+        </div>
+    </Layout>
+  );
+}

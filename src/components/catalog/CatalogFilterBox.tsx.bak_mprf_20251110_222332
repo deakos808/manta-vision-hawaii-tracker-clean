@@ -1,6 +1,5 @@
 // File: src/components/catalog/CatalogFilterBox.tsx
 import { useMemo } from "react";
-import MprfFilter from "@/components/catalog/MprfFilter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,9 +85,6 @@ export default function CatalogFilterBox({
   setSortAsc,
   onClearAll,
 }: Props) {
-  const { role } = (typeof useUserRole === "function") ? useUserRole() : ({ role: "admin" } as any);
-  const isAdmin = role === "admin" || role === "database_manager";
-
   /* ── toggle / clear helpers ───────────────────────── */
   const toggle = (key: keyof FiltersState, value: string) => {
     const next = filters[key].includes(value)
@@ -239,12 +235,6 @@ export default function CatalogFilterBox({
       {/* title row */}
       <div className="flex justify-between items-center mb-3">
         <div className="text-sm font-medium">Filter Catalog Records by:</div>
-  {isAdmin && (
-    <MprfFilter
-      value={!!filters.mprfAddedOnly}
-      onChange={(v)=>setFilters(f=>({...f, mprfAddedOnly:v}))}
-    />
-  )}
         <Button variant="link" size="sm" onClick={onClearAll}>
           Clear All Filters
         </Button>

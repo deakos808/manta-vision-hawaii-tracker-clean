@@ -1,0 +1,98 @@
+/**
+ * Convert Biopsies spreadsheet (.xlsx or .csv) to staging CSV for stg_biopsies.
+ * Usage:
+ *   node scripts/prepare-biopsies-staging.js <input.xlsx|input.csv> [output.csv]
+ */
+const fs = require('fs');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+
+const input = process.argv[2];
+const outArg = process.argv[3];
+if (!input) {
+  console.error('Usage: node scripts/prepare-biopsies-staging.js <input.xlsx|input.csv> [output.csv]');
+  process.exit(1);
+}
+const ext = path.extname(input).toLowerCase();
+const outPath = outArg || path.join(path.dirname(input), path.basename(input, ext) + '.staging.csv');
+
+function pick(row, names) {
+  for (const n of names) {
+    if (row[n] != null && String(row[n]).trim() !== '') return String(row[n]).trim();
+    const k = Object.keys(row).find(k => k.toLowerCase() === n.toLowerCase());
+    if (k && row[k] != null && String(row[k]).trim() !== '') return String(row[k]).trim();
+  }
+  return null;
+}
+
+function rowsFromCSV(file) {
+  const { parse } = require('csv-parse/sync');
+  const csv = fs.readFileSync(file, 'utf8');
+  return parse(csv, { columns: true, skip_empty_lines: true });
+}
+
+function rowsFromXLSX(file) {
+  const XLSX = require('xlsx');
+  const wb = XLSX.read(fs.readFileSync(file));
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { defval: null });
+}
+
+const rows = ext === '.csv' ? rowsFromCSV(input) : rowsFromXLSX(input);
+
+// single batch id
+const batchId = uuidv4();
+const sourceFile = path.basename(input);
+
+const mapped = rows.map((r, i) => {
+  const notesParts = [
+    pick(r, ['Surveys::Comments']),
+    pick(r, ['Biopsy Comments']),
+    pick(r, ['Reaction']),
+    pick(r, ['Suspicious Growth Present?'])
+  ].filter(Boolean);
+
+  return {
+    import_batch_id: batchId,
+    source_file: sourceFile,
+    row_no: String(i + 2),
+
+    pk_biopsy_id_text:  pick(r, ['__pkBiopsyID', 'import pkBiopsy', 'pkBiopsyID', 'pk_biopsy_id']),
+    fk_catalog_id_text: pick(r, ['_fk_CatalogID', 'fkCatalogID', 'fk_catalog_id']),
+    fk_manta_id_text:   pick(r, ['__fkMantaID', 'import fkManta', 'fkMantaID', 'fk_manta_id']),
+
+    sample_date_text:       pick(r, ['L_SurveyDate', 'A Date::Date', 'Sample Date', 'sample_date']),
+    sample_time_utc_text:   pick(r, ['Biopsy Time', 'sample_time_utc']),
+
+    collector: pick(r, ['Collector']),
+    method:    pick(r, ['Tissue Type', 'Method']),
+    island:    pick(r, ['Surveys::Island', 'Island']),
+    region:    pick(r, ['Region']),
+    location:  pick(r, ['Location']),
+
+    latitude_text:  pick(r, ['Latitude', 'lat']),
+    longitude_text: pick(r, ['Longitude', 'lon', 'lng']),
+
+    storage_vial_id: pick(r, ['Storage Type', 'storage_vial_id']),
+    lab_tracking_id: pick(r, ['Lab ID', 'lab_tracking_id']),
+
+    notes: notesParts.length ? notesParts.join(' | ') : null,
+
+    raw: null
+  };
+});
+
+// stringify to CSV
+const { stringify } = require('csv-stringify/sync');
+const headers = [
+  'import_batch_id','source_file','row_no',
+  'pk_biopsy_id_text','fk_catalog_id_text','fk_manta_id_text',
+  'sample_date_text','sample_time_utc_text',
+  'collector','method','island','region','location',
+  'latitude_text','longitude_text','storage_vial_id','lab_tracking_id','notes','raw'
+];
+const csvOut = stringify(mapped, { header: true, columns: headers });
+
+fs.writeFileSync(outPath, csvOut);
+console.log('Wrote staging CSV:', outPath);
+console.log('Batch ID:', batchId);

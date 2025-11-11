@@ -1,4 +1,5 @@
 import AddDroneSightingPage from "@/pages/drone/AddDroneSightingPage";
+import Biopsies from "./pages/browse_data/Biopsies";
 import CalibrationSessionPage from "./pages/admin/CalibrationSessionPage";
 import CalibrationLandingPage from "./pages/admin/CalibrationLandingPage";
 import AddCalibrationPage from "./pages/admin/AddCalibrationPage";
@@ -108,6 +109,8 @@ function App() {
   <Route path="/admin/calibration/:id" element={<RequireAuth adminOnly><CalibrationSessionPage /></RequireAuth>} />
     <Route path="/admin/drone-drafts" element={<RequireAuth adminOnly><DroneDraftsPage /></RequireAuth>} />
 <Route path="*" element={<NotFoundPage />} />
+
+  <Route path="/browse/biopsies" element={<Biopsies/>} />
 </Routes>
   );
 }

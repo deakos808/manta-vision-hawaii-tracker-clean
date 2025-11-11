@@ -42,7 +42,7 @@ export default function BrowseData() {
             🚁 Drone Surveys
           </Button>
         
-<Link to="/browse/biopsies" className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm">🔬 Search Biopsies</Link>
+<Link to="/browse/biopsies" className="px-4 py-2 rounded bg-slate-100 border shadow-sm">🔬 Search Biopsies</Link>
 </div>
 
         <div className="pt-10">

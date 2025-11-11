@@ -86,9 +86,6 @@ export default function CatalogFilterBox({
   setSortAsc,
   onClearAll,
 }: Props) {
-  const { role } = (typeof useUserRole === "function") ? useUserRole() : ({ role: "admin" } as any);
-  const isAdmin = role === "admin" || role === "database_manager";
-
   /* ── toggle / clear helpers ───────────────────────── */
   const toggle = (key: keyof FiltersState, value: string) => {
     const next = filters[key].includes(value)

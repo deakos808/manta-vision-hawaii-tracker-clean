@@ -308,13 +308,3 @@ export default function Catalog() {
     </Layout>
   );
 }
-
-/* apply MPRF-Added filter */
-function applyMprfAddedFilter<T extends { eq: Function }>(q: T, filters?: { mprfAddedOnly?: boolean }) {
-  if (filters?.mprfAddedOnly) {
-    // show only net-new catalog rows from MPRF import
-    // @ts-ignore (Supabase query typing)
-    q = q.eq("is_mprf_added", true);
-  }
-  return q;
-}
