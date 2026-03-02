@@ -46,6 +46,7 @@ import CsvDataReviewPage from "@/pages/admin/CsvDataReviewPage";
 import CsvDebugPage from "@/pages/admin/CsvDebugPage";
 
 import BrowseData from "@/pages/browse_data/BrowseData";
+import Biopsies from "@/pages/browse_data/Biopsies";
 import UsersInvitePage from "@/pages/admin/UsersInvitePage";
 import Photos from "@/pages/browse_data/Photos";
 import Mantas from "@/pages/browse_data/Mantas";
@@ -79,6 +80,7 @@ function App() {
   <Route path="/browse/photos" element={<Photos />} />
   <Route path="/browse/mantas" element={<Mantas />} />
   <Route path="/browse/sizes" element={<SizesPage />} />
+  <Route path="/browse/biopsies" element={<Biopsies />} />
   <Route path="/browse/drone" element={<DroneSurveysPage />} />
 
   {/* Developer Tools */}
