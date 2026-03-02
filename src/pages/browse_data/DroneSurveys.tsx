@@ -85,8 +85,7 @@ export default function DroneSurveysPage() {
 
       {/* Breadcrumb */}
       <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm">
-        <a href="/browse/data" className="text-blue-600 hover:underline">&larr; Return to Browse Data</a>
-      </div>
+        <div className="flex items-center justify-between"><a href="/browse/data" className="text-blue-600 hover:underline">&larr; Return to Browse Data</a><Link to="/drone/add" className="inline-block"><button className="px-3 py-1.5 rounded bg-sky-600 text-white hover:bg-sky-700">Add Survey</button></Link></div></div>
 
       {/* Filter box */}
       <DroneMonthSummary />
@@ -292,3 +291,4 @@ requestAnimationFrame(() => setOpenMap(true));
 
 
 
+import { Link } from "react-router-dom";

@@ -1,10 +1,12 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from "react-router-dom";
 import hamerLogo from '@/assets/hamer_logo_1.png';
+import { useIsAdmin } from "@/lib/isAdmin";
 
 export default function BrowseData() {
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   return (
@@ -33,13 +35,15 @@ export default function BrowseData() {
           <Button variant="outline" onClick={() => navigate('/browse/photos')}>
             📸 Search Photos
           </Button>
+          <Button variant="outline" onClick={() => navigate('/browse/sizes')}>
+            🔎 Search Sizes
+          </Button>
           <Button variant="outline" onClick={() => navigate('/browse/drone')}>
             🚁 Drone Surveys
           </Button>
-          <Button variant="outline" className="text-lg py-6 col-span-full sm:col-span-2" onClick={() => navigate('/browse/sizes')}>
-            🔎 Search Sizes
-          </Button>
-        </div>
+        
+<Link to="/browse/biopsies" className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm">🔬 Search Biopsies</Link>
+</div>
 
         <div className="pt-10">
           <img src={hamerLogo} alt="Hawaii Manta Tracker logo" className="mx-auto w-24 h-24 opacity-50" />

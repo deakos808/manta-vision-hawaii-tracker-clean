@@ -347,7 +347,6 @@ export default function Sightings() {
           </div>
 
           <div className="flex justify-between items-center mb-3">
-            <div className="text-sm font-medium">Filter Sighting Records by:</div>
           </div>
 
           <input
