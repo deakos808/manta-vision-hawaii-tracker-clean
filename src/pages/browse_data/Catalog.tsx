@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import fallbackImage from "@/assets/hamer_logo_1.png";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -250,8 +251,8 @@ export default function Catalog() {
         {filtered.map((e) => {
           const thumb =
             viewMode === "ventral"
-              ? (e.best_catalog_ventral_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg")
-              : (e.best_catalog_dorsal_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg");
+              ? (e.best_catalog_ventral_thumb_url ?? e.thumbnail_url ?? fallbackImage)
+              : (e.best_catalog_dorsal_thumb_url ?? e.thumbnail_url ?? fallbackImage);
 
           return (
             <Card key={e.pk_catalog_id} className="p-4 flex flex-col">
@@ -306,4 +307,14 @@ export default function Catalog() {
       )}
     </Layout>
   );
+}
+
+/* apply MPRF-Added filter */
+function applyMprfAddedFilter<T extends { eq: Function }>(q: T, filters?: { mprfAddedOnly?: boolean }) {
+  if (filters?.mprfAddedOnly) {
+    // show only net-new catalog rows from MPRF import
+    // @ts-ignore (Supabase query typing)
+    q = q.eq("is_mprf_added", true);
+  }
+  return q;
 }
