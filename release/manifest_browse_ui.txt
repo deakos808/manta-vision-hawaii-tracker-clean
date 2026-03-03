@@ -1,0 +1,13 @@
+src/App.tsx
+src/pages/browse_data/BrowseData.tsx
+src/pages/browse_data/Catalog.tsx
+src/pages/browse_data/Sightings.tsx
+src/pages/browse_data/Mantas.tsx
+src/pages/browse_data/Photos.tsx
+src/pages/browse_data/Sizes.tsx
+src/pages/browse_data/Biopsies.tsx
+src/pages/browse_data/DroneSurveys.tsx
+src/components/catalog/CatalogFilterBox.tsx
+src/components/mantas/MantaFilterBox.tsx
+src/components/photos/PhotoFilterBox.tsx
+src/components/sightings/SightingFilterBox.tsx
