@@ -54,6 +54,7 @@ import Sightings from "@/pages/browse_data/Sightings";
 import SizesPage from "@/pages/browse_data/Sizes";
 import DroneSurveysPage from "@/pages/browse_data/DroneSurveys";
 
+import Biopsies from "@/pages/browse_data/Biopsies";
 // NEW: non-admin Add Sighting pages
 
 
@@ -80,6 +81,7 @@ function App() {
   <Route path="/browse/mantas" element={<Mantas />} />
   <Route path="/browse/sizes" element={<SizesPage />} />
   <Route path="/browse/drone" element={<DroneSurveysPage />} />
+  <Route path="/browse/biopsies" element={<Biopsies />} />
 
   {/* Developer Tools */}
   <Route path="/test-match-ui" element={<MatchingPage />} />
