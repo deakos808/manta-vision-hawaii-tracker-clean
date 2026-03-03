@@ -8,10 +8,10 @@ do
   rg -n "path=\"${r}\"" src/App.tsx >/dev/null
 done
 
-echo "PREFLIGHT: no backups staged"
-if git diff --cached --name-only | rg -n '^backups/' >/dev/null; then
-  echo "ERROR: backups/ paths are staged"
-  git diff --cached --name-only | rg -n '^backups/'
+echo "PREFLIGHT: no backups added/modified in staged changes"
+if git diff --cached --name-status | rg -n '^(A|M|R[0-9]+)\s+backups/' >/dev/null; then
+  echo "ERROR: backups/ paths are added/modified/renamed in staged changes"
+  git diff --cached --name-status | rg -n '^(A|M|R[0-9]+)\s+backups/'
   exit 1
 fi
 
