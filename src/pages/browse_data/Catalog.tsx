@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import fallbackImage from "@/assets/hamer_logo_1.png";
-
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Link, useSearchParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
-
+import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import CatalogFilterBox, { FiltersState } from "@/components/catalog/CatalogFilterBox";
 import CatalogBestPhotoModal from "@/pages/browse_data/modals/CatalogBestPhotoModal";
 import CatalogSightingsQuickModal from "@/pages/browse_data/modals/CatalogSightingsQuickModal";
 import SightingMantasQuickModal from "@/pages/browse_data/modals/SightingMantasQuickModal";
 
-import { useIsAdmin } from "@/lib/isAdmin";
 function _norm(v?: string | null): string {
   return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
 }
@@ -104,7 +99,6 @@ function computeFiltered(catalog:any[], search:any, filters:any, sortAsc:boolean
 }
 
 export default function Catalog() {
-  const isAdmin = useIsAdmin();
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
@@ -251,8 +245,8 @@ export default function Catalog() {
         {filtered.map((e) => {
           const thumb =
             viewMode === "ventral"
-              ? (e.best_catalog_ventral_thumb_url ?? e.thumbnail_url ?? fallbackImage)
-              : (e.best_catalog_dorsal_thumb_url ?? e.thumbnail_url ?? fallbackImage);
+              ? (e.best_catalog_ventral_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg")
+              : (e.best_catalog_dorsal_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg");
 
           return (
             <Card key={e.pk_catalog_id} className="p-4 flex flex-col">
@@ -264,12 +258,12 @@ export default function Catalog() {
                   className="w-full aspect-square object-cover rounded border"
                   onError={(ev) => ((ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
                 />
-                {isAdmin && (<div
+                <div
                   className="mt-1 w-full text-center text-xs text-blue-500 underline cursor-pointer"
                   onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
                 >
                   change
-                </div>)}
+                </div>
               </div>
 
               {/* details */}
@@ -307,14 +301,4 @@ export default function Catalog() {
       )}
     </Layout>
   );
-}
-
-/* apply MPRF-Added filter */
-function applyMprfAddedFilter<T extends { eq: Function }>(q: T, filters?: { mprfAddedOnly?: boolean }) {
-  if (filters?.mprfAddedOnly) {
-    // show only net-new catalog rows from MPRF import
-    // @ts-ignore (Supabase query typing)
-    q = q.eq("is_mprf_added", true);
-  }
-  return q;
 }
