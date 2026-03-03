@@ -23,3 +23,7 @@ src/components/sightings/MantasInSightingModal.tsx
 src/components/mantas/MantaPhotosModal.tsx
 src/components/mantas/MantaPhotosViewer.tsx
 src/components/DroneMonthSummary.tsx
+src/components/layout/Header.tsx
+src/hooks/useUserRole.ts
+src/lib/supabase.ts
+generated/version.ts
