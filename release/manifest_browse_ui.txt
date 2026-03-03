@@ -11,3 +11,15 @@ src/components/catalog/CatalogFilterBox.tsx
 src/components/mantas/MantaFilterBox.tsx
 src/components/photos/PhotoFilterBox.tsx
 src/components/sightings/SightingFilterBox.tsx
+src/pages/browse_data/modals/CatalogBestPhotoModal.tsx
+src/pages/browse_data/modals/CatalogSightingsQuickModal.tsx
+src/pages/browse_data/modals/SightingMantasQuickModal.tsx
+src/components/layout/Layout.tsx
+src/lib/isAdmin.ts
+src/lib/adminApi.ts
+src/components/maps/MapDialog.tsx
+src/components/maps/DronePhotosMapModal.tsx
+src/components/sightings/MantasInSightingModal.tsx
+src/components/mantas/MantaPhotosModal.tsx
+src/components/mantas/MantaPhotosViewer.tsx
+src/components/DroneMonthSummary.tsx
