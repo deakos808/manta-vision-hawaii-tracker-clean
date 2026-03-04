@@ -292,7 +292,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     if (!hasMore) return;
     const obs = new IntersectionObserver(
       (entries) => {
-        if (!entries[0].isIntersecting) return;
+        if (!entries[0]?.isIntersecting) return;
         if (!hasMore) return;
         if (loadingMore) return;
         setLoadingMore(true);
@@ -302,7 +302,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     );
     if (loadingRef.current) obs.observe(loadingRef.current);
     return () => obs.disconnect();
-  }, [hasMore, fetchPhotos]);
+  }, [hasMore, fetchPhotos, loadingMore]);
 
   const onClearFilters = () => {
     setSearch("");
@@ -666,6 +666,51 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 )}
           {isAdmin && (
             <div className="mt-1">
+              <button
+                className="text-red-600 text-xs underline flex items-center gap-1"
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to delete this photo?")) return;
+                  try { await deletePhoto(photo.pk_photo_id); window.location.reload(); }
+                  catch (e) { alert('Delete failed: ' + (e?.message || e)); }
+                }}
+                title="Delete photo"
+              >
+                <Trash2 className="h-3 w-3" /> delete
+              </button>
+            </div>
+          )}
+
+                  {/* Show badge + update button ONLY for the current BEST MANTA VENTRAL */}
+                  {photo.photo_view === "ventral" && photo.is_best_manta_ventral_photo ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center rounded bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5">
+                        Best Manta Ventral
+                      </span>
+                      {isAdmin && photo.fk_manta_id ? (
+                        <button
+                          onClick={() => openBestPicker(photo.fk_manta_id!)}
+                          className="ml-2 text-[11px] underline text-blue-700"
+                          title="Update best manta ventral photo"
+                        >
+                          update
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <div className="h-7 w-7 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin" aria-label="Loading more" />
+          </div>
+        )}
+
+        <div ref={loadingRef} className="h-12" />
+
         <BackToTopButton />
       </div>
 
