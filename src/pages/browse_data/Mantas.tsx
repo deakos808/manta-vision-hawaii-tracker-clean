@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { deleteManta } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
@@ -60,6 +61,7 @@ export default function MantasPage() {
   const [totalMantas, setTotalMantas] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Search + Filters
   const [q, setQ] = useState("");
@@ -70,6 +72,9 @@ export default function MantasPage() {
 
   // Sort: false = newest first (desc), true = oldest first (asc)
   const [sortAsc, setSortAsc] = useState(false);
+  const CARD_PAGE = 36;
+  const [showing, setShowing] = useState(CARD_PAGE);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const handleClearFilters = () => {
     setPopulation([]);
@@ -77,6 +82,7 @@ export default function MantasPage() {
     setLocation([]);
     setPhotographer([]);
     setQ("");
+    setShowing(CARD_PAGE);
   };
 
   // Reset when context changes
@@ -276,6 +282,8 @@ export default function MantasPage() {
     return arr;
   }, [filteredMantas, sortAsc]);
 
+  const visibleMantas = useMemo(() => sortedMantas.slice(0, showing), [sortedMantas, showing]);
+
   // Human-readable active filters string
   const activeFiltersText = useMemo(() => {
     const parts: string[] = [];
@@ -288,6 +296,28 @@ export default function MantasPage() {
   }, [q, population, island, location, photographer]);
 
   // Summary line
+
+  // UI-only infinite scroll (we already loaded all mantas; this only increases visible slice)
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    if (showing >= sortedMantas.length) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        if (loadingMore) return;
+        if (showing >= sortedMantas.length) return;
+        setLoadingMore(true);
+        setShowing((n) => Math.min(n + CARD_PAGE, sortedMantas.length));
+        setTimeout(() => setLoadingMore(false), 150);
+      },
+      { root: null, rootMargin: "800px", threshold: 0 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [showing, sortedMantas.length, loadingMore]);
   const headerSubtitle = useMemo(() => {
     let base = "";
     if (sightingId) {
@@ -412,7 +442,7 @@ export default function MantasPage() {
 
           {!loading &&
             !error &&
-            sortedMantas.map((m) => {
+            visibleMantas.map((m) => {
                 const photoCount = photoCounts[m.pk_manta_id as number] ?? null;
               return (
                 <div
@@ -498,6 +528,16 @@ export default function MantasPage() {
             })}
         </div>
       </div>
+
+      {loadingMore && (
+        <div className="flex justify-center py-6">
+          <div className="h-7 w-7 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin" aria-label="Loading more" />
+        </div>
+      )}
+      <div ref={loadMoreRef} className="h-10" />
+
+      <BackToTopButton />
+
 
       {/* Photos modal */}
       <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />
