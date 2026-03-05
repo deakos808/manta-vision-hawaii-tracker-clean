@@ -41,6 +41,11 @@ export default function Biopsies() {
   const [namePrefix, setNamePrefix] = useState("");
   const [catalogPrefix, setCatalogPrefix] = useState("");
   const [openStats, setOpenStats] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsCatalogId, setDetailsCatalogId] = useState<number | null>(null);
+  const [detailsCatalogName, setDetailsCatalogName] = useState<string | null>(null);
+  const [detailsRows, setDetailsRows] = useState<any[] | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -76,6 +81,31 @@ export default function Biopsies() {
     const ageClass = countBy(rows, r => r.catalog?.last_age_class ?? null);
     return { species, gender, ageClass };
   }, [rows]);
+
+  const openCatalogDetails = async (catId: number | null, catName: string | null) => {
+    if (catId == null) return;
+    setDetailsCatalogId(catId);
+    setDetailsCatalogName(catName ?? null);
+    setDetailsOpen(true);
+    setDetailsLoading(true);
+    setDetailsRows(null);
+
+    const { data, error } = await supabase
+      .from("biopsies")
+      .select("*")
+      .eq("fk_catalog_id", catId)
+      .order("sample_date", { ascending: false });
+
+    if (error) {
+      console.error("[biopsies] details load error", error);
+      setDetailsRows([]);
+      setDetailsLoading(false);
+      return;
+    }
+
+    setDetailsRows((data as any[]) ?? []);
+    setDetailsLoading(false);
+  };
 
   const stats = useMemo(() => {
     const catalogIds = new Set<number>();
@@ -179,8 +209,6 @@ export default function Biopsies() {
         {/* Breadcrumb */}
         <div className="max-w-6xl mx-auto px-4 mt-2 text-sm text-blue-800">
           <Link to="/browse/data" className="text-blue-600 hover:underline">← Return to Browse Data</Link>
-          <span className="mx-2 opacity-70">/</span>
-          <span className="opacity-70">Biopsies</span>
         </div>
 
 
@@ -264,7 +292,7 @@ export default function Biopsies() {
             <div className="text-gray-500">No biopsies found.</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-              {filtered.map((r, i) => <Card key={String(r.pk_biopsy_id) + "-" + i} row={r} />)}
+              {filtered.map((r, i) => <Card key={String(r.pk_biopsy_id) + "-" + i} row={r} onOpenDetails={openCatalogDetails} />)}
             </div>
           )}
         </div>
@@ -313,6 +341,70 @@ export default function Biopsies() {
           </div>
         </div>
       )}
+
+      {/* Biopsy details modal (per Catalog ID) */}
+      {detailsOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-semibold text-lg">
+                Biopsy Details — Catalog {detailsCatalogId}{detailsCatalogName ? ` (${detailsCatalogName})` : ""}
+              </div>
+              <button
+                onClick={() => { setDetailsOpen(false); setDetailsRows(null); setDetailsCatalogId(null); }}
+                className="text-gray-500 hover:text-gray-700 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5">
+              {detailsLoading ? (
+                <div className="text-sm text-gray-600">Loading…</div>
+              ) : !detailsRows || detailsRows.length === 0 ? (
+                <div className="text-sm text-gray-600">No biopsy records found for this catalog.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b">
+                        <th className="py-2 pr-3">Biopsy ID</th>
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Location</th>
+                        <th className="py-2 pr-3">Biopsier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsRows.map((r, idx) => {
+                        const biopsyId = r.pk_biopsy_id ?? r.id ?? r.biopsy_id ?? "—";
+                        const dateVal = r.sample_date ?? r.date ?? r.biopsy_date ?? null;
+
+                        const locationVal =
+                          r.location ?? r.sitelocation ?? r.site_location ?? r.sampling_location ?? r.site ?? "—";
+
+                        const biopsierVal =
+                          r.biopsier ?? r.biopsyist ?? r.biopsist ?? r.collected_by ?? r.sampler ?? r.sampled_by ?? "—";
+
+                        return (
+                          <tr key={String(biopsyId) + "-" + idx} className="border-b last:border-0">
+                            <td className="py-2 pr-3">{String(biopsyId)}</td>
+                            <td className="py-2 pr-3">
+                              {dateVal ? new Date(dateVal).toLocaleDateString() : "—"}
+                            </td>
+                            <td className="py-2 pr-3">{String(locationVal ?? "—")}</td>
+                            <td className="py-2 pr-3">{String(biopsierVal ?? "—")}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <BackToTopButton />
     </Layout>
@@ -365,7 +457,7 @@ function FilterPill(props: FilterPillProps) {
 }
 
 /* ---------- Card (thumb on top like Photos) ---------- */
-function Card({ row }: { row: Row }) {
+function Card({ row, onOpenDetails }: { row: Row; onOpenDetails: (catId: number | null, catName: string | null) => void }) {
   const c = row.catalog ?? ({} as any);
   const photo = row.bestPhotoUrl ?? null;
   const total = c?.total_biopsies ?? 0;
@@ -375,10 +467,19 @@ function Card({ row }: { row: Row }) {
         {photo ? <img src={photo} alt={String(c?.name ?? "")} className="w-full h-full object-cover rounded" /> : <div className="text-gray-400 text-[12px]">No photo</div>}
       </div>
       <div className="p-2 text-xs leading-5">
-        <div className="font-medium">{c?.name ?? "Unknown name"}</div>
+        <div className="font-semibold text-blue-600">{c?.name ?? "Unknown name"}</div>
         <div className="text-gray-600">Catalog ID: {c?.pk_catalog_id ?? row.fk_catalog_id ?? "—"}</div>
         <div className="text-gray-600">Biopsy ID: {row.pk_biopsy_id}</div>
-        <div className="text-gray-600">Total Biopsies: {total}</div>
+                <div className="text-gray-600">
+          Total Biopsies:{" "}
+          <button
+            className="text-blue-600 underline"
+            onClick={() => onOpenDetails(c?.pk_catalog_id ?? row.fk_catalog_id ?? null, c?.name ?? null)}
+            title="View biopsy details"
+          >
+            {total}
+          </button>
+        </div>
         <div className="text-gray-600">Gender: {c?.last_gender ?? "—"}</div>
         <div className="text-gray-600">Age Class: {c?.last_age_class ?? "—"}</div>
       </div>
