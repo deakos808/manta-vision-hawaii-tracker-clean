@@ -212,9 +212,6 @@ export default function Sizes() {
               {opt || "—"}
             </div>
 
-          <div className="flex justify-center mb-3">
-            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
-          </div>
             <span className="text-xs text-muted-foreground">{counts[opt] ?? 0}</span>
           </label>
         ))}
@@ -271,9 +268,14 @@ export default function Sizes() {
 
         {/* Filter box */}
         <div className="bg-white shadow p-4 rounded border">
-          <div className="flex justify-between items-center mb-3">
+          <div className="grid grid-cols-3 items-center mb-3">
             <div className="text-sm font-medium">Filter Size by:</div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex justify-center">
+              <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
+            </div>
+
+            <div className="flex justify-end">
               <Button variant="outline" size="sm" onClick={() => setOpenStats(true)}>
                 Size Stats
               </Button>
