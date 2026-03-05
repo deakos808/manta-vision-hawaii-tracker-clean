@@ -209,85 +209,87 @@ export default function Biopsies() {
           </div>
         </div>
 
-        {/* Breadcrumb */}
-        <div className="max-w-6xl mx-auto px-4 mt-2 text-sm text-blue-800">
-          <Link to="/browse/data" className="text-blue-600 hover:underline">← Return to Browse Data</Link>
+        {/* Light band (full width, Catalog style) */}
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 mb-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Breadcrumb */}
+            <div className="text-sm text-blue-800 mb-3">
+              <Link to="/browse/data" className="text-blue-600 hover:underline">← Return to Browse Data</Link>
+            </div>
+
+            {/* Search */}
+            <div className="flex items-center gap-3 mb-3">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by Biopsy ID, Catalog ID, or Name…"
+                className="border rounded-lg px-3 py-2 w-full md:w-1/3 max-w-md bg-white"
+              />
+            </div>
+
+            {/* Filter box (white card inside light band) */}
+            <div className="bg-white shadow p-4 rounded border w-full">
+              <div className="grid grid-cols-3 items-center mb-2">
+                <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
+
+                <div />
+
+                <div className="flex justify-end items-center gap-3">
+                  <button
+                    className="text-xs text-blue-700 underline"
+                    onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                  >
+                    Clear All Filters
+                  </button>
+                  <button
+                    className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                    onClick={() => setOpenStats(true)}
+                  >
+                    Biopsy Stats
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
+                <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
+                <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
+                <label className="ml-3 flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
+                  <span>Only catalogs with ≥ 2 biopsies</span>
+                </label>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
+                  <input
+                    value={namePrefix}
+                    onChange={(e) => setNamePrefix(e.target.value)}
+                    placeholder="e.g., Ra..."
+                    className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
+                  <input
+                    value={catalogPrefix}
+                    onChange={(e) => setCatalogPrefix(e.target.value)}
+                    placeholder="e.g., 12..."
+                    className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 text-sm text-gray-600">
+              Showing <b>{filtered.length}</b> of <b>{rows.length}</b> total records
+              {activeFiltersText ? ` — filtered by ${activeFiltersText}` : ""}.
+            </div>
+          </div>
         </div>
 
-
-        {/* Body */}
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          {/* Search */}
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by Biopsy ID, Catalog ID, or Name…"
-              className="border rounded-lg px-3 py-2 w-full md:w-1/3 max-w-md"
-            />
-          </div>
-
-          {/* Filter box */}
-          <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 mb-4">
-            <div className="bg-white shadow p-4 rounded border">
-            <div className="grid grid-cols-3 items-center mb-2">
-              <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
-
-              <div />
-
-              <div className="flex justify-end items-center gap-3">
-                <button
-                  className="text-xs text-blue-700 underline"
-                  onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
-                >
-                  Clear All Filters
-                </button>
-                <button
-                  className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
-                  onClick={() => setOpenStats(true)}
-                >
-                  Biopsy Stats
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
-              <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
-              <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
-              <label className="ml-3 flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
-                <span>Only catalogs with ≥ 2 biopsies</span>
-              </label>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
-                <input
-                  value={namePrefix}
-                  onChange={(e) => setNamePrefix(e.target.value)}
-                  placeholder="e.g., Ra..."
-                  className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
-                />
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
-                <input
-                  value={catalogPrefix}
-                  onChange={(e) => setCatalogPrefix(e.target.value)}
-                  placeholder="e.g., 12..."
-                  className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
-                />
-              </div>
-            </div>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div className="text-sm text-gray-600 mb-4">
-            Showing <b>{filtered.length}</b> of <b>{rows.length}</b>
-            {activeFiltersText ? ` — filtered by ${activeFiltersText}` : ""}.
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-16 pb-16">
 
           {/* List */}
           {loading ? (
