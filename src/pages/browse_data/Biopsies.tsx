@@ -385,8 +385,7 @@ export default function Biopsies() {
                         const region = (r.region ?? "").toString().trim();
                         const loc = (r.location ?? "").toString().trim();
 
-                        const locationParts = [island, region, loc].filter(Boolean);
-                        const locationVal = locationParts.length ? locationParts.join(" — ") : "—";
+                        const locationVal = loc || region || island || "—";
 
                         const biopsierVal = (r.collector ?? "").toString().trim() || "—";
 
