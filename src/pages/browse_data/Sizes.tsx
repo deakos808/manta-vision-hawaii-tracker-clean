@@ -273,7 +273,6 @@ export default function Sizes() {
               <Button variant="outline" size="sm" onClick={() => setOpenStats(true)}>
                 Size Stats
               </Button>
-              <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
             </div>
           </div>
 
@@ -290,6 +289,10 @@ export default function Sizes() {
             >
               Total Sizes &gt; 1 {onlyMultiple ? "✓" : ""} <span className="ml-1 text-xs text-muted-foreground">({gt1Count})</span>
             </Button>
+          </div>
+
+          <div className="mt-3 flex justify-center">
+            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
           </div>
 
           <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
