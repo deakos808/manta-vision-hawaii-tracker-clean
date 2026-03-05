@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -92,6 +93,9 @@ export default function Sizes() {
   const [openHistFor, setOpenHistFor] = useState<number | null>(null);
   const [histRows, setHistRows] = useState<HistRow[] | null>(null);
 
+  const [openStats, setOpenStats] = useState(false);
+  const [openBreakdown, setOpenBreakdown] = useState<null | "males" | "females" | "adults" | "juveniles">(null);
+
   /* Load data from v3 views */
   useEffect(() => {
     let alive = true;
@@ -119,9 +123,12 @@ export default function Sizes() {
   /* Filtered cards */
   const filteredCards = useMemo(() => {
     const term = (search || "").trim().toLowerCase();
-    const textOK = (c: CardRow) =>
-      (c.name ? c.name.toLowerCase().includes(term) : false) ||
-      String(c.pk_catalog_id).includes(term);
+    const textOK = (c: CardRow) => {
+      if (!term) return true;
+      const name = (c.name ?? "").toLowerCase();
+      const id = String(c.pk_catalog_id);
+      return name.startsWith(term) || id.startsWith(term);
+    };
 
     const speciesOK = (c: CardRow) =>
       filterSpecies.length === 0 || (c.species ? filterSpecies.includes(c.species) : false);
@@ -246,51 +253,6 @@ export default function Sizes() {
           <a href="/browse/data" className="hover:underline">← Return to Browse Data</a>
         </div>
 
-        {/* Summary row (centered) */}
-        <div className="mb-3">
-  <div className="mb-3">
-  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-    <div>
-      <div className="text-xs text-gray-500">Total Mantas Sized</div>
-      <div className="text-2xl font-semibold">
-        {(summary as any)?.total_mantas_sized ?? (summary as any)?.total_mantas ?? "—"}
-      </div>
-    </div>
-    <div>
-      <div className="text-xs text-gray-500">Catalog IDs</div>
-      <div className="text-2xl font-semibold">{summary ? summary.catalog_ids : "—"}</div>
-    </div>
-    <div>
-      <div className="text-xs text-gray-500">Males</div>
-      <div className="text-2xl font-semibold">{summary ? summary.males : "—"}</div>
-    </div>
-    <div>
-      <div className="text-xs text-gray-500">Females</div>
-      <div className="text-2xl font-semibold">{summary ? summary.females : "—"}</div>
-    </div>
-    <div>
-      <div className="text-xs text-gray-500">Adults</div>
-      <div className="text-2xl font-semibold">{summary ? summary.adults : "—"}</div>
-    </div>
-  </div>
-</div>
-</div>
-
-        {/* Quadrants */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mb-2">
-          {quads.map((q, i) => (
-            <div key={i} className="p-2 bg-transparent border-0 shadow-none rounded-none">
-              <div className="font-medium text-sm">{q.age_group} {q.gender}</div>
-              <div className="text-xs text-gray-700 leading-5">
-                <div>Mean: {fmtM(q.mean_m)}</div>
-                <div>Min: {fmtM(q.min_m)}</div>
-                <div>Max: {fmtM(q.max_m)}</div>
-                <div>N: {fmtN(q.n)}</div>
-                <div>STD: {q.std_m == null ? "—" : `${q.std_m.toFixed(2)} m`}</div>
-              </div>
-            </div>
-          ))}
-        </div>
 
         {/* Search */}
         <Input
@@ -303,13 +265,16 @@ export default function Sizes() {
         {/* Filter box + clear */}
         
 
-        {/* Filter summary */}
-        <div className="mt-3 text-sm text-gray-700">
-
-<div className="bg-white shadow p-4 rounded border">
+        {/* Filter box */}
+        <div className="bg-white shadow p-4 rounded border">
           <div className="flex justify-between items-center mb-3">
             <div className="text-sm font-medium">Filter Size by:</div>
-            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={() => setOpenStats(true)}>
+                Size Stats
+              </Button>
+              <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -317,7 +282,6 @@ export default function Sizes() {
             {pillMenu("Gender",  filterGender,  setFilterGender,  genderOptions,  genderCounts)}
             {pillMenu("Age Class", filterAge, setFilterAge, ageOptions, ageCounts)}
 
-            {/* Total Sizes > 1 toggle */}
             <Button
               variant={onlyMultiple ? "default" : "outline"}
               className="text-sm"
@@ -328,18 +292,18 @@ export default function Sizes() {
             </Button>
           </div>
 
-          {/* sort controls */}
           <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
             <span>Sort by Catalog&nbsp;ID</span>
             <Button size="icon" variant="ghost" className={sortAsc ? "text-blue-600" : ""} onClick={() => setSortAsc(true)}>▲</Button>
             <Button size="icon" variant="ghost" className={!sortAsc ? "text-blue-600" : ""} onClick={() => setSortAsc(false)}>▼</Button>
           </div>
-        </div>
-          {filteredCards.length} records showing of {cards.length} total records
-          {summaryLine ? ` (filtered by ${summaryLine})` : ""}
+
+          <div className="mt-3 text-sm text-gray-700">
+            {filteredCards.length} records showing of {cards.length} total records
+            {summaryLine ? ` (filtered by ${summaryLine})` : ""}
+          </div>
         </div>
       </div>
-
       {/* Cards grid (smaller like Photos page) */}
       <div className="px-4 sm:px-6 lg:px-12 pb-16 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
         {filteredCards.map((c) => (
@@ -414,7 +378,175 @@ export default function Sizes() {
             </table>
           </div>
         )}
+
+
       </Modal>
+
+      {/* Size stats modal */}
+      {/* Size stats modal */}
+      <Modal
+        open={openStats}
+        title="Size Stats"
+        onClose={() => setOpenStats(false)}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Total Size Events (Manta IDs)</div>
+              <div className="text-lg font-semibold">{(summary as any)?.total_mantas_sized ?? summary?.total_mantas ?? "—"}</div>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Total Catalog IDs Sized</div>
+              <div className="text-lg font-semibold">{summary?.catalog_ids ?? "—"}</div>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Total Sizes &gt; 1</div>
+              <div className="text-lg font-semibold">{gt1Count}</div>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Males</div>
+              <button
+                type="button"
+                className="text-lg font-semibold text-blue-700 underline"
+                onClick={() => setOpenBreakdown("males")}
+              >
+                {summary?.males ?? "—"}
+              </button>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Females</div>
+              <button
+                type="button"
+                className="text-lg font-semibold text-blue-700 underline"
+                onClick={() => setOpenBreakdown("females")}
+              >
+                {summary?.females ?? "—"}
+              </button>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Adults</div>
+              <button
+                type="button"
+                className="text-lg font-semibold text-blue-700 underline"
+                onClick={() => setOpenBreakdown("adults")}
+              >
+                {summary?.adults ?? "—"}
+              </button>
+            </div>
+
+            <div className="rounded border p-3">
+              <div className="text-xs text-gray-500">Juveniles</div>
+              <button
+                type="button"
+                className="text-lg font-semibold text-blue-700 underline"
+                onClick={() => setOpenBreakdown("juveniles")}
+              >
+                {summary?.juveniles ?? "—"}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            Totals are based on size events (unique Manta IDs). Catalog cards below show Catalog IDs with size history.
+          </div>
+        </div>
+      </Modal>
+
+      {/* Breakdown modal */}
+      <Modal
+        open={openBreakdown != null}
+        title={
+          openBreakdown === "males" ? "Male breakdown" :
+          openBreakdown === "females" ? "Female breakdown" :
+          openBreakdown === "adults" ? "Adult breakdown" :
+          openBreakdown === "juveniles" ? "Juvenile breakdown" :
+          "Breakdown"
+        }
+        onClose={() => setOpenBreakdown(null)}
+      >
+        {(() => {
+          const get = (age: "Adult" | "Juvenile", gender: "Male" | "Female") =>
+            quads.find(q => q.age_group === age && q.gender === gender) ?? null;
+
+          let rows: Array<{ label: string; q: QuadRow | null }> = [];
+
+          if (openBreakdown === "males") {
+            rows = [
+              { label: "Adult Male", q: get("Adult", "Male") },
+              { label: "Juvenile Male", q: get("Juvenile", "Male") },
+            ];
+          } else if (openBreakdown === "females") {
+            rows = [
+              { label: "Adult Female", q: get("Adult", "Female") },
+              { label: "Juvenile Female", q: get("Juvenile", "Female") },
+            ];
+          } else if (openBreakdown === "adults") {
+            rows = [
+              { label: "Adult Female", q: get("Adult", "Female") },
+              { label: "Adult Male", q: get("Adult", "Male") },
+            ];
+          } else if (openBreakdown === "juveniles") {
+            rows = [
+              { label: "Juvenile Female", q: get("Juvenile", "Female") },
+              { label: "Juvenile Male", q: get("Juvenile", "Male") },
+            ];
+          }
+
+          const totalN = rows
+            .map(r => r.q?.n ?? null)
+            .filter((n): n is number => typeof n === "number")
+            .reduce((a,b)=>a+b, 0);
+
+          return (
+            <div className="space-y-3">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b">
+                      <th className="py-2 pr-3">Group</th>
+                      <th className="py-2 pr-3">N</th>
+                      <th className="py-2 pr-3">Mean</th>
+                      <th className="py-2 pr-3">STD</th>
+                      <th className="py-2 pr-3">Min</th>
+                      <th className="py-2 pr-3">Max</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={r.label} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-medium">{r.label}</td>
+                        <td className="py-2 pr-3">{fmtN(r.q?.n ?? null)}</td>
+                        <td className="py-2 pr-3">{fmtM(r.q?.mean_m ?? null)}</td>
+                        <td className="py-2 pr-3">{r.q?.std_m == null ? "—" : `${r.q.std_m.toFixed(2)} m`}</td>
+                        <td className="py-2 pr-3">{fmtM(r.q?.min_m ?? null)}</td>
+                        <td className="py-2 pr-3">{fmtM(r.q?.max_m ?? null)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t">
+                      <td className="py-2 pr-3 font-semibold">Total</td>
+                      <td className="py-2 pr-3 font-semibold">{totalN ? totalN : "—"}</td>
+                      <td className="py-2 pr-3 font-semibold">—</td>
+                      <td className="py-2 pr-3 font-semibold">—</td>
+                      <td className="py-2 pr-3 font-semibold">—</td>
+                      <td className="py-2 pr-3 font-semibold">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                Breakdown rows come from v_sizes_quadrant_stats_v3 and reflect size events classified into age and gender.
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+      <BackToTopButton />
     </Layout>
   );
 }
