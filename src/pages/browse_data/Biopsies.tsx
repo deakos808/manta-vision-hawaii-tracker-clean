@@ -92,7 +92,10 @@ export default function Biopsies() {
 
     const { data, error } = await supabase
       .from("biopsies")
-      .select("*")
+      .select(
+        "pk_biopsy_id,fk_catalog_id,fk_sighting_id,sample_date,sample_time,collector,island,region,location," +
+        "sightings:fk_sighting_id ( sitelocation, location, region, island, photographer )"
+      )
       .eq("fk_catalog_id", catId)
       .order("sample_date", { ascending: false });
 
@@ -385,9 +388,22 @@ export default function Biopsies() {
                         const region = (r.region ?? "").toString().trim();
                         const loc = (r.location ?? "").toString().trim();
 
-                        const locationVal = loc || region || island || "—";
+                        const sgt: any = (r as any).sightings ?? {};
+                        const sLoc = (sgt.sitelocation ?? "").toString().trim();
+                        const sLoc2 = (sgt.location ?? "").toString().trim();
+                        const sRegion = (sgt.region ?? "").toString().trim();
+                        const sIsland = (sgt.island ?? "").toString().trim();
+                        const sPhotog = (sgt.photographer ?? "").toString().trim();
 
-                        const biopsierVal = (r.collector ?? "").toString().trim() || "—";
+                        const locationVal =
+                          loc || region || island ||
+                          sLoc || sLoc2 || sRegion || sIsland ||
+                          "—";
+
+                        const biopsierVal =
+                          (r.collector ?? "").toString().trim() ||
+                          sPhotog ||
+                          "—";
 
                         const dateStr =
                           dateVal ? new Date(dateVal).toLocaleDateString() : "—";
