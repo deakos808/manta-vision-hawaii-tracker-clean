@@ -211,6 +211,10 @@ export default function Sizes() {
               />
               {opt || "—"}
             </div>
+
+          <div className="flex justify-center mb-3">
+            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
+          </div>
             <span className="text-xs text-muted-foreground">{counts[opt] ?? 0}</span>
           </label>
         ))}
@@ -289,10 +293,6 @@ export default function Sizes() {
             >
               Total Sizes &gt; 1 {onlyMultiple ? "✓" : ""} <span className="ml-1 text-xs text-muted-foreground">({gt1Count})</span>
             </Button>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <Button variant="link" size="sm" onClick={clearAll}>Clear All Filters</Button>
           </div>
 
           <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
