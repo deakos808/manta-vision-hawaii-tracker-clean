@@ -19,6 +19,7 @@ type Row = {
     total_biopsies?: number | null;
   } | null;
   bestPhotoUrl?: string | null;
+  sightings?: { is_mprf?: boolean | null } | null;
 };
 
 function countBy(rows: Row[], get: (r: Row) => string | undefined | null): [string, number][] {
@@ -35,7 +36,7 @@ export default function Biopsies() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[] });
+  const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[], mprf: [] as string[] });
   const [multiOnly, setMultiOnly] = useState(false);
 
   const [namePrefix, setNamePrefix] = useState("");
@@ -53,8 +54,9 @@ export default function Biopsies() {
       const { data, error } = await supabase
         .from("biopsies")
         .select(
-          'pk_biopsy_id, fk_catalog_id, fk_manta_id, sample_date, ' +
-          'catalog:fk_catalog_id ( pk_catalog_id, name, best_catalog_ventral_thumb_url, last_gender, last_age_class, species, total_biopsies )'
+          'pk_biopsy_id, fk_catalog_id, fk_manta_id, fk_sighting_id, sample_date, ' +
+          'catalog:fk_catalog_id ( pk_catalog_id, name, best_catalog_ventral_thumb_url, last_gender, last_age_class, species, total_biopsies ), ' +
+          'sightings:fk_sighting_id ( is_mprf )'
         )
         .order("created_at", { ascending: false })
         .limit(2000);
@@ -68,6 +70,7 @@ export default function Biopsies() {
         sample_date: r.sample_date,
         catalog: r.catalog ?? null,
         bestPhotoUrl: r?.catalog?.best_catalog_ventral_thumb_url ?? null,
+        sightings: r.sightings ?? null,
       }));
 
       setRows(base);
@@ -79,7 +82,20 @@ export default function Biopsies() {
     const species  = countBy(rows, r => r.catalog?.species ?? null);
     const gender   = countBy(rows, r => r.catalog?.last_gender ?? null);
     const ageClass = countBy(rows, r => r.catalog?.last_age_class ?? null);
-    return { species, gender, ageClass };
+
+    let mprfTrue = 0;
+    let mprfFalse = 0;
+    rows.forEach(r => {
+      const v = !!(r.sightings as any)?.is_mprf;
+      if (v) mprfTrue += 1;
+      else mprfFalse += 1;
+    });
+    const mprf: [string, number][] = [
+      ["MPRF", mprfTrue],
+      ["Non-MPRF", mprfFalse],
+    ];
+
+    return { species, gender, ageClass, mprf };
   }, [rows]);
 
   const openCatalogDetails = async (catId: number | null, catName: string | null) => {
@@ -174,11 +190,19 @@ export default function Biopsies() {
 
       const multiOK = !multiOnly || ((c?.total_biopsies ?? 0) >= 2);
 
+      const mprfSel = flt.mprf ?? [];
+      const isMprf = !!(r.sightings as any)?.is_mprf;
+      const mprfOK =
+        mprfSel.length === 0 ||
+        (mprfSel.includes("MPRF") && isMprf) ||
+        (mprfSel.includes("Non-MPRF") && !isMprf);
+
       return (
         inText &&
         nameOK &&
         catOK &&
         multiOK &&
+        mprfOK &&
         pass(flt.species,  c?.species ?? null) &&
         pass(flt.gender,   c?.last_gender ?? null) &&
         pass(flt.ageClass, c?.last_age_class ?? null)
@@ -237,7 +261,7 @@ export default function Biopsies() {
                 <div className="flex justify-end items-center gap-3">
                   <button
                     className="text-xs text-blue-700 underline"
-                    onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                    onClick={() => { setFlt({species:[],gender:[],ageClass:[],mprf:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
                   >
                     Clear All Filters
                   </button>
@@ -254,6 +278,7 @@ export default function Biopsies() {
                 <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
                 <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
                 <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
+                <FilterPill label="MPRF" options={distinct.mprf} selected={flt.mprf} onChange={(v)=>setFlt(f=>({...f,mprf:v}))}/>
                 <label className="ml-3 flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
                   <span>Only catalogs with ≥ 2 biopsies</span>
