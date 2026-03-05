@@ -177,9 +177,10 @@ export default function Biopsies() {
         </div>
 
         {/* Breadcrumb */}
-        <div className="max-w-6xl mx-auto px-4 mt-2 text-sm">
-          <Link to="/browse/data" className="underline">Search Database</Link>
-          <span className="opacity-70"> / Biopsies</span>
+        <div className="max-w-6xl mx-auto px-4 mt-2 text-sm text-blue-800">
+          <Link to="/browse/data" className="text-blue-600 hover:underline">← Return to Browse Data</Link>
+          <span className="mx-2 opacity-70">/</span>
+          <span className="opacity-70">Biopsies</span>
         </div>
 
 
