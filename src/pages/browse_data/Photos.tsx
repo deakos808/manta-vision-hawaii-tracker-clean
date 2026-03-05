@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Link, useSearchParams } from "react-router-dom";
 import { deletePhoto } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { ChevronUp } from "lucide-react";
 import PhotoFilterBox from "@/components/photos/PhotoFilterBox";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ const [searchParams] = useSearchParams();
 const [photos, setPhotos] = useState<Photo[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [filters, setFilters] = useState<FiltersState>({
     population: [],
@@ -290,13 +292,17 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     if (!hasMore) return;
     const obs = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore) fetchPhotos(false);
+        if (!entries[0]?.isIntersecting) return;
+        if (!hasMore) return;
+        if (loadingMore) return;
+        setLoadingMore(true);
+        Promise.resolve(fetchPhotos(false)).finally(() => setLoadingMore(false));
       },
       { threshold: 1 }
     );
     if (loadingRef.current) obs.observe(loadingRef.current);
     return () => obs.disconnect();
-  }, [hasMore, fetchPhotos]);
+  }, [hasMore, fetchPhotos, loadingMore]);
 
   const onClearFilters = () => {
     setSearch("");
@@ -457,43 +463,6 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     return () => { alive = false; };
   }, []);
 
-  // Load distinct islands and locations from SIGHTINGS (for pill options)
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        // Distinct islands
-        const { data: isl } = await supabase
-          .from("sightings")
-          .select("island")
-          .not("island","is", null);
-        if (!alive) return;
-        const islands = Array.from(new Set((isl ?? [])
-          .map(r => (r.island ?? "").toString().trim())
-          .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-        setIslandOptionsAll(islands);
-
-        // Distinct locations grouped by island
-        const { data: locs } = await supabase
-          .from("sightings")
-          .select("island,sitelocation")
-          .not("island","is", null)
-          .not("sitelocation","is", null);
-        if (!alive) return;
-        const map: Record<string,string[]> = {};
-        (locs ?? []).forEach(r => {
-          const isl = (r.island ?? "").toString().trim();
-          const loc = (r.sitelocation ?? "").toString().trim();
-          if (!isl || !loc) return;
-          (map[isl] ||= []);
-          if (!map[isl].includes(loc)) map[isl].push(loc);
-        });
-        Object.values(map).forEach(arr => arr.sort((a,b)=>a.localeCompare(b)));
-        setLocationsByIsland(map);
-      } catch {}
-    })();
-    return () => { alive = false; };
-  }, []);
 
 
   // Load minimal full dataset for pill counts (independent of paged display)
@@ -697,14 +666,15 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           </div>
         )}
 
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <div className="h-7 w-7 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin" aria-label="Loading more" />
+          </div>
+        )}
+
         <div ref={loadingRef} className="h-12" />
 
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-2 shadow-lg"
-        >
-          <ChevronUp className="w-5 h-5" />
-        </button>
+        <BackToTopButton />
       </div>
 
       {/* Best-manta selector modal */}

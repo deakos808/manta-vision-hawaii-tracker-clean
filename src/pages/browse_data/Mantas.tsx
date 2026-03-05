@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { deleteManta } from "@/lib/adminApi";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
@@ -39,7 +40,7 @@ type MantaFacetRow = {
   photographer: string | null;
 };
 
-const PAGE = 1000;
+const PAGE = 500;
 
 export default function MantasPage() {
   const isAdmin = useIsAdmin();
@@ -60,6 +61,7 @@ export default function MantasPage() {
   const [totalMantas, setTotalMantas] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Search + Filters
   const [q, setQ] = useState("");
@@ -70,21 +72,26 @@ export default function MantasPage() {
 
   // Sort: false = newest first (desc), true = oldest first (asc)
   const [sortAsc, setSortAsc] = useState(false);
-
+  const CARD_PAGE = 36;
+  const [showing, setShowing] = useState(CARD_PAGE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [serverFrom, setServerFrom] = useState(0);
   const handleClearFilters = () => {
     setPopulation([]);
     setIsland([]);
     setLocation([]);
     setPhotographer([]);
     setQ("");
+    setShowing(CARD_PAGE);
+    setServerFrom(0);
   };
 
   // Reset when context changes
   useEffect(() => {
     handleClearFilters();
   }, [sightingId, crumbCatalogId]);
-
-  // Load mantas (paged), join catalog/sightings for metadata, get best thumbs
+  // Load mantas (server-paged), join catalog/sightings for metadata, get best thumbs
   useEffect(() => {
     let active = true;
 
@@ -96,149 +103,167 @@ export default function MantasPage() {
       setTotalMantas(count ?? 0);
     }
 
-    async function fetchAll() {
-      setLoading(true);
-      setError(null);
-
+    async function enrichAndAppend(rows: any[], replace: boolean) {
       const mantas: MantaRow[] = [];
-      const allMantaIds: number[] = [];
+      const mantaIds: number[] = [];
       const facets: MantaFacetRow[] = [];
 
-      for (let from = 0; ; from += PAGE) {
-        let q = supabase
-          .from("mantas")
-          .select(
-            [
-              "pk_manta_id",
-              "fk_catalog_id",
-              "fk_sighting_id",
-              "photographer", // fallback if sightings.photographer is null
-              "catalog:fk_catalog_id ( name )",
-              "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
-            ].join(",")
-          )
-          .range(from, from + PAGE - 1);
-
-        if (sightingId) q = q.eq("fk_sighting_id", sightingId);
-        if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
-
-        const { data, error } = await q;
-        if (!active) return;
-
-        if (error) {
-          setError(error.message);
-          setAllMantas([]);
-          setFacetRows([]);
-          setLoading(false);
-          return;
-        }
-
-        const rows = (data ?? []) as any[];
-        if (rows.length === 0) break;
-
-        for (const r of rows) {
-          const photog = r.sightings?.photographer ?? r.photographer ?? null; // prefer sightings.photographer
-          const m: MantaRow = {
-            pk_manta_id: r.pk_manta_id,
-            fk_catalog_id: r.fk_catalog_id,
-            fk_sighting_id: r.fk_sighting_id,
-            name: r.catalog?.name ?? null,
-            population: r.sightings?.population ?? null,
-            island: r.sightings?.island ?? null,
-            location: r.sightings?.sitelocation ?? null,
-            photographer: photog,
-            photo_count: undefined,
-            best_thumb_url: null,
-          };
-          mantas.push(m);
-          allMantaIds.push(m.pk_manta_id);
-          facets.push({
-            population: m.population,
-            island: m.island,
-            location: m.location,
-            photographer: m.photographer,
-          });
-        }
-
-        if (rows.length < PAGE) break;
+      for (const r of rows) {
+        const photog = r.sightings?.photographer ?? r.photographer ?? null;
+        const m: MantaRow = {
+          pk_manta_id: r.pk_manta_id,
+          fk_catalog_id: r.fk_catalog_id,
+          fk_sighting_id: r.fk_sighting_id,
+          name: r.catalog?.name ?? null,
+          population: r.sightings?.population ?? null,
+          island: r.sightings?.island ?? null,
+          location: r.sightings?.sitelocation ?? null,
+          photographer: photog,
+          photo_count: undefined,
+          best_thumb_url: null,
+        };
+        mantas.push(m);
+        mantaIds.push(m.pk_manta_id);
+        facets.push({
+          population: m.population,
+          island: m.island,
+          location: m.location,
+          photographer: m.photographer,
+        });
       }
 
       if (!active) return;
 
-      
-      // Photo counts (from manta_photo_counts view)
+      // Photo counts (page only)
       try {
-        const countChunks = [];
-        for (let i = 0; i < allMantaIds.length; i += 1000) countChunks.push(allMantaIds.slice(i, i + 1000));
-        const countsByManta = new Map<number, number>();
-        for (const ids of countChunks) {
+        if (mantaIds.length) {
           const { data: crows } = await supabase
             .from("manta_photo_counts")
             .select("fk_manta_id, photos_count")
-            .in("fk_manta_id", ids);
+            .in("fk_manta_id", mantaIds);
+
+          const countsByManta = new Map<number, number>();
           for (const r of (crows ?? [])) {
-            if (typeof r.fk_manta_id === "number")
-              countsByManta.set(r.fk_manta_id, (r.photos_count as number) ?? 0);
+            if (typeof (r as any).fk_manta_id === "number") {
+              countsByManta.set((r as any).fk_manta_id, ((r as any).photos_count as number) ?? 0);
+            }
+          }
+          for (const m of mantas) {
+            const n = countsByManta.get(m.pk_manta_id);
+            if (typeof n === "number") m.photo_count = n;
           }
         }
-        for (const m of mantas) {
-          const n = countsByManta.get(m.pk_manta_id);
-          if (typeof n === "number") m.photo_count = n;
-        }
-      } catch (e) {
+      } catch (e: any) {
         console.warn("[Mantas] count fetch failed", (e && e.message) || e);
       }
 
-      // Best-ventral thumbnails
-      const idChunks: number[][] = [];
-      for (let i = 0; i < allMantaIds.length; i += 1000) {
-        idChunks.push(allMantaIds.slice(i, i + 1000));
-      }
+      // Best-ventral thumbnails (page only)
+      try {
+        if (mantaIds.length) {
+          const bestByManta = new Map<number, number>();
+          const thumbByPhotoId = new Map<number, string | null>();
 
-      const bestByManta = new Map<number, number>();
-      const thumbByPhotoId = new Map<number, string | null>();
+          const { data: bestRows } = await supabase
+            .from("photos")
+            .select("pk_photo_id,fk_manta_id")
+            .eq("is_best_manta_ventral_photo", true)
+            .in("fk_manta_id", mantaIds);
 
-      for (const ids of idChunks) {
-        const { data: bestRows } = await supabase
-          .from("photos")
-          .select("pk_photo_id,fk_manta_id")
-          .eq("is_best_manta_ventral_photo", true)
-          .in("fk_manta_id", ids);
+          const bestIds = (bestRows ?? [])
+            .map((r: any) => {
+              if (r.fk_manta_id && r.pk_photo_id) {
+                bestByManta.set(r.fk_manta_id, r.pk_photo_id);
+                return r.pk_photo_id as number;
+              }
+              return undefined;
+            })
+            .filter(Boolean) as number[];
 
-        const bestIds = (bestRows ?? [])
-          .map((r: any) => {
-            if (r.fk_manta_id && r.pk_photo_id) {
-              bestByManta.set(r.fk_manta_id, r.pk_photo_id);
-              return r.pk_photo_id as number;
+          for (let i = 0; i < bestIds.length; i += 1000) {
+            const chunk = bestIds.slice(i, i + 1000);
+            const { data: trs } = await supabase
+              .from("photos_with_photo_view")
+              .select("pk_photo_id, thumbnail_url")
+              .in("pk_photo_id", chunk);
+            for (const tr of trs ?? []) {
+              thumbByPhotoId.set((tr as any).pk_photo_id, (tr as any).thumbnail_url ?? null);
             }
-            return undefined;
-          })
-          .filter(Boolean) as number[];
+          }
 
-        for (let i = 0; i < bestIds.length; i += 1000) {
-          const chunk = bestIds.slice(i, i + 1000);
-          const { data: trs } = await supabase
-            .from("photos_with_photo_view")
-            .select("pk_photo_id, thumbnail_url")
-            .in("pk_photo_id", chunk);
-          for (const tr of trs ?? []) {
-            thumbByPhotoId.set(tr.pk_photo_id, tr.thumbnail_url ?? null);
+          for (const m of mantas) {
+            const bestId = bestByManta.get(m.pk_manta_id);
+            if (bestId) m.best_thumb_url = thumbByPhotoId.get(bestId) ?? null;
           }
         }
+      } catch (e: any) {
+        console.warn("[Mantas] thumb fetch failed", (e && e.message) || e);
       }
 
-      for (const m of mantas) {
-        const bestId = bestByManta.get(m.pk_manta_id);
-        if (bestId) m.best_thumb_url = thumbByPhotoId.get(bestId) ?? null;
-      }
+      if (!active) return;
 
-      setAllMantas(mantas);
-      setFacetRows(facets);
-      setLoading(false);
+      setAllMantas((prev) => (replace ? mantas : [...prev, ...mantas]));
+      setFacetRows((prev) => (replace ? facets : [...prev, ...facets]));
     }
 
+    const fetchPage = async (from: number, replace: boolean) => {
+      setError(null);
+      setLoadingMore(true);
+
+      let q = supabase
+        .from("mantas")
+        .select(
+          [
+            "pk_manta_id",
+            "fk_catalog_id",
+            "fk_sighting_id",
+            "photographer",
+            "catalog:fk_catalog_id ( name )",
+            "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+          ].join(",")
+        )
+        .order("pk_manta_id", { ascending: false })
+        .range(from, from + PAGE - 1);
+
+      if (sightingId) q = q.eq("fk_sighting_id", sightingId);
+      if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
+
+      const { data, error } = await q;
+      if (!active) return;
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      const rows = (data ?? []) as any[];
+      await enrichAndAppend(rows, replace);
+
+      if (!active) return;
+
+      if (rows.length < PAGE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+        setServerFrom(from + PAGE);
+      }
+
+      setLoading(false);
+      setLoadingMore(false);
+    };
+
+    const init = async () => {
+      setLoading(true);
+      setHasMore(true);
+      setServerFrom(0);
+      setAllMantas([]);
+      setFacetRows([]);
+      await fetchPage(0, true);
+    };
+
     fetchTotal();
-    fetchAll();
+    init();
 
     return () => {
       active = false;
@@ -272,9 +297,16 @@ export default function MantasPage() {
   // Sort AFTER filters
   const sortedMantas = useMemo(() => {
     const arr = [...filteredMantas];
-    arr.sort((a,b) => (sortAsc ? a.pk_manta_id - b.pk_manta_id : b.pk_manta_id - a.pk_manta_id));
+    arr.sort((a, b) =>
+      sortAsc ? a.pk_manta_id - b.pk_manta_id : b.pk_manta_id - a.pk_manta_id
+    );
     return arr;
   }, [filteredMantas, sortAsc]);
+
+  const visibleMantas = useMemo(
+    () => sortedMantas.slice(0, showing),
+    [sortedMantas, showing]
+  );
 
   // Human-readable active filters string
   const activeFiltersText = useMemo(() => {
@@ -287,20 +319,209 @@ export default function MantasPage() {
     return parts.join(" · ");
   }, [q, population, island, location, photographer]);
 
-  // Summary line
+  // Infinite scroll:
+  // 1) increases visible slice (UI paging)
+  // 2) triggers server pagination when nearing the end of loaded data
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        if (loadingMore) return;
+
+        setShowing((n) => Math.min(n + CARD_PAGE, sortedMantas.length));
+
+        if (loading) return;
+
+        const remaining = sortedMantas.length - showing;
+        if (hasMore && remaining <= CARD_PAGE) {
+          setLoadingMore(true);
+          (async () => {
+            let q = supabase
+              .from("mantas")
+              .select(
+                [
+                  "pk_manta_id",
+                  "fk_catalog_id",
+                  "fk_sighting_id",
+                  "photographer",
+                  "catalog:fk_catalog_id ( name )",
+                  "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+                ].join(",")
+              )
+              .order("pk_manta_id", { ascending: false })
+              .range(serverFrom, serverFrom + PAGE - 1);
+
+            if (sightingId) q = q.eq("fk_sighting_id", sightingId);
+            if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
+
+            const { data, error } = await q;
+            if (error) {
+              setError(error.message);
+              setLoadingMore(false);
+              return;
+            }
+
+            const rows = (data ?? []) as any[];
+            if (rows.length === 0) {
+              setHasMore(false);
+              setLoadingMore(false);
+              return;
+            }
+
+            const mantas: MantaRow[] = [];
+            const mantaIds: number[] = [];
+            const facets: MantaFacetRow[] = [];
+
+            for (const r of rows) {
+              const photog = (r as any).sightings?.photographer ?? (r as any).photographer ?? null;
+              const m: MantaRow = {
+                pk_manta_id: (r as any).pk_manta_id,
+                fk_catalog_id: (r as any).fk_catalog_id,
+                fk_sighting_id: (r as any).fk_sighting_id,
+                name: (r as any).catalog?.name ?? null,
+                population: (r as any).sightings?.population ?? null,
+                island: (r as any).sightings?.island ?? null,
+                location: (r as any).sightings?.sitelocation ?? null,
+                photographer: photog,
+                photo_count: undefined,
+                best_thumb_url: null,
+              };
+              mantas.push(m);
+              mantaIds.push(m.pk_manta_id);
+              facets.push({
+                population: m.population,
+                island: m.island,
+                location: m.location,
+                photographer: m.photographer,
+              });
+            }
+
+            try {
+              if (mantaIds.length) {
+                const { data: crows } = await supabase
+                  .from("manta_photo_counts")
+                  .select("fk_manta_id, photos_count")
+                  .in("fk_manta_id", mantaIds);
+
+                const countsByManta = new Map<number, number>();
+                for (const r of (crows ?? [])) {
+                  if (typeof (r as any).fk_manta_id === "number") {
+                    countsByManta.set((r as any).fk_manta_id, ((r as any).photos_count as number) ?? 0);
+                  }
+                }
+                for (const m of mantas) {
+                  const n = countsByManta.get(m.pk_manta_id);
+                  if (typeof n === "number") m.photo_count = n;
+                }
+              }
+            } catch (e: any) {
+              console.warn("[Mantas] count fetch failed", (e && e.message) || e);
+            }
+
+            try {
+              if (mantaIds.length) {
+                const bestByManta = new Map<number, number>();
+                const thumbByPhotoId = new Map<number, string | null>();
+
+                const { data: bestRows } = await supabase
+                  .from("photos")
+                  .select("pk_photo_id,fk_manta_id")
+                  .eq("is_best_manta_ventral_photo", true)
+                  .in("fk_manta_id", mantaIds);
+
+                const bestIds = (bestRows ?? [])
+                  .map((r: any) => {
+                    if (r.fk_manta_id && r.pk_photo_id) {
+                      bestByManta.set(r.fk_manta_id, r.pk_photo_id);
+                      return r.pk_photo_id as number;
+                    }
+                    return undefined;
+                  })
+                  .filter(Boolean) as number[];
+
+                for (let i = 0; i < bestIds.length; i += 1000) {
+                  const chunk = bestIds.slice(i, i + 1000);
+                  const { data: trs } = await supabase
+                    .from("photos_with_photo_view")
+                    .select("pk_photo_id, thumbnail_url")
+                    .in("pk_photo_id", chunk);
+                  for (const tr of trs ?? []) {
+                    thumbByPhotoId.set((tr as any).pk_photo_id, (tr as any).thumbnail_url ?? null);
+                  }
+                }
+
+                for (const m of mantas) {
+                  const bestId = bestByManta.get(m.pk_manta_id);
+                  if (bestId) m.best_thumb_url = thumbByPhotoId.get(bestId) ?? null;
+                }
+              }
+            } catch (e: any) {
+              console.warn("[Mantas] thumb fetch failed", (e && e.message) || e);
+            }
+
+            setAllMantas((prev) => [...prev, ...mantas]);
+            setFacetRows((prev) => [...prev, ...facets]);
+
+            if (rows.length < PAGE) {
+              setHasMore(false);
+            } else {
+              setHasMore(true);
+              setServerFrom((n) => n + PAGE);
+            }
+
+            setLoadingMore(false);
+          })();
+        }
+      },
+      { root: null, rootMargin: "800px", threshold: 0 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [showing, sortedMantas.length, loadingMore, hasMore, serverFrom, sightingId, crumbCatalogId]);
   const headerSubtitle = useMemo(() => {
+    const loaded = allMantas.length;
+    const loadedFiltered = filteredMantas.length;
+
+    const hasAnyFilter =
+      !!q.trim() ||
+      population.length > 0 ||
+      island.length > 0 ||
+      location.length > 0 ||
+      photographer.length > 0;
+
     let base = "";
+
     if (sightingId) {
-      const n = filteredMantas.length;
-      base = `${n} record${n === 1 ? "" : "s"} for Sighting ${sightingId}${
+      base = `Loaded ${loaded} record${loaded === 1 ? "" : "s"} for Sighting ${sightingId}${
         crumbCatalogId ? ` (Catalog ${crumbCatalogId})` : ""
       }`;
     } else {
-      base = `${filteredMantas.length} record${filteredMantas.length === 1 ? "" : "s"} showing of ${totalMantas} total`;
+      base = `Loaded ${loaded} record${loaded === 1 ? "" : "s"} of ${totalMantas} total`;
     }
-    if (activeFiltersText) base += ` — filtered by ${activeFiltersText}`;
+
+    if (hasAnyFilter) {
+      base += ` — Filtered within loaded set: ${loadedFiltered} match${loadedFiltered === 1 ? "" : "es"}`;
+      if (activeFiltersText) base += ` (${activeFiltersText})`;
+    }
+
     return base;
-  }, [filteredMantas.length, sightingId, crumbCatalogId, totalMantas, activeFiltersText]);
+  }, [
+    allMantas.length,
+    filteredMantas.length,
+    sightingId,
+    crumbCatalogId,
+    totalMantas,
+    q,
+    population,
+    island,
+    location,
+    photographer,
+    activeFiltersText,
+  ]);
 
   // Breadcrumb + optional "Return to Sighting" builder
   const sightingsBackHref = useMemo(() => {
@@ -412,7 +633,7 @@ export default function MantasPage() {
 
           {!loading &&
             !error &&
-            sortedMantas.map((m) => {
+            visibleMantas.map((m) => {
                 const photoCount = photoCounts[m.pk_manta_id as number] ?? null;
               return (
                 <div
@@ -498,6 +719,16 @@ export default function MantasPage() {
             })}
         </div>
       </div>
+
+      {loadingMore && (
+        <div className="flex justify-center py-6">
+          <div className="h-7 w-7 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin" aria-label="Loading more" />
+        </div>
+      )}
+      <div ref={loadMoreRef} className="h-10" />
+
+      <BackToTopButton />
+
 
       {/* Photos modal */}
       <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />

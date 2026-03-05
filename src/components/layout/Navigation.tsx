@@ -1,6 +1,7 @@
 import { useSession } from "@supabase/auth-helpers-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Link } from "react-router-dom";
+import hamerLogo from "@/assets/hamer_logo_1.png";
 
 export default function Navigation() {
   const session = useSession();
@@ -11,7 +12,8 @@ export default function Navigation() {
 
   return (
     <nav className="p-4 border-b flex justify-between items-center">
-      <Link to="/" className="text-lg font-semibold">
+      <Link to="/" className="flex items-center gap-2 text-lg font-semibold">
+        <img src={hamerLogo} alt="HAMER" className="h-7 w-7" />
         <span className="text-sky-700 font-bold">Hawaii Manta Tracker</span>
       </Link>
       <div className="space-x-4">

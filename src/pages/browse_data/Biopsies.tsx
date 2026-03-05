@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { supabase } from "@/lib/supabase";
 
 type Row = {
@@ -37,6 +38,15 @@ export default function Biopsies() {
   const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[] });
   const [multiOnly, setMultiOnly] = useState(false);
 
+  const [namePrefix, setNamePrefix] = useState("");
+  const [catalogPrefix, setCatalogPrefix] = useState("");
+  const [openStats, setOpenStats] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsCatalogId, setDetailsCatalogId] = useState<number | null>(null);
+  const [detailsCatalogName, setDetailsCatalogName] = useState<string | null>(null);
+  const [detailsRows, setDetailsRows] = useState<any[] | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -71,6 +81,34 @@ export default function Biopsies() {
     const ageClass = countBy(rows, r => r.catalog?.last_age_class ?? null);
     return { species, gender, ageClass };
   }, [rows]);
+
+  const openCatalogDetails = async (catId: number | null, catName: string | null) => {
+    if (catId == null) return;
+    setDetailsCatalogId(catId);
+    setDetailsCatalogName(catName ?? null);
+    setDetailsOpen(true);
+    setDetailsLoading(true);
+    setDetailsRows(null);
+
+    const { data, error } = await supabase
+      .from("biopsies")
+      .select(
+        "pk_biopsy_id,fk_catalog_id,fk_sighting_id,sample_date,sample_time,collector,island,region,location," +
+        "sightings:fk_sighting_id ( sitelocation, location, region, island, photographer )"
+      )
+      .eq("fk_catalog_id", catId)
+      .order("sample_date", { ascending: false });
+
+    if (error) {
+      console.error("[biopsies] details load error", error);
+      setDetailsRows([]);
+      setDetailsLoading(false);
+      return;
+    }
+
+    setDetailsRows((data as any[]) ?? []);
+    setDetailsLoading(false);
+  };
 
   const stats = useMemo(() => {
     const catalogIds = new Set<number>();
@@ -111,26 +149,55 @@ export default function Biopsies() {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const nameNeedle = namePrefix.trim().toLowerCase();
+    const catNeedle = catalogPrefix.trim().toLowerCase();
+
     const pass = (vals: string[], v?: string | null) => vals.length === 0 || (v && vals.includes(v));
+
     return rows.filter((r) => {
       const c = r.catalog ?? ({} as any);
+
       const inText =
         !needle ||
         String(r.pk_biopsy_id ?? "").toLowerCase().includes(needle) ||
         String(r.fk_catalog_id ?? "").toLowerCase().includes(needle) ||
         String(c?.name ?? "").toLowerCase().includes(needle);
 
+      const nameOK =
+        !nameNeedle ||
+        String(c?.name ?? "").toLowerCase().startsWith(nameNeedle);
+
+      const catId = String(c?.pk_catalog_id ?? r.fk_catalog_id ?? "");
+      const catOK =
+        !catNeedle ||
+        catId.toLowerCase().startsWith(catNeedle);
+
       const multiOK = !multiOnly || ((c?.total_biopsies ?? 0) >= 2);
 
       return (
         inText &&
+        nameOK &&
+        catOK &&
         multiOK &&
         pass(flt.species,  c?.species ?? null) &&
         pass(flt.gender,   c?.last_gender ?? null) &&
         pass(flt.ageClass, c?.last_age_class ?? null)
       );
     });
-  }, [rows, q, flt, multiOnly]);
+  }, [rows, q, namePrefix, catalogPrefix, flt, multiOnly]);
+
+  const activeFiltersText = useMemo(() => {
+    const parts: string[] = [];
+    if (q.trim()) parts.push(`Search: "${q.trim()}"`);
+    if (flt.species.length) parts.push(`Species: ${flt.species.join(", ")}`);
+    if (flt.gender.length) parts.push(`Gender: ${flt.gender.join(", ")}`);
+    if (flt.ageClass.length) parts.push(`Age: ${flt.ageClass.join(", ")}`);
+    if (multiOnly) parts.push("Catalogs ≥ 2 biopsies");
+    if (namePrefix.trim()) parts.push(`Name starts with "${namePrefix.trim()}"`);
+    if (catalogPrefix.trim()) parts.push(`Catalog ID starts with "${catalogPrefix.trim()}"`);
+    return parts.join(" · ");
+  }, [q, flt, multiOnly, namePrefix, catalogPrefix]);
+
 
   return (
     <Layout>
@@ -142,59 +209,87 @@ export default function Biopsies() {
           </div>
         </div>
 
-        {/* Breadcrumb */}
-        <div className="max-w-6xl mx-auto px-4 mt-2 text-sm">
-          <Link to="/browse/data" className="underline">Search Database</Link>
-          <span className="opacity-70"> / Biopsies</span>
+        {/* Light band (full width, Catalog style) */}
+        <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 mb-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Breadcrumb */}
+            <div className="text-sm text-blue-800 mb-3">
+              <Link to="/browse/data" className="text-blue-600 hover:underline">← Return to Browse Data</Link>
+            </div>
+
+            {/* Search */}
+            <div className="flex items-center gap-3 mb-3">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by Biopsy ID, Catalog ID, or Name…"
+                className="border rounded-lg px-3 py-2 w-full md:w-1/3 max-w-md bg-white"
+              />
+            </div>
+
+            {/* Filter box (white card inside light band) */}
+            <div className="bg-white shadow p-4 rounded border w-full">
+              <div className="grid grid-cols-3 items-center mb-2">
+                <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
+
+                <div />
+
+                <div className="flex justify-end items-center gap-3">
+                  <button
+                    className="text-xs text-blue-700 underline"
+                    onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                  >
+                    Clear All Filters
+                  </button>
+                  <button
+                    className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                    onClick={() => setOpenStats(true)}
+                  >
+                    Biopsy Stats
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
+                <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
+                <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
+                <label className="ml-3 flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
+                  <span>Only catalogs with ≥ 2 biopsies</span>
+                </label>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
+                  <input
+                    value={namePrefix}
+                    onChange={(e) => setNamePrefix(e.target.value)}
+                    placeholder="e.g., Ra..."
+                    className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
+                  <input
+                    value={catalogPrefix}
+                    onChange={(e) => setCatalogPrefix(e.target.value)}
+                    placeholder="e.g., 12..."
+                    className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 text-sm text-gray-600">
+              Showing <b>{filtered.length}</b> of <b>{rows.length}</b> total records
+              {activeFiltersText ? ` — filtered by ${activeFiltersText}` : ""}.
+            </div>
+          </div>
         </div>
 
-        {/* Stats header */}
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 text-center py-6 text-sm">
-            <div><div className="text-3xl font-semibold">{stats.totalBiopsies}</div><div className="text-gray-600">Total Biopsies</div></div>
-            <div><div className="text-3xl font-semibold">{stats.totalCatalogs}</div><div className="text-gray-600">Catalog IDs</div></div>
-            <div><div className="text-3xl font-semibold">{stats.catalogsMulti}</div><div className="text-gray-600">Catalogs ≥ 2 biopsies</div></div>
-            <div><div className="text-3xl font-semibold">{stats.males}</div><div className="text-gray-600">Males</div></div>
-            <div><div className="text-3xl font-semibold">{stats.females}</div><div className="text-gray-600">Females</div></div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          {/* Search */}
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by Biopsy ID, Catalog ID, or Name…"
-              className="border rounded-lg px-3 py-2 w-full md:w-1/3 max-w-md"
-            />
-          </div>
-
-          {/* Filter box */}
-          <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 rounded border mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
-              <button className="text-xs text-blue-700 underline" onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); }}>
-                Clear All Filters
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
-              <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
-              <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
-              <label className="ml-3 flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
-                <span>Only catalogs with ≥ 2 biopsies</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div className="text-sm text-gray-600 mb-4">
-            Showing <b>{filtered.length}</b> of <b>{rows.length}</b>
-            {q || filtered.length !== rows.length || multiOnly || flt.species.length || flt.gender.length || flt.ageClass.length ? " (filtered)" : ""}.
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-16 pb-16">
 
           {/* List */}
           {loading ? (
@@ -203,11 +298,144 @@ export default function Biopsies() {
             <div className="text-gray-500">No biopsies found.</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-              {filtered.map((r, i) => <Card key={String(r.pk_biopsy_id) + "-" + i} row={r} />)}
+              {filtered.map((r, i) => <Card key={String(r.pk_biopsy_id) + "-" + i} row={r} onOpenDetails={openCatalogDetails} />)}
             </div>
           )}
         </div>
       </div>
+
+      {/* Biopsy stats modal */}
+      {openStats && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-semibold text-lg">Biopsy Stats</div>
+              <button onClick={() => setOpenStats(false)} className="text-gray-500 hover:text-gray-700 text-lg">✕</button>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Total Biopsies</div>
+                  <div className="text-lg font-semibold">{stats.totalBiopsies}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Catalog IDs</div>
+                  <div className="text-lg font-semibold">{stats.totalCatalogs}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Catalogs ≥ 2 biopsies</div>
+                  <div className="text-lg font-semibold">{stats.catalogsMulti}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Males</div>
+                  <div className="text-lg font-semibold">{stats.males}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Females</div>
+                  <div className="text-lg font-semibold">{stats.females}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Adults</div>
+                  <div className="text-lg font-semibold">{stats.adults}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Juveniles</div>
+                  <div className="text-lg font-semibold">{stats.juveniles}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Biopsy details modal (per Catalog ID) */}
+      {detailsOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-semibold text-lg">
+                Biopsy Details — Catalog {detailsCatalogId}{detailsCatalogName ? ` (${detailsCatalogName})` : ""}
+              </div>
+              <button
+                onClick={() => { setDetailsOpen(false); setDetailsRows(null); setDetailsCatalogId(null); }}
+                className="text-gray-500 hover:text-gray-700 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5">
+              {detailsLoading ? (
+                <div className="text-sm text-gray-600">Loading…</div>
+              ) : !detailsRows || detailsRows.length === 0 ? (
+                <div className="text-sm text-gray-600">No biopsy records found for this catalog.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b">
+                        <th className="py-2 pr-3">Biopsy ID</th>
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Location</th>
+                        <th className="py-2 pr-3">Biopsier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsRows.map((r, idx) => {
+                        const biopsyId = r.pk_biopsy_id ?? "—";
+
+                        const dateVal = r.sample_date ?? null;
+                        const timeVal = r.sample_time ?? null;
+
+                        const island = (r.island ?? "").toString().trim();
+                        const region = (r.region ?? "").toString().trim();
+                        const loc = (r.location ?? "").toString().trim();
+
+                        const sgt: any = (r as any).sightings ?? {};
+                        const sLoc = (sgt.sitelocation ?? "").toString().trim();
+                        const sLoc2 = (sgt.location ?? "").toString().trim();
+                        const sRegion = (sgt.region ?? "").toString().trim();
+                        const sIsland = (sgt.island ?? "").toString().trim();
+                        const sPhotog = (sgt.photographer ?? "").toString().trim();
+
+                        const locationVal =
+                          loc || region || island ||
+                          sLoc || sLoc2 || sRegion || sIsland ||
+                          "—";
+
+                        const biopsierVal =
+                          (r.collector ?? "").toString().trim() ||
+                          sPhotog ||
+                          "—";
+
+                        const dateStr =
+                          dateVal ? new Date(dateVal).toLocaleDateString() : "—";
+
+                        const timeStr =
+                          timeVal ? String(timeVal).slice(0, 8) : "";
+
+                        return (
+                          <tr key={String(biopsyId) + "-" + idx} className="border-b last:border-0">
+                            <td className="py-2 pr-3">{String(biopsyId)}</td>
+                            <td className="py-2 pr-3">
+                              {dateStr}{timeStr ? ` ${timeStr}` : ""}
+                            </td>
+                            <td className="py-2 pr-3">{locationVal}</td>
+                            <td className="py-2 pr-3">{biopsierVal}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      <BackToTopButton />
     </Layout>
   );
 }
@@ -228,7 +456,7 @@ function FilterPill(props: FilterPillProps) {
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen(o=>!o)} className="px-3 py-1 rounded-full border bg-white shadow-sm text-xs">
+      <button onClick={() => setOpen(o=>!o)} className="px-3 py-1 rounded-full border bg-blue-50 shadow-sm text-xs">
         {label}{selected.length ? ` • ${selected.length}` : ""}
       </button>
       {open && (
@@ -258,7 +486,7 @@ function FilterPill(props: FilterPillProps) {
 }
 
 /* ---------- Card (thumb on top like Photos) ---------- */
-function Card({ row }: { row: Row }) {
+function Card({ row, onOpenDetails }: { row: Row; onOpenDetails: (catId: number | null, catName: string | null) => void }) {
   const c = row.catalog ?? ({} as any);
   const photo = row.bestPhotoUrl ?? null;
   const total = c?.total_biopsies ?? 0;
@@ -268,10 +496,19 @@ function Card({ row }: { row: Row }) {
         {photo ? <img src={photo} alt={String(c?.name ?? "")} className="w-full h-full object-cover rounded" /> : <div className="text-gray-400 text-[12px]">No photo</div>}
       </div>
       <div className="p-2 text-xs leading-5">
-        <div className="font-medium">{c?.name ?? "Unknown name"}</div>
+        <div className="font-semibold text-blue-600">{c?.name ?? "Unknown name"}</div>
         <div className="text-gray-600">Catalog ID: {c?.pk_catalog_id ?? row.fk_catalog_id ?? "—"}</div>
         <div className="text-gray-600">Biopsy ID: {row.pk_biopsy_id}</div>
-        <div className="text-gray-600">Total Biopsies: {total}</div>
+                <div className="text-gray-600">
+          Total Biopsies:{" "}
+          <button
+            className="text-blue-600 underline"
+            onClick={() => onOpenDetails(c?.pk_catalog_id ?? row.fk_catalog_id ?? null, c?.name ?? null)}
+            title="View biopsy details"
+          >
+            {total}
+          </button>
+        </div>
         <div className="text-gray-600">Gender: {c?.last_gender ?? "—"}</div>
         <div className="text-gray-600">Age Class: {c?.last_age_class ?? "—"}</div>
       </div>
