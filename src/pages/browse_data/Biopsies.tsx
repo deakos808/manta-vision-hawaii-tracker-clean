@@ -376,23 +376,34 @@ export default function Biopsies() {
                     </thead>
                     <tbody>
                       {detailsRows.map((r, idx) => {
-                        const biopsyId = r.pk_biopsy_id ?? r.id ?? r.biopsy_id ?? "—";
-                        const dateVal = r.sample_date ?? r.date ?? r.biopsy_date ?? null;
+                        const biopsyId = r.pk_biopsy_id ?? "—";
 
-                        const locationVal =
-                          r.location ?? r.sitelocation ?? r.site_location ?? r.sampling_location ?? r.site ?? "—";
+                        const dateVal = r.sample_date ?? null;
+                        const timeVal = r.sample_time ?? null;
 
-                        const biopsierVal =
-                          r.biopsier ?? r.biopsyist ?? r.biopsist ?? r.collected_by ?? r.sampler ?? r.sampled_by ?? "—";
+                        const island = (r.island ?? "").toString().trim();
+                        const region = (r.region ?? "").toString().trim();
+                        const loc = (r.location ?? "").toString().trim();
+
+                        const locationParts = [island, region, loc].filter(Boolean);
+                        const locationVal = locationParts.length ? locationParts.join(" — ") : "—";
+
+                        const biopsierVal = (r.collector ?? "").toString().trim() || "—";
+
+                        const dateStr =
+                          dateVal ? new Date(dateVal).toLocaleDateString() : "—";
+
+                        const timeStr =
+                          timeVal ? String(timeVal).slice(0, 8) : "";
 
                         return (
                           <tr key={String(biopsyId) + "-" + idx} className="border-b last:border-0">
                             <td className="py-2 pr-3">{String(biopsyId)}</td>
                             <td className="py-2 pr-3">
-                              {dateVal ? new Date(dateVal).toLocaleDateString() : "—"}
+                              {dateStr}{timeStr ? ` ${timeStr}` : ""}
                             </td>
-                            <td className="py-2 pr-3">{String(locationVal ?? "—")}</td>
-                            <td className="py-2 pr-3">{String(biopsierVal ?? "—")}</td>
+                            <td className="py-2 pr-3">{locationVal}</td>
+                            <td className="py-2 pr-3">{biopsierVal}</td>
                           </tr>
                         );
                       })}
