@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
+import BackToTopButton from "@/components/browse/BackToTopButton";
 import { supabase } from "@/lib/supabase";
 
 type Row = {
@@ -36,6 +37,10 @@ export default function Biopsies() {
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[] });
   const [multiOnly, setMultiOnly] = useState(false);
+
+  const [namePrefix, setNamePrefix] = useState("");
+  const [catalogPrefix, setCatalogPrefix] = useState("");
+  const [openStats, setOpenStats] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -111,26 +116,42 @@ export default function Biopsies() {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const nameNeedle = namePrefix.trim().toLowerCase();
+    const catNeedle = catalogPrefix.trim().toLowerCase();
+
     const pass = (vals: string[], v?: string | null) => vals.length === 0 || (v && vals.includes(v));
+
     return rows.filter((r) => {
       const c = r.catalog ?? ({} as any);
+
       const inText =
         !needle ||
         String(r.pk_biopsy_id ?? "").toLowerCase().includes(needle) ||
         String(r.fk_catalog_id ?? "").toLowerCase().includes(needle) ||
         String(c?.name ?? "").toLowerCase().includes(needle);
 
+      const nameOK =
+        !nameNeedle ||
+        String(c?.name ?? "").toLowerCase().startsWith(nameNeedle);
+
+      const catId = String(c?.pk_catalog_id ?? r.fk_catalog_id ?? "");
+      const catOK =
+        !catNeedle ||
+        catId.toLowerCase().startsWith(catNeedle);
+
       const multiOK = !multiOnly || ((c?.total_biopsies ?? 0) >= 2);
 
       return (
         inText &&
+        nameOK &&
+        catOK &&
         multiOK &&
         pass(flt.species,  c?.species ?? null) &&
         pass(flt.gender,   c?.last_gender ?? null) &&
         pass(flt.ageClass, c?.last_age_class ?? null)
       );
     });
-  }, [rows, q, flt, multiOnly]);
+  }, [rows, q, namePrefix, catalogPrefix, flt, multiOnly]);
 
   return (
     <Layout>
@@ -148,16 +169,6 @@ export default function Biopsies() {
           <span className="opacity-70"> / Biopsies</span>
         </div>
 
-        {/* Stats header */}
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 text-center py-6 text-sm">
-            <div><div className="text-3xl font-semibold">{stats.totalBiopsies}</div><div className="text-gray-600">Total Biopsies</div></div>
-            <div><div className="text-3xl font-semibold">{stats.totalCatalogs}</div><div className="text-gray-600">Catalog IDs</div></div>
-            <div><div className="text-3xl font-semibold">{stats.catalogsMulti}</div><div className="text-gray-600">Catalogs ≥ 2 biopsies</div></div>
-            <div><div className="text-3xl font-semibold">{stats.males}</div><div className="text-gray-600">Males</div></div>
-            <div><div className="text-3xl font-semibold">{stats.females}</div><div className="text-gray-600">Females</div></div>
-          </div>
-        </div>
 
         {/* Body */}
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -173,11 +184,26 @@ export default function Biopsies() {
 
           {/* Filter box */}
           <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 rounded border mb-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="grid grid-cols-3 items-center mb-2">
               <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
-              <button className="text-xs text-blue-700 underline" onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); }}>
-                Clear All Filters
-              </button>
+
+              <div className="flex justify-center">
+                <button
+                  className="text-xs text-blue-700 underline"
+                  onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                >
+                  Clear All Filters
+                </button>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                  onClick={() => setOpenStats(true)}
+                >
+                  Biopsy Stats
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
@@ -187,6 +213,27 @@ export default function Biopsies() {
                 <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
                 <span>Only catalogs with ≥ 2 biopsies</span>
               </label>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
+                <input
+                  value={namePrefix}
+                  onChange={(e) => setNamePrefix(e.target.value)}
+                  placeholder="e.g., Ra..."
+                  className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
+                <input
+                  value={catalogPrefix}
+                  onChange={(e) => setCatalogPrefix(e.target.value)}
+                  placeholder="e.g., 12..."
+                  className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                />
+              </div>
             </div>
           </div>
 
@@ -208,6 +255,52 @@ export default function Biopsies() {
           )}
         </div>
       </div>
+
+      {/* Biopsy stats modal */}
+      {openStats && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-semibold text-lg">Biopsy Stats</div>
+              <button onClick={() => setOpenStats(false)} className="text-gray-500 hover:text-gray-700 text-lg">✕</button>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Total Biopsies</div>
+                  <div className="text-lg font-semibold">{stats.totalBiopsies}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Catalog IDs</div>
+                  <div className="text-lg font-semibold">{stats.totalCatalogs}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Catalogs ≥ 2 biopsies</div>
+                  <div className="text-lg font-semibold">{stats.catalogsMulti}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Males</div>
+                  <div className="text-lg font-semibold">{stats.males}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Females</div>
+                  <div className="text-lg font-semibold">{stats.females}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Adults</div>
+                  <div className="text-lg font-semibold">{stats.adults}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs text-gray-500">Juveniles</div>
+                  <div className="text-lg font-semibold">{stats.juveniles}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BackToTopButton />
     </Layout>
   );
 }
