@@ -153,6 +153,19 @@ export default function Biopsies() {
     });
   }, [rows, q, namePrefix, catalogPrefix, flt, multiOnly]);
 
+  const activeFiltersText = useMemo(() => {
+    const parts: string[] = [];
+    if (q.trim()) parts.push(`Search: "${q.trim()}"`);
+    if (flt.species.length) parts.push(`Species: ${flt.species.join(", ")}`);
+    if (flt.gender.length) parts.push(`Gender: ${flt.gender.join(", ")}`);
+    if (flt.ageClass.length) parts.push(`Age: ${flt.ageClass.join(", ")}`);
+    if (multiOnly) parts.push("Catalogs ≥ 2 biopsies");
+    if (namePrefix.trim()) parts.push(`Name starts with "${namePrefix.trim()}"`);
+    if (catalogPrefix.trim()) parts.push(`Catalog ID starts with "${catalogPrefix.trim()}"`);
+    return parts.join(" · ");
+  }, [q, flt, multiOnly, namePrefix, catalogPrefix]);
+
+
   return (
     <Layout>
       <div className="min-h-screen">
@@ -240,7 +253,7 @@ export default function Biopsies() {
           {/* Summary */}
           <div className="text-sm text-gray-600 mb-4">
             Showing <b>{filtered.length}</b> of <b>{rows.length}</b>
-            {q || filtered.length !== rows.length || multiOnly || flt.species.length || flt.gender.length || flt.ageClass.length ? " (filtered)" : ""}.
+            {activeFiltersText ? ` — filtered by ${activeFiltersText}` : ""}.
           </div>
 
           {/* List */}
