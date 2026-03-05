@@ -228,20 +228,20 @@ export default function Biopsies() {
           </div>
 
           {/* Filter box */}
-          <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 rounded border mb-4">
+          <div className="bg-blue-50 px-4 sm:px-8 lg:px-16 py-4 shadow-sm -mt-2 mb-4">
+            <div className="bg-white shadow p-4 rounded border">
             <div className="grid grid-cols-3 items-center mb-2">
               <div className="text-sm font-medium text-blue-700">Filter Biopsies by:</div>
 
-              <div className="flex justify-center">
+              <div />
+
+              <div className="flex justify-end items-center gap-3">
                 <button
                   className="text-xs text-blue-700 underline"
                   onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
                 >
                   Clear All Filters
                 </button>
-              </div>
-
-              <div className="flex justify-end">
                 <button
                   className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
                   onClick={() => setOpenStats(true)}
@@ -279,6 +279,7 @@ export default function Biopsies() {
                   className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
                 />
               </div>
+            </div>
             </div>
           </div>
 
@@ -453,7 +454,7 @@ function FilterPill(props: FilterPillProps) {
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen(o=>!o)} className="px-3 py-1 rounded-full border bg-white shadow-sm text-xs">
+      <button onClick={() => setOpen(o=>!o)} className="px-3 py-1 rounded-full border bg-blue-50 shadow-sm text-xs">
         {label}{selected.length ? ` • ${selected.length}` : ""}
       </button>
       {open && (
