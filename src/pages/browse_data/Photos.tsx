@@ -463,43 +463,6 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     return () => { alive = false; };
   }, []);
 
-  // Load distinct islands and locations from SIGHTINGS (for pill options)
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        // Distinct islands
-        const { data: isl } = await supabase
-          .from("sightings")
-          .select("island")
-          .not("island","is", null);
-        if (!alive) return;
-        const islands = Array.from(new Set((isl ?? [])
-          .map(r => (r.island ?? "").toString().trim())
-          .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-        setIslandOptionsAll(islands);
-
-        // Distinct locations grouped by island
-        const { data: locs } = await supabase
-          .from("sightings")
-          .select("island,sitelocation")
-          .not("island","is", null)
-          .not("sitelocation","is", null);
-        if (!alive) return;
-        const map: Record<string,string[]> = {};
-        (locs ?? []).forEach(r => {
-          const isl = (r.island ?? "").toString().trim();
-          const loc = (r.sitelocation ?? "").toString().trim();
-          if (!isl || !loc) return;
-          (map[isl] ||= []);
-          if (!map[isl].includes(loc)) map[isl].push(loc);
-        });
-        Object.values(map).forEach(arr => arr.sort((a,b)=>a.localeCompare(b)));
-        setLocationsByIsland(map);
-      } catch {}
-    })();
-    return () => { alive = false; };
-  }, []);
 
 
   // Load minimal full dataset for pill counts (independent of paged display)
