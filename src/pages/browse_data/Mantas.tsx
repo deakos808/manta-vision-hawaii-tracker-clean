@@ -221,6 +221,7 @@ export default function MantasPage() {
             "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
           ].join(",")
         )
+        .order("pk_manta_id", { ascending: false })
         .range(from, from + PAGE - 1);
 
       if (sightingId) q = q.eq("fk_sighting_id", sightingId);
@@ -350,6 +351,7 @@ export default function MantasPage() {
                   "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
                 ].join(",")
               )
+              .order("pk_manta_id", { ascending: false })
               .range(serverFrom, serverFrom + PAGE - 1);
 
             if (sightingId) q = q.eq("fk_sighting_id", sightingId);
@@ -481,18 +483,45 @@ export default function MantasPage() {
     return () => obs.disconnect();
   }, [showing, sortedMantas.length, loadingMore, hasMore, serverFrom, sightingId, crumbCatalogId]);
   const headerSubtitle = useMemo(() => {
+    const loaded = allMantas.length;
+    const loadedFiltered = filteredMantas.length;
+
+    const hasAnyFilter =
+      !!q.trim() ||
+      population.length > 0 ||
+      island.length > 0 ||
+      location.length > 0 ||
+      photographer.length > 0;
+
     let base = "";
+
     if (sightingId) {
-      const n = filteredMantas.length;
-      base = `${n} record${n === 1 ? "" : "s"} for Sighting ${sightingId}${
+      base = `Loaded ${loaded} record${loaded === 1 ? "" : "s"} for Sighting ${sightingId}${
         crumbCatalogId ? ` (Catalog ${crumbCatalogId})` : ""
       }`;
     } else {
-      base = `${filteredMantas.length} record${filteredMantas.length === 1 ? "" : "s"} showing of ${totalMantas} total`;
+      base = `Loaded ${loaded} record${loaded === 1 ? "" : "s"} of ${totalMantas} total`;
     }
-    if (activeFiltersText) base += ` — filtered by ${activeFiltersText}`;
+
+    if (hasAnyFilter) {
+      base += ` — Filtered within loaded set: ${loadedFiltered} match${loadedFiltered === 1 ? "" : "es"}`;
+      if (activeFiltersText) base += ` (${activeFiltersText})`;
+    }
+
     return base;
-  }, [filteredMantas.length, sightingId, crumbCatalogId, totalMantas, activeFiltersText]);
+  }, [
+    allMantas.length,
+    filteredMantas.length,
+    sightingId,
+    crumbCatalogId,
+    totalMantas,
+    q,
+    population,
+    island,
+    location,
+    photographer,
+    activeFiltersText,
+  ]);
 
   // Breadcrumb + optional "Return to Sighting" builder
   const sightingsBackHref = useMemo(() => {
