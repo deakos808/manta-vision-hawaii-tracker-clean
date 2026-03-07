@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import BackToTopButton from "@/components/browse/BackToTopButton";
 import { supabase } from "@/lib/supabase";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Row = {
   pk_biopsy_id: string | number;
@@ -19,6 +20,7 @@ type Row = {
     total_biopsies?: number | null;
   } | null;
   bestPhotoUrl?: string | null;
+  sightings?: { is_mprf?: boolean | null } | null;
 };
 
 function countBy(rows: Row[], get: (r: Row) => string | undefined | null): [string, number][] {
@@ -33,9 +35,10 @@ function countBy(rows: Row[], get: (r: Row) => string | undefined | null): [stri
 
 export default function Biopsies() {
   const [rows, setRows] = useState<Row[]>([]);
+  const { role } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[] });
+  const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[], mprf: [] as string[] });
   const [multiOnly, setMultiOnly] = useState(false);
 
   const [namePrefix, setNamePrefix] = useState("");
@@ -45,6 +48,10 @@ export default function Biopsies() {
   const [detailsCatalogId, setDetailsCatalogId] = useState<number | null>(null);
   const [detailsCatalogName, setDetailsCatalogName] = useState<string | null>(null);
   const [detailsRows, setDetailsRows] = useState<any[] | null>(null);
+  const [openAgeRank, setOpenAgeRank] = useState(false);
+  const [ageRankRows, setAgeRankRows] = useState<any[]>([]);
+  const [ageRankLoading, setAgeRankLoading] = useState(false);
+  const [selectedAgeRankRow, setSelectedAgeRankRow] = useState<any | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
@@ -53,8 +60,9 @@ export default function Biopsies() {
       const { data, error } = await supabase
         .from("biopsies")
         .select(
-          'pk_biopsy_id, fk_catalog_id, fk_manta_id, sample_date, ' +
-          'catalog:fk_catalog_id ( pk_catalog_id, name, best_catalog_ventral_thumb_url, last_gender, last_age_class, species, total_biopsies )'
+          'pk_biopsy_id, fk_catalog_id, fk_manta_id, fk_sighting_id, sample_date, ' +
+          'catalog:fk_catalog_id ( pk_catalog_id, name, best_catalog_ventral_thumb_url, last_gender, last_age_class, species, total_biopsies ), ' +
+          'sightings:fk_sighting_id ( is_mprf )'
         )
         .order("created_at", { ascending: false })
         .limit(2000);
@@ -68,6 +76,7 @@ export default function Biopsies() {
         sample_date: r.sample_date,
         catalog: r.catalog ?? null,
         bestPhotoUrl: r?.catalog?.best_catalog_ventral_thumb_url ?? null,
+        sightings: r.sightings ?? null,
       }));
 
       setRows(base);
@@ -79,7 +88,20 @@ export default function Biopsies() {
     const species  = countBy(rows, r => r.catalog?.species ?? null);
     const gender   = countBy(rows, r => r.catalog?.last_gender ?? null);
     const ageClass = countBy(rows, r => r.catalog?.last_age_class ?? null);
-    return { species, gender, ageClass };
+
+    let mprfTrue = 0;
+    let mprfFalse = 0;
+    rows.forEach(r => {
+      const v = !!(r.sightings as any)?.is_mprf;
+      if (v) mprfTrue += 1;
+      else mprfFalse += 1;
+    });
+    const mprf: [string, number][] = [
+      ["MPRF", mprfTrue],
+      ["Non-MPRF", mprfFalse],
+    ];
+
+    return { species, gender, ageClass, mprf };
   }, [rows]);
 
   const openCatalogDetails = async (catId: number | null, catName: string | null) => {
@@ -147,6 +169,41 @@ export default function Biopsies() {
     };
   }, [rows]);
 
+  const openAgeRankModal = async () => {
+    setOpenAgeRank(true);
+    setSelectedAgeRankRow(null);
+    setAgeRankLoading(true);
+    const { data, error } = await supabase
+      .from("kona_biopsy_age_rank_view_v3")
+      .select("*")
+      .order("age_rank_v3", { ascending: true });
+    if (error) {
+      console.error("[biopsies] age rank load error", error);
+      setAgeRankRows([]);
+      setAgeRankLoading(false);
+      return;
+    }
+    setAgeRankRows((data as any[]) ?? []);
+    setAgeRankLoading(false);
+  };
+
+  const fmtText = (v: any) => {
+    if (v === null || v === undefined) return "—";
+    const t = String(v).trim();
+    return t ? t : "—";
+  };
+
+  const fmtNum = (v: any, digits = 1) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(digits) : "—";
+  };
+
+  const fmtDate = (v: any) => {
+    if (!v) return "—";
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString();
+  };
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const nameNeedle = namePrefix.trim().toLowerCase();
@@ -174,11 +231,19 @@ export default function Biopsies() {
 
       const multiOK = !multiOnly || ((c?.total_biopsies ?? 0) >= 2);
 
+      const mprfSel = flt.mprf ?? [];
+      const isMprf = !!(r.sightings as any)?.is_mprf;
+      const mprfOK =
+        mprfSel.length === 0 ||
+        (mprfSel.includes("MPRF") && isMprf) ||
+        (mprfSel.includes("Non-MPRF") && !isMprf);
+
       return (
         inText &&
         nameOK &&
         catOK &&
         multiOK &&
+        mprfOK &&
         pass(flt.species,  c?.species ?? null) &&
         pass(flt.gender,   c?.last_gender ?? null) &&
         pass(flt.ageClass, c?.last_age_class ?? null)
@@ -237,7 +302,7 @@ export default function Biopsies() {
                 <div className="flex justify-end items-center gap-3">
                   <button
                     className="text-xs text-blue-700 underline"
-                    onClick={() => { setFlt({species:[],gender:[],ageClass:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                    onClick={() => { setFlt({species:[],gender:[],ageClass:[],mprf:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
                   >
                     Clear All Filters
                   </button>
@@ -247,6 +312,14 @@ export default function Biopsies() {
                   >
                     Biopsy Stats
                   </button>
+                  {role === "admin" && (
+                    <button
+                      className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                      onClick={openAgeRankModal}
+                    >
+                      Kona Age Ranking
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -254,6 +327,7 @@ export default function Biopsies() {
                 <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
                 <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
                 <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
+                <FilterPill label="MPRF" options={distinct.mprf} selected={flt.mprf} onChange={(v)=>setFlt(f=>({...f,mprf:v}))}/>
                 <label className="ml-3 flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
                   <span>Only catalogs with ≥ 2 biopsies</span>
@@ -348,6 +422,109 @@ export default function Biopsies() {
         </div>
       )}
 
+
+      {/* Kona Age Ranking details overlay */}
+      {selectedAgeRankRow && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white">
+              <div className="font-semibold text-lg">
+                Rank Details — Catalog {fmtText(selectedAgeRankRow.pk_catalog_id)} ({fmtText(selectedAgeRankRow.hamer_name ?? selectedAgeRankRow.mprf_name)})
+              </div>
+              <button
+                type="button"
+                className="text-sm text-blue-600 underline"
+                onClick={() => setSelectedAgeRankRow(null)}
+              >
+                Close details
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="rounded-lg border p-4">
+                  <div className="font-semibold mb-3">Identity / Keys</div>
+                  <div className="grid grid-cols-2 gap-y-2">
+                    <div className="text-gray-500">Catalog ID</div><div>{fmtText(selectedAgeRankRow.pk_catalog_id)}</div>
+                    <div className="text-gray-500">MPRF Catalog ID</div><div>{fmtText(selectedAgeRankRow.pk_mprf_catalog_id)}</div>
+                    <div className="text-gray-500">HAMER Name</div><div>{fmtText(selectedAgeRankRow.hamer_name)}</div>
+                    <div className="text-gray-500">MPRF Name</div><div>{fmtText(selectedAgeRankRow.mprf_name)}</div>
+                    <div className="text-gray-500">Biopsy ID</div><div>{fmtText(selectedAgeRankRow.pk_biopsy_id)}</div>
+                    <div className="text-gray-500">MPRF Biopsy ID</div><div>{fmtText(selectedAgeRankRow.mprf_biopsy_id)}</div>
+                    <div className="text-gray-500">Jonathan Sample ID</div><div>{fmtText(selectedAgeRankRow.jonathan_sample_id)}</div>
+                    <div className="text-gray-500">Manta ID</div><div>{fmtText(selectedAgeRankRow.pk_manta_id)}</div>
+                    <div className="text-gray-500">Date of Biopsy</div><div>{fmtDate(selectedAgeRankRow.date_of_biopsy)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="font-semibold mb-3">Sighting / Life History</div>
+                  <div className="grid grid-cols-2 gap-y-2">
+                    <div className="text-gray-500">Gender</div><div>{fmtText(selectedAgeRankRow.gender)}</div>
+                    <div className="text-gray-500">Last Age Class</div><div>{fmtText(selectedAgeRankRow.last_age_class)}</div>
+                    <div className="text-gray-500">Effective First Sighting</div><div>{fmtDate(selectedAgeRankRow.effective_first_sighting)}</div>
+                    <div className="text-gray-500">Total Years Sighted</div><div>{fmtText(selectedAgeRankRow.total_years_sighted)}</div>
+                    <div className="text-gray-500">Ever Seen as Pup</div><div>{fmtText(selectedAgeRankRow.ever_seen_as_pup)}</div>
+                    <div className="text-gray-500">Known Age from Pup</div><div>{fmtText(selectedAgeRankRow.known_age_from_pup)}</div>
+                    <div className="text-gray-500">Known Age from Pup v3</div><div>{fmtText(selectedAgeRankRow.known_age_from_pup_v3)}</div>
+                    <div className="text-gray-500">First Year Confirmed Immature</div><div>{fmtText(selectedAgeRankRow.first_year_confirmed_immature)}</div>
+                    <div className="text-gray-500">First Year Confirmed Mature</div><div>{fmtText(selectedAgeRankRow.first_year_confirmed_mature)}</div>
+                    <div className="text-gray-500">Min Years Known Mature</div><div>{fmtText(selectedAgeRankRow.min_years_known_mature)}</div>
+                    <div className="text-gray-500">Estimated Age at Last Sighting</div><div>{fmtNum(selectedAgeRankRow.estimated_age_at_last_sighting_years, 1)}</div>
+                    <div className="text-gray-500">Janice Min Age at Biopsy</div><div>{fmtNum(selectedAgeRankRow.janice_min_age_at_biopsy_yrs, 1)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="font-semibold mb-3">Size / MPRF Context</div>
+                  <div className="grid grid-cols-2 gap-y-2">
+                    <div className="text-gray-500">Last Size (m)</div><div>{fmtNum(selectedAgeRankRow.last_size_m, 2)}</div>
+                    <div className="text-gray-500">MPRF First Sighting Date</div><div>{fmtDate(selectedAgeRankRow.mprf_first_sighting_date)}</div>
+                    <div className="text-gray-500">MPRF First Sighting Size</div><div>{fmtText(selectedAgeRankRow.mprf_first_sighting_size)}</div>
+                    <div className="text-gray-500">MPRF Last Age Class</div><div>{fmtText(selectedAgeRankRow.mprf_last_age_class)}</div>
+                    <div className="text-gray-500">MPRF Total Years Seen</div><div>{fmtText(selectedAgeRankRow.mprf_total_years_seen)}</div>
+                    <div className="text-gray-500">MPRF Size DW</div><div>{fmtText(selectedAgeRankRow.mprf_size_dw)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4 md:col-span-2">
+                  <div className="font-semibold mb-3">Scoring / Ranking</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4">
+                    <div className="text-gray-500">Age Rank v2</div><div>{fmtText(selectedAgeRankRow.age_rank_v2)}</div>
+                    <div className="text-gray-500">Janice Age Rank</div><div>{fmtText(selectedAgeRankRow.janice_age_rank)}</div>
+                    <div className="text-gray-500">Janice Age Rank Raw</div><div>{fmtText(selectedAgeRankRow.janice_age_rank_raw)}</div>
+                    <div className="text-gray-500">Age at Last Sighting</div><div>{fmtNum(selectedAgeRankRow.age_at_last_sighting_years, 1)}</div>
+                    <div className="text-gray-500">Age Years at Biopsy</div><div>{fmtNum(selectedAgeRankRow.age_years_at_biopsy, 1)}</div>
+                    <div className="text-gray-500">Age Years at Biopsy v3</div><div>{fmtNum(selectedAgeRankRow.age_years_at_biopsy_v3, 1)}</div>
+                    <div className="text-gray-500">Maturity Bonus B</div><div>{fmtNum(selectedAgeRankRow.maturity_bonus_b, 2)}</div>
+                    <div className="text-gray-500">Maturity Bonus B v3</div><div>{fmtNum(selectedAgeRankRow.maturity_bonus_b_v3, 2)}</div>
+                    <div className="text-gray-500">Relative Age Score v2</div><div>{fmtNum(selectedAgeRankRow.relative_age_score_v2, 2)}</div>
+                    <div className="text-gray-500">Relative Age Score v3</div><div>{fmtNum(selectedAgeRankRow.relative_age_score_v3, 2)}</div>
+                    <div className="text-gray-500">Original Relative Age Score</div><div>{fmtNum(selectedAgeRankRow.original_relative_age_score, 2)}</div>
+                    <div className="text-gray-500">Original Relative Age Rank</div><div>{fmtText(selectedAgeRankRow.original_relative_age_rank)}</div>
+                    <div className="text-gray-500">Age Rank v3</div><div className="font-semibold">{fmtText(selectedAgeRankRow.age_rank_v3)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4 md:col-span-2">
+                  <div className="font-semibold mb-3">Justification</div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-gray-500 mb-1">v2</div>
+                      <div className="text-sm leading-6">{fmtText(selectedAgeRankRow.age_rank_justification_v2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">v3</div>
+                      <div className="text-sm leading-6">{fmtText(selectedAgeRankRow.age_rank_justification_v3)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Biopsy details modal (per Catalog ID) */}
       {detailsOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -434,6 +611,160 @@ export default function Biopsies() {
         </div>
       )}
 
+
+      {openAgeRank && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-semibold text-lg">Kona Age Ranking — Summary</div>
+              <button
+                onClick={() => { setOpenAgeRank(false); setSelectedAgeRankRow(null); }}
+                className="text-gray-500 hover:text-gray-700 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 overflow-auto max-h-[calc(90vh-72px)]">
+              {ageRankLoading ? (
+                <div className="text-sm text-gray-600">Loading…</div>
+              ) : ageRankRows.length === 0 ? (
+                <div className="text-sm text-gray-600">No Kona age-ranking rows found.</div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b">
+                          <th className="py-2 pr-3">Age Rank</th>
+                          <th className="py-2 pr-3">Catalog ID</th>
+                          <th className="py-2 pr-3">Name</th>
+                          <th className="py-2 pr-3">Biopsy ID</th>
+                          <th className="py-2 pr-3">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ageRankRows.map((r, idx) => (
+                          <tr key={String(r.pk_catalog_id ?? idx) + "-" + String(r.pk_biopsy_id ?? idx)} className="border-b last:border-0">
+                            <td className="py-2 pr-3 font-semibold">{fmtText(r.age_rank_v3)}</td>
+                            <td className="py-2 pr-3">{fmtText(r.pk_catalog_id)}</td>
+                            <td className="py-2 pr-3">{fmtText(r.hamer_name ?? r.mprf_name)}</td>
+                            <td className="py-2 pr-3">{fmtText(r.pk_biopsy_id)}</td>
+                            <td className="py-2 pr-3">
+                              <button
+                                className="text-blue-600 underline"
+                                onClick={() => setSelectedAgeRankRow(r)}
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {selectedAgeRankRow && (
+                    <div className="rounded-xl border p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="font-semibold">
+                          Rank Details — Catalog {fmtText(selectedAgeRankRow.pk_catalog_id)} ({fmtText(selectedAgeRankRow.hamer_name ?? selectedAgeRankRow.mprf_name)})
+                        </div>
+                        <button
+                          className="text-sm text-blue-600 underline"
+                          onClick={() => setSelectedAgeRankRow(null)}
+                        >
+                          Close details
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="rounded-lg border p-4">
+                          <div className="font-semibold mb-3">Core Identifiers</div>
+                          <div className="grid grid-cols-2 gap-y-2">
+                            <div className="text-gray-500">Catalog ID</div><div>{fmtText(selectedAgeRankRow.pk_catalog_id)}</div>
+                            <div className="text-gray-500">MPRF Catalog ID</div><div>{fmtText(selectedAgeRankRow.pk_mprf_catalog_id)}</div>
+                            <div className="text-gray-500">HAMER Name</div><div>{fmtText(selectedAgeRankRow.hamer_name)}</div>
+                            <div className="text-gray-500">MPRF Name</div><div>{fmtText(selectedAgeRankRow.mprf_name)}</div>
+                            <div className="text-gray-500">Biopsy ID</div><div>{fmtText(selectedAgeRankRow.pk_biopsy_id)}</div>
+                            <div className="text-gray-500">MPRF Biopsy ID</div><div>{fmtText(selectedAgeRankRow.mprf_biopsy_id)}</div>
+                            <div className="text-gray-500">Jonathan Sample ID</div><div>{fmtText(selectedAgeRankRow.jonathan_sample_id)}</div>
+                            <div className="text-gray-500">Manta ID</div><div>{fmtText(selectedAgeRankRow.pk_manta_id)}</div>
+                            <div className="text-gray-500">Date of Biopsy</div><div>{fmtDate(selectedAgeRankRow.date_of_biopsy)}</div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border p-4">
+                          <div className="font-semibold mb-3">Age / Sighting Context</div>
+                          <div className="grid grid-cols-2 gap-y-2">
+                            <div className="text-gray-500">Gender</div><div>{fmtText(selectedAgeRankRow.gender)}</div>
+                            <div className="text-gray-500">Last Age Class</div><div>{fmtText(selectedAgeRankRow.last_age_class)}</div>
+                            <div className="text-gray-500">Effective First Sighting</div><div>{fmtDate(selectedAgeRankRow.effective_first_sighting)}</div>
+                            <div className="text-gray-500">Total Years Sighted</div><div>{fmtText(selectedAgeRankRow.total_years_sighted)}</div>
+                            <div className="text-gray-500">Ever Seen as Pup</div><div>{fmtText(selectedAgeRankRow.ever_seen_as_pup)}</div>
+                            <div className="text-gray-500">Known Age from Pup</div><div>{fmtText(selectedAgeRankRow.known_age_from_pup)}</div>
+                            <div className="text-gray-500">Known Age from Pup v3</div><div>{fmtText(selectedAgeRankRow.known_age_from_pup_v3)}</div>
+                            <div className="text-gray-500">First Year Confirmed Immature</div><div>{fmtText(selectedAgeRankRow.first_year_confirmed_immature)}</div>
+                            <div className="text-gray-500">First Year Confirmed Mature</div><div>{fmtText(selectedAgeRankRow.first_year_confirmed_mature)}</div>
+                            <div className="text-gray-500">Min Years Known Mature</div><div>{fmtText(selectedAgeRankRow.min_years_known_mature)}</div>
+                            <div className="text-gray-500">Estimated Age at Last Sighting</div><div>{fmtNum(selectedAgeRankRow.estimated_age_at_last_sighting_years, 1)}</div>
+                            <div className="text-gray-500">Janice Min Age at Biopsy</div><div>{fmtNum(selectedAgeRankRow.janice_min_age_at_biopsy_yrs, 1)}</div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border p-4">
+                          <div className="font-semibold mb-3">Size / MPRF Context</div>
+                          <div className="grid grid-cols-2 gap-y-2">
+                            <div className="text-gray-500">Last Size (m)</div><div>{fmtNum(selectedAgeRankRow.last_size_m, 2)}</div>
+                            <div className="text-gray-500">MPRF First Sighting Date</div><div>{fmtDate(selectedAgeRankRow.mprf_first_sighting_date)}</div>
+                            <div className="text-gray-500">MPRF First Sighting Size</div><div>{fmtText(selectedAgeRankRow.mprf_first_sighting_size)}</div>
+                            <div className="text-gray-500">MPRF Last Age Class</div><div>{fmtText(selectedAgeRankRow.mprf_last_age_class)}</div>
+                            <div className="text-gray-500">MPRF Total Years Seen</div><div>{fmtText(selectedAgeRankRow.mprf_total_years_seen)}</div>
+                            <div className="text-gray-500">MPRF Size DW</div><div>{fmtText(selectedAgeRankRow.mprf_size_dw)}</div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border p-4 md:col-span-2">
+                          <div className="font-semibold mb-3">Scoring / Ranking</div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4">
+                            <div className="text-gray-500">Age Rank v2</div><div>{fmtText(selectedAgeRankRow.age_rank_v2)}</div>
+                            <div className="text-gray-500">Janice Age Rank</div><div>{fmtText(selectedAgeRankRow.janice_age_rank)}</div>
+                            <div className="text-gray-500">Janice Age Rank Raw</div><div>{fmtText(selectedAgeRankRow.janice_age_rank_raw)}</div>
+                            <div className="text-gray-500">Age at Last Sighting</div><div>{fmtNum(selectedAgeRankRow.age_at_last_sighting_years, 1)}</div>
+                            <div className="text-gray-500">Age Years at Biopsy</div><div>{fmtNum(selectedAgeRankRow.age_years_at_biopsy, 1)}</div>
+                            <div className="text-gray-500">Age Years at Biopsy v3</div><div>{fmtNum(selectedAgeRankRow.age_years_at_biopsy_v3, 1)}</div>
+                            <div className="text-gray-500">Maturity Bonus B</div><div>{fmtNum(selectedAgeRankRow.maturity_bonus_b, 2)}</div>
+                            <div className="text-gray-500">Maturity Bonus B v3</div><div>{fmtNum(selectedAgeRankRow.maturity_bonus_b_v3, 2)}</div>
+                            <div className="text-gray-500">Relative Age Score v2</div><div>{fmtNum(selectedAgeRankRow.relative_age_score_v2, 2)}</div>
+                            <div className="text-gray-500">Relative Age Score v3</div><div>{fmtNum(selectedAgeRankRow.relative_age_score_v3, 2)}</div>
+                            <div className="text-gray-500">Original Relative Age Score</div><div>{fmtNum(selectedAgeRankRow.original_relative_age_score, 2)}</div>
+                            <div className="text-gray-500">Original Relative Age Rank</div><div>{fmtText(selectedAgeRankRow.original_relative_age_rank)}</div>
+                            <div className="text-gray-500">Age Rank v3</div><div className="font-semibold">{fmtText(selectedAgeRankRow.age_rank_v3)}</div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border p-4 md:col-span-2">
+                          <div className="font-semibold mb-3">Justification</div>
+                          <div className="space-y-3">
+                            <div>
+                              <div className="text-gray-500 mb-1">v2</div>
+                              <div className="text-sm leading-6">{fmtText(selectedAgeRankRow.age_rank_justification_v2)}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500 mb-1">v3</div>
+                              <div className="text-sm leading-6">{fmtText(selectedAgeRankRow.age_rank_justification_v3)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <BackToTopButton />
     </Layout>
