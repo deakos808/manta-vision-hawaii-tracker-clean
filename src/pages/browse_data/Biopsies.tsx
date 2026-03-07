@@ -264,6 +264,92 @@ export default function Biopsies() {
   }, [q, flt, multiOnly, namePrefix, catalogPrefix]);
 
 
+
+  const csvEscape = (value: any) => {
+    const text = String(value ?? "");
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const downloadCsv = (filename: string, columns: string[], rowsToExport: any[]) => {
+    const lines = [
+      columns.join(","),
+      ...rowsToExport.map((row: any) => columns.map((col) => csvEscape(row?.[col])).join(",")),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAgeRankSummaryCsv = () => {
+    const rowsToExport = ageRankRows.map((r: any) => ({
+      age_rank_v3: r?.age_rank_v3 ?? "",
+      pk_catalog_id: r?.pk_catalog_id ?? "",
+      hamer_name: r?.hamer_name ?? r?.mprf_name ?? "",
+      pk_biopsy_id: r?.pk_biopsy_id ?? "",
+    }));
+    downloadCsv(
+      "kona_age_ranking_summary.csv",
+      ["age_rank_v3", "pk_catalog_id", "hamer_name", "pk_biopsy_id"],
+      rowsToExport
+    );
+  };
+
+  const exportAgeRankFullCsv = () => {
+    const columns = [
+      "age_rank_v3",
+      "pk_catalog_id",
+      "pk_mprf_catalog_id",
+      "hamer_name",
+      "mprf_name",
+      "pk_biopsy_id",
+      "mprf_biopsy_id",
+      "jonathan_sample_id",
+      "pk_manta_id",
+      "date_of_biopsy",
+      "gender",
+      "last_age_class",
+      "last_size_m",
+      "effective_first_sighting",
+      "total_years_sighted",
+      "ever_seen_as_pup",
+      "known_age_from_pup",
+      "known_age_from_pup_v3",
+      "first_year_confirmed_immature",
+      "first_year_confirmed_mature",
+      "min_years_known_mature",
+      "estimated_age_at_last_sighting_years",
+      "janice_min_age_at_biopsy_yrs",
+      "age_rank_v2",
+      "janice_age_rank",
+      "janice_age_rank_raw",
+      "age_at_last_sighting_years",
+      "age_years_at_biopsy",
+      "age_years_at_biopsy_v3",
+      "first_year",
+      "last_year",
+      "maturity_bonus_b",
+      "maturity_bonus_b_v3",
+      "relative_age_score_v2",
+      "relative_age_score_v3",
+      "original_relative_age_score",
+      "original_relative_age_rank",
+      "mprf_first_sighting_date",
+      "mprf_first_sighting_size",
+      "mprf_last_age_class",
+      "mprf_total_years_seen",
+      "mprf_size_dw",
+      "age_rank_justification_v2",
+      "age_rank_justification_v3",
+    ];
+    downloadCsv("kona_age_ranking_full.csv", columns, ageRankRows);
+  };
+
   return (
     <Layout>
       <div className="min-h-screen">
@@ -617,12 +703,28 @@ export default function Biopsies() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b">
               <div className="font-semibold text-lg">Kona Age Ranking — Summary</div>
-              <button
-                onClick={() => { setOpenAgeRank(false); setSelectedAgeRankRow(null); }}
-                className="text-gray-500 hover:text-gray-700 text-lg"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                  onClick={exportAgeRankSummaryCsv}
+                >
+                  Export Summary CSV
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                  onClick={exportAgeRankFullCsv}
+                >
+                  Export Full CSV
+                </button>
+                <button
+                  onClick={() => { setOpenAgeRank(false); setSelectedAgeRankRow(null); }}
+                  className="text-gray-500 hover:text-gray-700 text-lg"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="p-5 overflow-auto max-h-[calc(90vh-72px)]">
