@@ -750,7 +750,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           <p className="text-center text-gray-500">No results found.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-            {photoRows.map((photo) => (
+            {photoRows.map((photo, index) => (
               <div key={photo.pk_photo_id} className="border rounded p-2">
                 <img
                   src={photo.thumbnail_url || "/manta-logo.svg"}
