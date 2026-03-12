@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
 type SightItem = {
@@ -19,6 +18,12 @@ type Props = {
   onOpenMantas: (sightingId: number) => void;
 };
 
+function fmtDate(v: string | null) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString();
+}
+
 export default function CatalogSightingsQuickModal({
   open,
   onOpenChange,
@@ -30,73 +35,81 @@ export default function CatalogSightingsQuickModal({
 
   useEffect(() => {
     if (!open) return;
+
+    let alive = true;
+
     (async () => {
       setLoading(true);
+
       try {
-        // 1) Which sightings include THIS catalog?
-        const { data: catPhotos, error: catErr } = await supabase
-          .from("photos")
+        const { data: mantaRows, error: mantaErr } = await supabase
+          .from("mantas")
           .select("fk_sighting_id")
           .eq("fk_catalog_id", pk_catalog_id);
-        if (catErr) throw catErr;
+
+        if (mantaErr) throw mantaErr;
 
         const sightIds = Array.from(
           new Set(
-            (catPhotos ?? [])
-              .map((r) => r.fk_sighting_id)
-              .filter((v: number | null) => typeof v === "number")
+            (mantaRows ?? [])
+              .map((r: any) => Number(r.fk_sighting_id))
+              .filter((n: number) => Number.isFinite(n) && n > 0)
           )
-        ) as number[];
+        );
+
+        if (!alive) return;
 
         if (sightIds.length === 0) {
           setRows([]);
+          setLoading(false);
           return;
         }
 
-        // 2) Load the basic sighting metadata (try both 'sitelocation' and 'location')
-        const { data: sightRows, error: sErr } = await supabase
+        const { data: sightRows, error: sightErr } = await supabase
           .from("sightings")
-          .select("pk_sighting_id, sighting_date, island, sitelocation, location, photographer")
+          .select("pk_sighting_id,sighting_date,island,sitelocation,location,photographer")
           .in("pk_sighting_id", sightIds)
           .order("sighting_date", { ascending: false });
-        if (sErr) throw sErr;
 
-        // 3) Precompute manta counts for these sightings (all mantas, not only this catalog)
-        const { data: allPhotos, error: pErr } = await supabase
-          .from("photos")
-          .select("fk_sighting_id,fk_manta_id")
+        if (sightErr) throw sightErr;
+
+        const { data: allMantas, error: countErr } = await supabase
+          .from("mantas")
+          .select("fk_sighting_id,pk_manta_id")
           .in("fk_sighting_id", sightIds);
-        if (pErr) throw pErr;
 
-        const counts = new Map<number, number>();
-        const seen = new Map<number, Set<number>>();
-        (allPhotos ?? []).forEach((r: any) => {
-          const sid = r.fk_sighting_id as number | null;
-          const mid = r.fk_manta_id as number | null;
-          if (typeof sid !== "number" || typeof mid !== "number") return;
-          if (!seen.has(sid)) seen.set(sid, new Set<number>());
-          const s = seen.get(sid)!;
-          s.add(mid);
-          counts.set(sid, s.size);
-        });
+        if (countErr) throw countErr;
+
+        if (!alive) return;
+
+        const countMap = new Map<number, number>();
+        for (const row of allMantas ?? []) {
+          const sid = Number((row as any).fk_sighting_id ?? 0);
+          if (!sid) continue;
+          countMap.set(sid, (countMap.get(sid) || 0) + 1);
+        }
 
         const items: SightItem[] = (sightRows ?? []).map((r: any) => ({
-          pk_sighting_id: r.pk_sighting_id,
+          pk_sighting_id: Number(r.pk_sighting_id),
           sighting_date: r.sighting_date ?? null,
           island: r.island ?? null,
-          location: (r.sitelocation ?? r.location ?? null),
+          location: r.sitelocation ?? r.location ?? null,
           photographer: r.photographer ?? null,
-          mantas_count: counts.get(r.pk_sighting_id) ?? 0,
+          mantas_count: countMap.get(Number(r.pk_sighting_id)) ?? 0,
         }));
 
         setRows(items);
       } catch (e) {
         console.error("[CatalogSightingsQuickModal] load error:", e);
-        setRows([]);
+        if (alive) setRows([]);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [open, pk_catalog_id]);
 
   const title = useMemo(
@@ -106,7 +119,7 @@ export default function CatalogSightingsQuickModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -116,24 +129,39 @@ export default function CatalogSightingsQuickModal({
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground p-2">No sightings found.</div>
         ) : (
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <div key={r.pk_sighting_id} className="rounded border p-3">
-                <div className="text-sm"><span className="font-medium">ID:</span> {r.pk_sighting_id}</div>
-                <div className="text-sm"><span className="font-medium">Date:</span> {r.sighting_date ? new Date(r.sighting_date).toLocaleDateString() : "—"}</div>
-                <div className="text-sm"><span className="font-medium">Location:</span> {r.location || "—"}{r.island ? `, ${r.island}` : ""}</div>
-                <div className="text-sm"><span className="font-medium">Photographer:</span> {r.photographer || "—"}</div>
-                <div className="mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenMantas(r.pk_sighting_id)}
-                  >
-                    View Mantas ({r.mantas_count})
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="rounded border overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white border-b">
+                <tr className="text-left">
+                  <th className="px-3 py-2">Sighting ID</th>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Location</th>
+                  <th className="px-3 py-2">Photographer</th>
+                  <th className="px-3 py-2">Total Mantas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.pk_sighting_id} className="border-b last:border-0">
+                    <td className="px-3 py-2">{r.pk_sighting_id}</td>
+                    <td className="px-3 py-2">{fmtDate(r.sighting_date)}</td>
+                    <td className="px-3 py-2">
+                      {r.location || "—"}{r.island ? `, ${r.island}` : ""}
+                    </td>
+                    <td className="px-3 py-2">{r.photographer || "—"}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="text-blue-600 underline hover:text-blue-700"
+                        onClick={() => onOpenMantas(r.pk_sighting_id)}
+                      >
+                        {r.mantas_count}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </DialogContent>

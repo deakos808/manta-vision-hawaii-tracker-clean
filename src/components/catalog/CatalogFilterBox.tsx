@@ -1,4 +1,3 @@
-// File: src/components/catalog/CatalogFilterBox.tsx
 import { useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 
-/* ── types ─────────────────────────────────────────── */
 export interface FiltersState {
   population: string[];
   species: string[];
@@ -16,18 +14,19 @@ export interface FiltersState {
   sitelocation: string[];
   gender: string[];
   age_class: string[];
+  mprf: string[];
 }
 
 interface CatalogEntry {
-  /* NEW — arrays coming from the view */
   species?: string | null;
   populations?: string[] | null;
   islands?: string[] | null;
-
-  /* Legacy single-value cols (still used by UI) */
   sitelocation?: string | null;
   gender?: string | null;
   age_class?: string | null;
+  mprf?: string | null;
+  best_catalog_ventral_thumb_url?: string | null;
+  best_catalog_dorsal_thumb_url?: string | null;
 }
 
 interface Props {
@@ -37,19 +36,25 @@ interface Props {
   sortAsc: boolean;
   setSortAsc: (v: boolean) => void;
   onClearAll: () => void;
+  viewMode: "ventral" | "dorsal";
+  setViewMode: (v: "ventral" | "dorsal") => void;
+  catalogIdPrefix: string;
+  setCatalogIdPrefix: (v: string) => void;
+  namePrefix: string;
+  setNamePrefix: (v: string) => void;
+  onOpenStats: () => void;
+  isAdmin?: boolean;
 }
 
-/* ── constants ─────────────────────────────────────── */
 const GENDERS = ["Male", "Female", "Unknown"] as const;
 const AGES = ["Adult", "Juvenile", "Yearling", "Unknown"] as const;
+const MPRF_OPTIONS = ["MPRF", "Non-MPRF"] as const;
 
-/* Optional helper map if you still want “Maui Nui → Maui / Molokai …” */
 const populationIslandMap: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
   Kauai: ["Kauai", "Niihau"],
 };
 
-/* ── helpers ───────────────────────────────────────── */
 const uniq = <T,>(arr: (T | null | undefined)[]) =>
   [...new Set(arr.filter(Boolean) as T[])];
 
@@ -84,8 +89,15 @@ export default function CatalogFilterBox({
   sortAsc,
   setSortAsc,
   onClearAll,
+  viewMode,
+  setViewMode,
+  catalogIdPrefix,
+  setCatalogIdPrefix,
+  namePrefix,
+  setNamePrefix,
+  onOpenStats,
+  isAdmin = false,
 }: Props) {
-  /* ── toggle / clear helpers ───────────────────────── */
   const toggle = (key: keyof FiltersState, value: string) => {
     const next = filters[key].includes(value)
       ? filters[key].filter((v) => v !== value)
@@ -96,11 +108,11 @@ export default function CatalogFilterBox({
   const clearKey = (key: keyof FiltersState) =>
     setFilters({ ...filters, [key]: [] });
 
-  /* ── population options / counts ─────────────────── */
   const populationCounts = useMemo(
     () => countFromArrays(catalog, "populations"),
     [catalog],
   );
+
   const populationOptions = useMemo(() => {
     const all: string[] = [];
     catalog.forEach((c) => {
@@ -109,18 +121,16 @@ export default function CatalogFilterBox({
     return uniq<string>(all);
   }, [catalog]);
 
-  /* ── island base (depends on population filter) ──── */
   const islandBase = useMemo(() => {
     if (filters.population.length === 1) {
       const pop = filters.population[0];
-      /* If you rely on the helper map, use it; otherwise skip this block */
       if (populationIslandMap[pop]) {
         return catalog.filter((c) =>
           c.islands?.some((is) => populationIslandMap[pop].includes(is)),
         );
       }
     }
-    /* generic filter: keep rows that share any selected population */
+
     return filters.population.length
       ? catalog.filter((c) =>
           c.populations?.some((p) => filters.population.includes(p)),
@@ -132,6 +142,7 @@ export default function CatalogFilterBox({
     () => countFromArrays(islandBase, "islands"),
     [islandBase],
   );
+
   const islandOptions = useMemo(() => {
     const all: string[] = [];
     islandBase.forEach((c) => {
@@ -140,7 +151,6 @@ export default function CatalogFilterBox({
     return uniq<string>(all);
   }, [islandBase]);
 
-  /* ── sitelocation base (depends on island filter) ── */
   const siteBase = useMemo(() => {
     return filters.island.length
       ? islandBase.filter((c) =>
@@ -153,16 +163,17 @@ export default function CatalogFilterBox({
     () => countSingles(siteBase, "sitelocation"),
     [siteBase],
   );
+
   const siteOptions = useMemo(
     () => uniq<string>(siteBase.map((c) => c.sitelocation ?? "")),
     [siteBase],
   );
 
-  /* ── gender / age / species counts share siteBase ──────────── */
   const speciesCounts = useMemo(
     () => countSingles(siteBase, "species"),
     [siteBase],
   );
+
   const speciesOptions = useMemo(
     () => uniq<string>(siteBase.map((c) => c.species ?? "")),
     [siteBase],
@@ -172,9 +183,34 @@ export default function CatalogFilterBox({
     () => countSingles(siteBase, "gender"),
     [siteBase],
   );
-  const ageCounts = useMemo(() => countSingles(siteBase, "age_class"), [siteBase]);
 
-  /* ── menu generator ─────────────────────────────── */
+  const ageCounts = useMemo(
+    () => countSingles(siteBase, "age_class"),
+    [siteBase],
+  );
+
+  const mprfCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const row of siteBase) {
+      const key = (row.mprf ?? "").toString().trim();
+      if (!key) continue;
+      map[key] = (map[key] || 0) + 1;
+    }
+    return map;
+  }, [siteBase]);
+
+  const viewCounts = useMemo(() => {
+    let ventral = 0;
+    let dorsal = 0;
+
+    for (const row of catalog) {
+      if (row.best_catalog_ventral_thumb_url) ventral += 1;
+      if (row.best_catalog_dorsal_thumb_url) dorsal += 1;
+    }
+
+    return { ventral, dorsal };
+  }, [catalog]);
+
   const renderMenu = (
     label: string,
     key: keyof FiltersState,
@@ -229,18 +265,20 @@ export default function CatalogFilterBox({
     </Popover>
   );
 
-  /* ── JSX  ────────────────────────────────────────── */
   return (
     <div className="bg-white shadow p-4 rounded border mb-4">
-      {/* title row */}
       <div className="flex justify-between items-center mb-3">
         <div className="text-sm font-medium">Filter Catalog Records by:</div>
-        <Button variant="link" size="sm" onClick={onClearAll}>
-          Clear All Filters
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="link" size="sm" onClick={onClearAll}>
+            Clear All Filters
+          </Button>
+          <Button variant="outline" size="sm" onClick={onOpenStats}>
+            Catalog Stats
+          </Button>
+        </div>
       </div>
 
-      {/* dropdown row */}
       <div className="flex flex-wrap gap-2">
         {renderMenu("Species", "species", speciesOptions, speciesCounts)}
         {renderMenu("Population", "population", populationOptions, populationCounts)}
@@ -248,11 +286,66 @@ export default function CatalogFilterBox({
         {renderMenu("Location", "sitelocation", siteOptions, siteCounts)}
         {renderMenu("Gender", "gender", [...GENDERS], genderCounts)}
         {renderMenu("Age Class", "age_class", [...AGES], ageCounts)}
+        {isAdmin && renderMenu("MPRF", "mprf", [...MPRF_OPTIONS], mprfCounts)}
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="text-sm">
+              Photo View <span className="ml-2">({viewMode})</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 space-y-2">
+            <div className="font-medium text-sm px-1">Photo View</div>
+
+            <label className="flex items-center justify-between gap-2 p-1 rounded hover:bg-muted/50 text-sm">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={viewMode === "ventral"}
+                  onCheckedChange={() => setViewMode("ventral")}
+                />
+                ventral
+              </div>
+              <span className="text-xs text-muted-foreground">{viewCounts.ventral}</span>
+            </label>
+
+            <label className="flex items-center justify-between gap-2 p-1 rounded hover:bg-muted/50 text-sm">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={viewMode === "dorsal"}
+                  onCheckedChange={() => setViewMode("dorsal")}
+                />
+                dorsal
+              </div>
+              <span className="text-xs text-muted-foreground">{viewCounts.dorsal}</span>
+            </label>
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* sort row */}
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
+          <input
+            value={catalogIdPrefix}
+            onChange={(e) => setCatalogIdPrefix(e.target.value)}
+            placeholder="e.g., 71..."
+            className="w-full rounded border px-3 py-2 text-sm bg-white"
+          />
+        </div>
+
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
+          <input
+            value={namePrefix}
+            onChange={(e) => setNamePrefix(e.target.value)}
+            placeholder="e.g., Ak..."
+            className="w-full rounded border px-3 py-2 text-sm bg-white"
+          />
+        </div>
+      </div>
+
       <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
-        <span>Sort by Catalog&nbsp;ID</span>
+        <span>Sort by Catalog ID</span>
         <Button
           size="icon"
           variant="ghost"
