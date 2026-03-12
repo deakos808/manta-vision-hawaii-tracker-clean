@@ -23,6 +23,7 @@ export default function SightingMantasQuickModal({
   pk_sighting_id,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [rows, setRows] = useState<MantaItem[]>([]);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function SightingMantasQuickModal({
     let alive = true;
 
     setLoading(true);
+    setHasLoaded(false);
     setRows([]);
 
     (async () => {
@@ -54,6 +56,7 @@ export default function SightingMantasQuickModal({
 
         if (base.length === 0) {
           setRows([]);
+          setHasLoaded(true);
           setLoading(false);
           return;
         }
@@ -156,7 +159,10 @@ export default function SightingMantasQuickModal({
         console.error("[SightingMantasQuickModal] load error:", e);
         if (alive) setRows([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
       }
     })();
 
@@ -174,7 +180,7 @@ export default function SightingMantasQuickModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
+        {!hasLoaded || loading ? (
           <div className="text-sm text-muted-foreground p-2">Loading…</div>
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground p-2">No mantas found for this sighting.</div>
@@ -182,13 +188,13 @@ export default function SightingMantasQuickModal({
           <div className="rounded border overflow-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b">
-                <tr className="text-left">
-                  <th className="px-3 py-2 w-28">Photo</th>
-                  <th className="px-3 py-2">Catalog</th>
-                  <th className="px-3 py-2">Manta</th>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Gender</th>
-                  <th className="px-3 py-2">Age</th>
+                <tr className="text-center">
+                  <th className="px-3 py-2 w-28 text-center">Best Ventral Photo</th>
+                  <th className="px-3 py-2 text-center">Catalog ID</th>
+                  <th className="px-3 py-2 text-center">Manta ID</th>
+                  <th className="px-3 py-2 text-center">Name</th>
+                  <th className="px-3 py-2 text-center">Gender</th>
+                  <th className="px-3 py-2 text-center">Age</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,11 +210,11 @@ export default function SightingMantasQuickModal({
                         }}
                       />
                     </td>
-                    <td className="px-3 py-2">{r.pk_catalog_id}</td>
-                    <td className="px-3 py-2">{r.pk_manta_id ?? "—"}</td>
-                    <td className="px-3 py-2">{r.name ?? "—"}</td>
-                    <td className="px-3 py-2">{r.gender ?? "—"}</td>
-                    <td className="px-3 py-2">{r.age_class ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.pk_catalog_id}</td>
+                    <td className="px-3 py-2 text-center">{r.pk_manta_id ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.name ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.gender ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.age_class ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

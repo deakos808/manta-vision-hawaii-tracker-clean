@@ -33,6 +33,7 @@ type CatalogRow = {
   islands?: string[] | null;
   total_sizes?: number | null;
   total_biopsies?: number | null;
+  last_size_m?: number | null;
   mprf?: "MPRF" | "Non-MPRF" | null;
 };
 
@@ -88,14 +89,14 @@ async function fetchPagedCatalogRows(catalogIdParam: string | null): Promise<Cat
   return allRows;
 }
 
-async function fetchSizeCounts(): Promise<Map<number, number>> {
-  const out = new Map<number, number>();
+async function fetchSizeCounts(): Promise<Map<number, { total_sizes: number; last_size_m: number | null }>> {
+  const out = new Map<number, { total_sizes: number; last_size_m: number | null }>();
   const pageSize = 1000;
 
   for (let from = 0; from < 500000; from += pageSize) {
     const { data, error } = await supabase
       .from("v_sizes_card_rows_v3")
-      .select("pk_catalog_id,total_sizes")
+      .select("pk_catalog_id,total_sizes,last_size_m")
       .range(from, from + pageSize - 1);
 
     if (error) {
@@ -107,7 +108,11 @@ async function fetchSizeCounts(): Promise<Map<number, number>> {
     for (const row of chunk as any[]) {
       const id = Number(row?.pk_catalog_id ?? 0);
       if (!id) continue;
-      out.set(id, Number(row?.total_sizes ?? 0) || 0);
+      const lastSize = row?.last_size_m == null ? null : Number(row.last_size_m);
+      out.set(id, {
+        total_sizes: Number(row?.total_sizes ?? 0) || 0,
+        last_size_m: Number.isFinite(lastSize) ? lastSize : null,
+      });
     }
 
     if (chunk.length < pageSize) break;
@@ -203,6 +208,7 @@ async function fetchCatalogMprfMap(): Promise<Map<number, "MPRF" | "Non-MPRF">> 
 
 export default function Catalog() {
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
@@ -248,6 +254,7 @@ export default function Catalog() {
   }, []);
 
   async function load() {
+    setLoading(true);
     try {
       const [rows, sizeCounts, biopsyCounts, mprfMap] = await Promise.all([
         fetchPagedCatalogRows(catalogIdParam),
@@ -256,17 +263,23 @@ export default function Catalog() {
         fetchCatalogMprfMap(),
       ]);
 
-      const merged = rows.map((row) => ({
-        ...row,
-        total_sizes: sizeCounts.get(row.pk_catalog_id) ?? 0,
-        total_biopsies: biopsyCounts.get(row.pk_catalog_id) ?? 0,
-        mprf: mprfMap.get(row.pk_catalog_id) ?? null,
-      }));
+      const merged = rows.map((row) => {
+        const sizeInfo = sizeCounts.get(row.pk_catalog_id) ?? { total_sizes: 0, last_size_m: null };
+        return {
+          ...row,
+          total_sizes: sizeInfo.total_sizes,
+          last_size_m: sizeInfo.last_size_m,
+          total_biopsies: biopsyCounts.get(row.pk_catalog_id) ?? 0,
+          mprf: mprfMap.get(row.pk_catalog_id) ?? null,
+        };
+      });
 
       setCatalog(merged);
     } catch (error) {
       console.error("[Load Catalog]", error);
       setCatalog([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -377,12 +390,16 @@ export default function Catalog() {
         />
 
         <div className="text-sm text-gray-700">
-          {filtered.length} records showing of {catalog.length} total records
-          {summary ? `, filtered by ${summary}` : ""}
+          {!loading ? `${filtered.length} records showing of ${catalog.length} total records${summary ? `, filtered by ${summary}` : ""}` : ""}
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 lg:px-12 pb-16 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+      {loading ? (
+        <div className="px-4 sm:px-6 lg:px-12 pb-16">
+          <div className="text-sm text-muted-foreground py-6">Loading...</div>
+        </div>
+      ) : (
+        <div className="px-4 sm:px-6 lg:px-12 pb-16 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
         {filtered.map((e) => {
           const thumb =
             viewMode === "ventral"
@@ -400,12 +417,14 @@ export default function Catalog() {
                     (ev.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
                   }}
                 />
-                <div
-                  className="mt-1 w-full text-center text-xs text-blue-500 underline cursor-pointer"
-                  onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
-                >
-                  change
-                </div>
+                {isAdmin && (
+                  <div
+                    className="mt-1 w-full text-center text-xs text-blue-500 underline cursor-pointer"
+                    onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
+                  >
+                    change best ventral
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 text-xs">
@@ -418,6 +437,9 @@ export default function Catalog() {
                 <div className="text-gray-600">Species: {e.species || "—"}</div>
                 <div className="text-gray-600">Gender: {e.gender || "—"}</div>
                 <div className="text-gray-600">Age Class: {e.age_class || "—"}</div>
+                <div className="text-gray-600">
+                  Last Size: {e.last_size_m != null ? `${e.last_size_m.toFixed(2)} m` : "—"}
+                </div>
                 <div className="text-gray-600">
                   First: {fmt(e.first_sighting)} · Last: {fmt(e.last_sighting)}
                 </div>
@@ -460,7 +482,8 @@ export default function Catalog() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {selectedCatalogId !== null && (
         <CatalogBestPhotoModal
