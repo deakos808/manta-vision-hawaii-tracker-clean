@@ -27,71 +27,144 @@ export default function SightingMantasQuickModal({
 
   useEffect(() => {
     if (!open) return;
+
+    let alive = true;
+
     (async () => {
       setLoading(true);
-      try {
-        // 1) Catalogs (and first manta id) present in this sighting
-        const { data: ph, error: pErr } = await supabase
-          .from("photos")
-          .select("fk_manta_id,fk_catalog_id")
-          .eq("fk_sighting_id", pk_sighting_id);
-        if (pErr) throw pErr;
 
-        const byCatalog = new Map<number, number | null>(); // catalog -> any manta_id from this sighting
-        (ph ?? []).forEach((r: any) => {
-          const cid = r.fk_catalog_id as number | null;
-          if (typeof cid !== "number") return;
-          if (!byCatalog.has(cid)) byCatalog.set(cid, (r.fk_manta_id as number | null) ?? null);
-        });
-        const catalogIds = Array.from(byCatalog.keys());
-        if (catalogIds.length === 0) {
+      try {
+        const { data: mantaRows, error: mantaErr } = await supabase
+          .from("mantas")
+          .select("pk_manta_id,fk_catalog_id")
+          .eq("fk_sighting_id", pk_sighting_id)
+          .order("fk_catalog_id", { ascending: true });
+
+        if (mantaErr) throw mantaErr;
+
+        const base = (mantaRows ?? [])
+          .map((r: any) => ({
+            pk_catalog_id: Number(r.fk_catalog_id ?? 0),
+            pk_manta_id: r.pk_manta_id == null ? null : Number(r.pk_manta_id),
+          }))
+          .filter((r) => Number.isFinite(r.pk_catalog_id) && r.pk_catalog_id > 0);
+
+        if (!alive) return;
+
+        if (base.length === 0) {
           setRows([]);
+          setLoading(false);
           return;
         }
 
-        // 2) Catalog metadata + best photo pointer
-        const { data: cats, error: cErr } = await supabase
+        const catalogIds = Array.from(new Set(base.map((r) => r.pk_catalog_id)));
+        const mantaIds = Array.from(
+          new Set(
+            base
+              .map((r) => r.pk_manta_id)
+              .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
+          )
+        );
+
+        const { data: catalogRows, error: catalogErr } = await supabase
           .from("catalog")
-          .select("pk_catalog_id,name,gender,age_class,best_cat_mask_ventral_id_int")
+          .select("pk_catalog_id,name,gender,age_class")
           .in("pk_catalog_id", catalogIds);
-        if (cErr) throw cErr;
 
-        // 3) Resolve best-photo thumbnails in one shot
-        const bestIds = (cats ?? [])
-          .map((c: any) => c.best_cat_mask_ventral_id_int)
-          .filter((v: any) => typeof v === "number");
-        const { data: bestPhotos, error: bErr } = await supabase
-          .from("photos")
-          .select("pk_photo_id,thumbnail_url")
-          .in("pk_photo_id", bestIds);
-        if (bErr) throw bErr;
+        if (catalogErr) throw catalogErr;
+        if (!alive) return;
 
-        const thumbByPhotoId = new Map<number, string | null>();
-        (bestPhotos ?? []).forEach((p: any) => thumbByPhotoId.set(p.pk_photo_id, p.thumbnail_url ?? null));
+        const catalogMap = new Map<
+          number,
+          { name: string | null; gender: string | null; age_class: string | null }
+        >();
 
-        const items: MantaItem[] = (cats ?? []).map((c: any) => ({
-          pk_catalog_id: c.pk_catalog_id,
-          pk_manta_id: byCatalog.get(c.pk_catalog_id) ?? null,
-          name: c.name ?? null,
-          gender: c.gender ?? null,
-          age_class: c.age_class ?? null,
-          thumbnail_url: thumbByPhotoId.get(c.best_cat_mask_ventral_id_int) ?? null,
-        }));
+        (catalogRows ?? []).forEach((r: any) => {
+          const id = Number(r.pk_catalog_id ?? 0);
+          if (!id) return;
+          catalogMap.set(id, {
+            name: r.name ?? null,
+            gender: r.gender ?? null,
+            age_class: r.age_class ?? null,
+          });
+        });
 
-        setRows(items);
+        const thumbByManta = new Map<number, string | null>();
+
+        if (mantaIds.length > 0) {
+          const { data: bestRows, error: bestErr } = await supabase
+            .from("photos")
+            .select("pk_photo_id,fk_manta_id")
+            .eq("is_best_manta_ventral_photo", true)
+            .in("fk_manta_id", mantaIds);
+
+          if (bestErr) throw bestErr;
+          if (!alive) return;
+
+          const bestPhotoIdByManta = new Map<number, number>();
+          const bestPhotoIds: number[] = [];
+
+          (bestRows ?? []).forEach((r: any) => {
+            const mantaId = Number(r.fk_manta_id ?? 0);
+            const photoId = Number(r.pk_photo_id ?? 0);
+            if (!mantaId || !photoId) return;
+            if (!bestPhotoIdByManta.has(mantaId)) {
+              bestPhotoIdByManta.set(mantaId, photoId);
+              bestPhotoIds.push(photoId);
+            }
+          });
+
+          if (bestPhotoIds.length > 0) {
+            const { data: thumbRows, error: thumbErr } = await supabase
+              .from("photos_with_photo_view")
+              .select("pk_photo_id,thumbnail_url")
+              .in("pk_photo_id", bestPhotoIds);
+
+            if (thumbErr) throw thumbErr;
+            if (!alive) return;
+
+            const thumbByPhotoId = new Map<number, string | null>();
+            (thumbRows ?? []).forEach((r: any) => {
+              const photoId = Number(r.pk_photo_id ?? 0);
+              if (!photoId) return;
+              thumbByPhotoId.set(photoId, r.thumbnail_url ?? null);
+            });
+
+            bestPhotoIdByManta.forEach((photoId, mantaId) => {
+              thumbByManta.set(mantaId, thumbByPhotoId.get(photoId) ?? null);
+            });
+          }
+        }
+
+        const merged: MantaItem[] = base.map((r) => {
+          const cat = catalogMap.get(r.pk_catalog_id);
+          return {
+            pk_catalog_id: r.pk_catalog_id,
+            pk_manta_id: r.pk_manta_id,
+            name: cat?.name ?? null,
+            gender: cat?.gender ?? null,
+            age_class: cat?.age_class ?? null,
+            thumbnail_url:
+              r.pk_manta_id != null ? thumbByManta.get(r.pk_manta_id) ?? null : null,
+          };
+        });
+
+        if (!alive) return;
+        setRows(merged);
       } catch (e) {
         console.error("[SightingMantasQuickModal] load error:", e);
-        setRows([]);
+        if (alive) setRows([]);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [open, pk_sighting_id]);
 
-  const title = useMemo(
-    () => `Mantas in Sighting ${pk_sighting_id}`,
-    [pk_sighting_id]
-  );
+  const title = useMemo(() => `Mantas in Sighting ${pk_sighting_id}`, [pk_sighting_id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,12 +180,14 @@ export default function SightingMantasQuickModal({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-2">
             {rows.map((r) => (
-              <div key={r.pk_catalog_id} className="rounded border p-2">
+              <div key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="rounded border p-2">
                 <img
                   src={r.thumbnail_url ?? "/manta-logo.svg"}
                   alt={`Catalog ${r.pk_catalog_id}`}
                   className="w-full aspect-square object-cover rounded border"
-                  onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/manta-logo.svg")}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
+                  }}
                 />
                 <div className="mt-2 text-xs">
                   <div><span className="font-medium">Catalog:</span> {r.pk_catalog_id}</div>
