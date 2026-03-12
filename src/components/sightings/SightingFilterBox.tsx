@@ -1,4 +1,3 @@
-// File: src/components/sightings/SightingFilterBox.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -10,199 +9,304 @@ type CountRow = { value: string; count: number };
 
 const POP_ISLANDS: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
-  "Oahu": ["Oahu"],
-  "Kauai": ["Kauai", "Niihau"],
+  Oahu: ["Oahu"],
+  Kauai: ["Kauai", "Niihau"],
   "Big Island": ["Big Island", "Hawaii", "Hawaiʻi"],
 };
 
+const MPRF_OPTIONS = ["MPRF", "Non-MPRF"] as const;
+
 interface Props {
-    sightingId: string; setSightingId: (v: string) => void;
-    catalogIdFilter: string; setCatalogIdFilter: (v: string) => void;
-  island: string; setIsland: (v: string) => void;
-  photographer: string; setPhotographer: (v: string) => void;
-  location: string; setLocation: (v: string) => void;
-  population: string; setPopulation: (v: string) => void;
-  minMantas: number | ""; setMinMantas: (v: number | "") => void;
-  date: string; setDate: (v: string) => void;
+  island: string;
+  setIsland: (v: string) => void;
+  photographer: string;
+  setPhotographer: (v: string) => void;
+  location: string;
+  setLocation: (v: string) => void;
+  population: string;
+  setPopulation: (v: string) => void;
+  minMantas: number | "";
+  setMinMantas: (v: number | "") => void;
+  date: string;
+  setDate: (v: string) => void;
+  dateKnown: boolean;
+  setDateKnown: (v: boolean) => void;
+  dateUnknown: boolean;
+  setDateUnknown: (v: boolean) => void;
+  species: string;
+  setSpecies: (v: string) => void;
+  catalogIdPrefix: string;
+  setCatalogIdPrefix: (v: string) => void;
+  namePrefix: string;
+  setNamePrefix: (v: string) => void;
+  mprf: string;
+  setMprf: (v: string) => void;
   onClear: () => void;
   isAdmin?: boolean;
-
-  // NEW: species selection
-  species: string; setSpecies: (v: string) => void;
 }
 
-type Filters = Pick<Props, "population" | "island" | "location" | "photographer" | "minMantas" | "date" | "species" | "sightingId" | "catalogIdFilter">;
+type Filters = {
+  population: string;
+  island: string;
+  location: string;
+  photographer: string;
+  minMantas: number | "";
+  date: string;
+  dateKnown: boolean;
+  dateUnknown: boolean;
+  species: string;
+  mprf: string;
+};
 
 function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>>): boolean {
   const pop = (r.population ?? "").toString();
   const isl = (r.island ?? "").toString();
   const loc = (r.sitelocation ?? "").toString();
   const pho = (r.photographer ?? "").toString();
-  const tm  = Number(r.total_mantas ?? 0);
-  const dt  = (r.sighting_date ?? "").toString();
+  const tm = Number(r.total_mantas ?? 0);
+  const dt = (r.sighting_date ?? "").toString();
+  const isMprf = !!r.is_mprf;
+
   if (f.population && !pop.toLowerCase().includes(f.population.toLowerCase())) return false;
   if (f.island && f.island !== "all" && !isl.toLowerCase().includes(f.island.toLowerCase())) return false;
   if (f.location && loc !== f.location) return false;
   if (f.photographer && !pho.toLowerCase().includes(f.photographer.toLowerCase())) return false;
   if (f.minMantas !== "" && !(tm >= Number(f.minMantas))) return false;
   if (f.date && dt !== f.date) return false;
-    if (f.sightingId && String(r.pk_sighting_id) !== String(f.sightingId)) return false;if (f.species) {
+  if (f.dateKnown && !dt) return false;
+  if (f.dateUnknown && !!dt) return false;
+
+  if (f.mprf === "MPRF" && !isMprf) return false;
+  if (f.mprf === "Non-MPRF" && isMprf) return false;
+
+  if (f.species) {
     const set = speciesBySighting.get(Number(r.pk_sighting_id)) ?? new Set();
-    // includes if ANY manta in the sighting matches species filter
-    const has = Array.from(set).some(s => s.toLowerCase().includes(f.species!.toLowerCase()));
+    const has = Array.from(set).some((s) => s.toLowerCase().includes(f.species.toLowerCase()));
     if (!has) return false;
   }
+
   return true;
 }
 
 export default function SightingFilterBox(props: Props) {
   const {
-      island, setIsland,
-    photographer, setPhotographer,
-    location, setLocation,
-    population, setPopulation,
-    minMantas, setMinMantas,
-    date, setDate,
+    island,
+    setIsland,
+    photographer,
+    setPhotographer,
+    location,
+    setLocation,
+    population,
+    setPopulation,
+    minMantas,
+    setMinMantas,
+    date,
+    setDate,
+    dateKnown,
+    setDateKnown,
+    dateUnknown,
+    setDateUnknown,
+    species,
+    setSpecies,
+    catalogIdPrefix,
+    setCatalogIdPrefix,
+    namePrefix,
+    setNamePrefix,
+    mprf,
+    setMprf,
     onClear,
     isAdmin = false,
-    species, setSpecies,
-      sightingId, setSightingId,
-      catalogIdFilter, setCatalogIdFilter,
-    } = props;
+  } = props;
 
-  const filters: Filters = { population, island, location, photographer, minMantas, date, species };
+  const filters: Filters = {
+    population,
+    island,
+    location,
+    photographer,
+    minMantas,
+    date,
+    dateKnown,
+    dateUnknown,
+    species,
+    mprf,
+  };
 
-  // 1) fetch current found set rows under filters (include pk_sighting_id for species join)
   const [rows, setRows] = useState<any[]>([]);
+
   useEffect(() => {
     let alive = true;
+
     (async () => {
       let q = supabase
-          .from("sightings")
-          .select("pk_sighting_id,population,island,sitelocation,photographer,total_mantas,sighting_date");
-// apply catalogIdFilter
-        
+        .from("sightings")
+        .select("pk_sighting_id,population,island,sitelocation,photographer,total_mantas,sighting_date,is_mprf");
 
       if (population) q = q.ilike("population", `%${population}%`);
-        if (catalogIdFilter) {
-          const { data: idsRows } = await supabase.from("mantas").select("fk_sighting_id").eq("fk_catalog_id", Number(catalogIdFilter));
-          const ids = (idsRows ?? []).map((r:any) => r.fk_sighting_id);
-          q = ids.length ? q.in("pk_sighting_id", ids) : q.eq("pk_sighting_id", 0);
-        }
       if (island && island !== "all") q = q.ilike("island", `%${island}%`);
       if (location) q = q.eq("sitelocation", location);
       if (photographer) q = q.ilike("photographer", `%${photographer}%`);
       if (minMantas !== "") q = q.gte("total_mantas", minMantas as any);
       if (date) q = q.eq("sighting_date", date);
+      if (dateKnown) q = q.not("sighting_date", "is", null);
+      if (dateUnknown) q = q.is("sighting_date", null);
+      if (mprf === "MPRF") q = q.eq("is_mprf", true);
+      if (mprf === "Non-MPRF") q = q.or("is_mprf.is.false,is_mprf.is.null");
 
-      // Note: DO NOT apply species here; we need the found set to compute options.
-      // Paging to fetch all
       const pageSz = 1000;
       const acc: any[] = [];
+
       for (let from = 0; from < 50000; from += pageSz) {
-        const { data, error } = await q.order("pk_sighting_id", { ascending: true }).range(from, from + pageSz - 1);
+        const { data, error } = await q
+          .order("pk_sighting_id", { ascending: true })
+          .range(from, from + pageSz - 1);
+
         if (!alive) return;
-        if (error) { console.error("[filters] fetch err", error); break; }
+        if (error) {
+          console.error("[SightingFilterBox] fetch err", error);
+          break;
+        }
+
         const chunk = data ?? [];
         acc.push(...chunk);
         if (chunk.length < pageSz) break;
       }
+
       if (alive) setRows(acc);
     })();
-    return () => { alive = false; };
-  }, [population, island, location, photographer, minMantas, date]);
 
-  // 2) load species per sighting via mantas → catalog(species)
+    return () => {
+      alive = false;
+    };
+  }, [population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf]);
+
   const [speciesMap, setSpeciesMap] = useState<Map<number, Set<string>>>(new Map());
+
   useEffect(() => {
     let alive = true;
+
     (async () => {
-      const ids = rows.map(r => Number(r.pk_sighting_id)).filter(Boolean);
-      const pageSz = 1000;
+      const ids = rows.map((r) => Number(r.pk_sighting_id)).filter(Boolean);
       const map = new Map<number, Set<string>>();
+
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         const { data, error } = await supabase
           .from("mantas")
           .select("fk_sighting_id,catalog:fk_catalog_id(species)")
           .in("fk_sighting_id", chunk);
+
         if (!alive) return;
-        if (error) { console.error("[species join] err", error); continue; }
+        if (error) {
+          console.error("[SightingFilterBox] species join err", error);
+          continue;
+        }
+
         for (const r of data ?? []) {
-          const s = (r?.catalog?.species ?? "").toString().trim();
-          const sid = Number(r?.fk_sighting_id ?? 0);
+          const s = ((r as any)?.catalog?.species ?? "").toString().trim();
+          const sid = Number((r as any)?.fk_sighting_id ?? 0);
           if (!s || !sid) continue;
           if (!map.has(sid)) map.set(sid, new Set());
           map.get(sid)!.add(s);
         }
       }
+
       if (alive) setSpeciesMap(map);
     })();
-    return () => { alive = false; };
+
+    return () => {
+      alive = false;
+    };
   }, [rows]);
 
-  // 3) distinct values in current found set
   const values = useMemo(() => {
-    const P = new Set<string>(), I = new Set<string>(), L = new Set<string>(), H = new Set<string>(), S = new Set<string>();
+    const P = new Set<string>();
+    const I = new Set<string>();
+    const L = new Set<string>();
+    const H = new Set<string>();
+    const S = new Set<string>();
+
     for (const r of rows) {
       const p = (r.population ?? "").toString().trim();
       const i = (r.island ?? "").toString().trim();
       const l = (r.sitelocation ?? "").toString().trim();
       const h = (r.photographer ?? "").toString().trim();
-      if (p) P.add(p); if (i) I.add(i); if (l) L.add(l); if (h) H.add(h);
+
+      if (p) P.add(p);
+      if (i) I.add(i);
+      if (l) L.add(l);
+      if (h) H.add(h);
+
       const ss = speciesMap.get(Number(r.pk_sighting_id));
-      if (ss) ss.forEach(v => { if (v) S.add(v); });
+      if (ss) ss.forEach((v) => v && S.add(v));
     }
+
     return {
-      populations: [...P].sort((a,b)=>a.localeCompare(b)),
-      islands:     [...I].sort((a,b)=>a.localeCompare(b)),
-      locations:   [...L].sort((a,b)=>a.localeCompare(b)),
-      photographers: [...H].sort((a,b)=>a.localeCompare(b)),
-      species:     [...S].sort((a,b)=>a.localeCompare(b)),
+      populations: [...P].sort((a, b) => a.localeCompare(b)),
+      islands: [...I].sort((a, b) => a.localeCompare(b)),
+      locations: [...L].sort((a, b) => a.localeCompare(b)),
+      photographers: [...H].sort((a, b) => a.localeCompare(b)),
+      species: [...S].sort((a, b) => a.localeCompare(b)),
     };
   }, [rows, speciesMap]);
 
-  // 4) cascade
   const cascadedIslands = useMemo(() => {
     if (!population) return values.islands;
     const allowed = POP_ISLANDS[population] ?? [];
-    return values.islands.filter(v => allowed.includes(v));
+    return values.islands.filter((v) => allowed.includes(v));
   }, [values.islands, population]);
+
   const cascadedLocations = useMemo(() => {
     if (!island || island === "all") return values.locations;
-    return values.locations.filter(v =>
-      rows.some(r => (r.island ?? "").toString().toLowerCase().includes(island.toLowerCase()) && (r.sitelocation ?? "").toString() === v)
+    return values.locations.filter((v) =>
+      rows.some(
+        (r) =>
+          (r.island ?? "").toString().toLowerCase().includes(island.toLowerCase()) &&
+          (r.sitelocation ?? "").toString() === v
+      )
     );
   }, [values.locations, island, rows]);
 
-  // 5) option-specific what-if counts
   const countIf = (next: Partial<Filters>) =>
     rows.reduce((acc, r) => acc + (rowMatch(r, { ...filters, ...next }, speciesMap) ? 1 : 0), 0);
 
   const speciesRows: CountRow[] = useMemo(
-    () => values.species.map(v => ({ value: v, count: countIf({ species: v }) })),
-    [values.species, rows, population, island, location, photographer, minMantas, date, speciesMap, species]
-  );
-  const popRows: CountRow[] = useMemo(
-    () => values.populations.map(v => ({ value: v, count: countIf({ population: v }) })),
-    [values.populations, rows, population, island, location, photographer, minMantas, date, speciesMap, species]
-  );
-  const islRows: CountRow[] = useMemo(
-    () => cascadedIslands.map(v => ({ value: v, count: countIf({ island: v }) })),
-    [cascadedIslands, rows, population, island, location, photographer, minMantas, date, speciesMap, species]
-  );
-  const locRows: CountRow[] = useMemo(
-    () => cascadedLocations.map(v => ({ value: v, count: countIf({ location: v }) })),
-    [cascadedLocations, rows, population, island, location, photographer, minMantas, date, speciesMap, species]
-  );
-  const phoRows: CountRow[] = useMemo(
-    () => values.photographers.map(v => ({ value: v, count: countIf({ photographer: v }) })),
-    [values.photographers, rows, population, island, location, photographer, minMantas, date, speciesMap, species]
+    () => values.species.map((v) => ({ value: v, count: countIf({ species: v }) })),
+    [values.species, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
   );
 
-  // 6) UI
-  const Pill = ({ label, active, children }:{
-    label: string; active: boolean; children: React.ReactNode;
+  const popRows: CountRow[] = useMemo(
+    () => values.populations.map((v) => ({ value: v, count: countIf({ population: v }) })),
+    [values.populations, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
+  );
+
+  const islRows: CountRow[] = useMemo(
+    () => cascadedIslands.map((v) => ({ value: v, count: countIf({ island: v }) })),
+    [cascadedIslands, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
+  );
+
+  const locRows: CountRow[] = useMemo(
+    () => cascadedLocations.map((v) => ({ value: v, count: countIf({ location: v }) })),
+    [cascadedLocations, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
+  );
+
+  const phoRows: CountRow[] = useMemo(
+    () => values.photographers.map((v) => ({ value: v, count: countIf({ photographer: v }) })),
+    [values.photographers, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
+  );
+
+  const mprfRows: CountRow[] = useMemo(
+    () => MPRF_OPTIONS.map((v) => ({ value: v, count: countIf({ mprf: v }) })),
+    [rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
+  );
+
+  const Pill = ({
+    label,
+    active,
+    children,
+  }: {
+    label: string;
+    active: boolean;
+    children: React.ReactNode;
   }) => (
     <Popover>
       <PopoverTrigger asChild>
@@ -215,24 +319,52 @@ export default function SightingFilterBox(props: Props) {
       </PopoverContent>
     </Popover>
   );
-    return (
+
+  return (
     <div className="bg-white shadow p-4 rounded border">
       <div className="flex justify-between items-center mb-3">
         <div className="text-sm font-medium">Filter Sighting Records by:</div>
-        <Button variant="link" size="sm" onClick={onClear}>Clear All Filters</Button>
+        <Button variant="link" size="sm" onClick={onClear}>
+          Clear All Filters
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {/* Date */}
         <Pill label={`Date${date ? `: ${date}` : ""}`} active={!!date}>
-          <Input type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
-          {date && <Button size="sm" className="mt-2" onClick={()=>setDate("")}>Clear</Button>}
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          {date && (
+            <Button size="sm" className="mt-2" onClick={() => setDate("")}>
+              Clear
+            </Button>
+          )}
         </Pill>
 
-        
-        {/* Species (NEW) */}
+        <Button
+          variant="outline"
+          className={`text-sm ${dateKnown ? "border-blue-600 text-blue-600" : ""}`}
+          onClick={() => {
+            const next = !dateKnown;
+            setDateKnown(next);
+            if (next) setDateUnknown(false);
+          }}
+        >
+          Date Known
+        </Button>
+
+        <Button
+          variant="outline"
+          className={`text-sm ${dateUnknown ? "border-blue-600 text-blue-600" : ""}`}
+          onClick={() => {
+            const next = !dateUnknown;
+            setDateUnknown(next);
+            if (next) setDateKnown(false);
+          }}
+        >
+          Date Unknown
+        </Button>
+
         <Pill label={`Species${species ? `: ${species}` : ""}`} active={!!species}>
-          {speciesRows.map(r => (
+          {speciesRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -245,12 +377,9 @@ export default function SightingFilterBox(props: Props) {
             </label>
           ))}
         </Pill>
-  
 
-        
-        {/* Population */}
         <Pill label={`Population${population ? `: ${population}` : ""}`} active={!!population}>
-          {popRows.map(r => (
+          {popRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -263,12 +392,9 @@ export default function SightingFilterBox(props: Props) {
             </label>
           ))}
         </Pill>
-  
 
-        
-        {/* Island */}
         <Pill label={`Island${island && island !== "all" ? `: ${island}` : ""}`} active={!!island && island !== "all"}>
-          {islRows.map(r => (
+          {islRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -281,12 +407,9 @@ export default function SightingFilterBox(props: Props) {
             </label>
           ))}
         </Pill>
-  
 
-        
-        {/* Location */}
         <Pill label={`Location${location ? `: ${location}` : ""}`} active={!!location}>
-          {locRows.map(r => (
+          {locRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -299,13 +422,10 @@ export default function SightingFilterBox(props: Props) {
             </label>
           ))}
         </Pill>
-  
 
-        
-        {/* Photographer — admin only */}
-        {props.isAdmin && (
+        {isAdmin && (
           <Pill label={`Photographer${photographer ? `: ${photographer}` : ""}`} active={!!photographer}>
-            {phoRows.map(r => (
+            {phoRows.map((r) => (
               <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -319,18 +439,56 @@ export default function SightingFilterBox(props: Props) {
             ))}
           </Pill>
         )}
-  
 
-        {/* ≥ Mantas */}
         <Pill label={minMantas === "" ? "≥ Mantas" : `≥ ${minMantas}`} active={minMantas !== ""}>
           <Input
             type="number"
             min={0}
             value={minMantas}
-            onChange={(e)=> setMinMantas(e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => setMinMantas(e.target.value === "" ? "" : Number(e.target.value))}
           />
-          {minMantas !== "" && <Button size="sm" className="mt-2" onClick={()=>setMinMantas("")}>Clear</Button>}
+          {minMantas !== "" && (
+            <Button size="sm" className="mt-2" onClick={() => setMinMantas("")}>
+              Clear
+            </Button>
+          )}
         </Pill>
+
+        <Pill label={`MPRF${mprf ? `: ${mprf}` : ""}`} active={!!mprf}>
+          {mprfRows.map((r) => (
+            <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={mprf === r.value}
+                  onCheckedChange={() => setMprf(mprf === r.value ? "" : r.value)}
+                />
+                {r.value}
+              </div>
+              <span className="text-xs text-muted-foreground">{r.count}</span>
+            </label>
+          ))}
+        </Pill>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
+          <Input
+            value={catalogIdPrefix}
+            onChange={(e) => setCatalogIdPrefix(e.target.value)}
+            placeholder="e.g., 71..."
+            className="bg-white text-sm"
+          />
+        </div>
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
+          <Input
+            value={namePrefix}
+            onChange={(e) => setNamePrefix(e.target.value)}
+            placeholder="e.g., Ak..."
+            className="bg-white text-sm"
+          />
+        </div>
       </div>
     </div>
   );
