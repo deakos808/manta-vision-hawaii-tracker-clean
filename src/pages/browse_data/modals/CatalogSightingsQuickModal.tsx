@@ -31,6 +31,7 @@ export default function CatalogSightingsQuickModal({
   onOpenMantas,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [rows, setRows] = useState<SightItem[]>([]);
 
   useEffect(() => {
@@ -38,9 +39,11 @@ export default function CatalogSightingsQuickModal({
 
     let alive = true;
 
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    setHasLoaded(false);
+    setRows([]);
 
+    (async () => {
       try {
         const { data: mantaRows, error: mantaErr } = await supabase
           .from("mantas")
@@ -61,6 +64,7 @@ export default function CatalogSightingsQuickModal({
 
         if (sightIds.length === 0) {
           setRows([]);
+          setHasLoaded(true);
           setLoading(false);
           return;
         }
@@ -103,7 +107,10 @@ export default function CatalogSightingsQuickModal({
         console.error("[CatalogSightingsQuickModal] load error:", e);
         if (alive) setRows([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
       }
     })();
 
@@ -124,7 +131,7 @@ export default function CatalogSightingsQuickModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
+        {!hasLoaded || loading ? (
           <div className="text-sm text-muted-foreground p-2">Loading…</div>
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground p-2">No sightings found.</div>
@@ -132,24 +139,24 @@ export default function CatalogSightingsQuickModal({
           <div className="rounded border overflow-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b">
-                <tr className="text-left">
-                  <th className="px-3 py-2">Sighting ID</th>
-                  <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Location</th>
-                  <th className="px-3 py-2">Photographer</th>
-                  <th className="px-3 py-2">Total Mantas</th>
+                <tr className="text-center">
+                  <th className="px-3 py-2 text-center">Sighting ID</th>
+                  <th className="px-3 py-2 text-center">Date</th>
+                  <th className="px-3 py-2 text-center">Location</th>
+                  <th className="px-3 py-2 text-center">Photographer</th>
+                  <th className="px-3 py-2 text-center">Total Mantas</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.pk_sighting_id} className="border-b last:border-0">
-                    <td className="px-3 py-2">{r.pk_sighting_id}</td>
-                    <td className="px-3 py-2">{fmtDate(r.sighting_date)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center">{r.pk_sighting_id}</td>
+                    <td className="px-3 py-2 text-center">{fmtDate(r.sighting_date)}</td>
+                    <td className="px-3 py-2 text-center">
                       {r.location || "—"}{r.island ? `, ${r.island}` : ""}
                     </td>
-                    <td className="px-3 py-2">{r.photographer || "—"}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center">{r.photographer || "—"}</td>
+                    <td className="px-3 py-2 text-center">
                       <button
                         type="button"
                         className="text-blue-600 underline hover:text-blue-700"

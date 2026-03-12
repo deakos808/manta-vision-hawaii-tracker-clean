@@ -23,6 +23,7 @@ export default function SightingMantasQuickModal({
   pk_sighting_id,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [rows, setRows] = useState<MantaItem[]>([]);
 
   useEffect(() => {
@@ -30,9 +31,11 @@ export default function SightingMantasQuickModal({
 
     let alive = true;
 
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    setHasLoaded(false);
+    setRows([]);
 
+    (async () => {
       try {
         const { data: mantaRows, error: mantaErr } = await supabase
           .from("mantas")
@@ -53,6 +56,7 @@ export default function SightingMantasQuickModal({
 
         if (base.length === 0) {
           setRows([]);
+          setHasLoaded(true);
           setLoading(false);
           return;
         }
@@ -67,7 +71,7 @@ export default function SightingMantasQuickModal({
         );
 
         const { data: catalogRows, error: catalogErr } = await supabase
-          .from("catalog")
+          .from("catalog_with_photo_view")
           .select("pk_catalog_id,name,gender,age_class")
           .in("pk_catalog_id", catalogIds);
 
@@ -155,7 +159,10 @@ export default function SightingMantasQuickModal({
         console.error("[SightingMantasQuickModal] load error:", e);
         if (alive) setRows([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
       }
     })();
 
@@ -173,31 +180,45 @@ export default function SightingMantasQuickModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
+        {!hasLoaded || loading ? (
           <div className="text-sm text-muted-foreground p-2">Loading…</div>
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground p-2">No mantas found for this sighting.</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-2">
-            {rows.map((r) => (
-              <div key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="rounded border p-2">
-                <img
-                  src={r.thumbnail_url ?? "/manta-logo.svg"}
-                  alt={`Catalog ${r.pk_catalog_id}`}
-                  className="w-full aspect-square object-cover rounded border"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
-                  }}
-                />
-                <div className="mt-2 text-xs">
-                  <div><span className="font-medium">Catalog:</span> {r.pk_catalog_id}</div>
-                  <div><span className="font-medium">Manta:</span> {r.pk_manta_id ?? "—"}</div>
-                  <div><span className="font-medium">Name:</span> {r.name ?? "—"}</div>
-                  <div><span className="font-medium">Gender:</span> {r.gender ?? "—"}</div>
-                  <div><span className="font-medium">Age:</span> {r.age_class ?? "—"}</div>
-                </div>
-              </div>
-            ))}
+          <div className="rounded border overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white border-b">
+                <tr className="text-center">
+                  <th className="px-3 py-2 w-28 text-center">Best Ventral Photo</th>
+                  <th className="px-3 py-2 text-center">Catalog ID</th>
+                  <th className="px-3 py-2 text-center">Manta ID</th>
+                  <th className="px-3 py-2 text-center">Name</th>
+                  <th className="px-3 py-2 text-center">Gender</th>
+                  <th className="px-3 py-2 text-center">Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="border-b last:border-0 align-top">
+                    <td className="px-3 py-2">
+                      <img
+                        src={r.thumbnail_url ?? "/manta-logo.svg"}
+                        alt={`Catalog ${r.pk_catalog_id}`}
+                        className="h-20 w-20 object-cover rounded border bg-white"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-center">{r.pk_catalog_id}</td>
+                    <td className="px-3 py-2 text-center">{r.pk_manta_id ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.name ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.gender ?? "—"}</td>
+                    <td className="px-3 py-2 text-center">{r.age_class ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </DialogContent>
