@@ -67,7 +67,7 @@ export default function SightingMantasQuickModal({
         );
 
         const { data: catalogRows, error: catalogErr } = await supabase
-          .from("catalog")
+          .from("catalog_with_photo_view")
           .select("pk_catalog_id,name,gender,age_class")
           .in("pk_catalog_id", catalogIds);
 
