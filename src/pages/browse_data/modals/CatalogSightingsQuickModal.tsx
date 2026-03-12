@@ -38,9 +38,10 @@ export default function CatalogSightingsQuickModal({
 
     let alive = true;
 
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    setRows([]);
 
+    (async () => {
       try {
         const { data: mantaRows, error: mantaErr } = await supabase
           .from("mantas")

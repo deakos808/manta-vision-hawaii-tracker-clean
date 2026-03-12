@@ -30,9 +30,10 @@ export default function SightingMantasQuickModal({
 
     let alive = true;
 
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    setRows([]);
 
+    (async () => {
       try {
         const { data: mantaRows, error: mantaErr } = await supabase
           .from("mantas")
@@ -178,26 +179,40 @@ export default function SightingMantasQuickModal({
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground p-2">No mantas found for this sighting.</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-2">
-            {rows.map((r) => (
-              <div key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="rounded border p-2">
-                <img
-                  src={r.thumbnail_url ?? "/manta-logo.svg"}
-                  alt={`Catalog ${r.pk_catalog_id}`}
-                  className="w-full aspect-square object-cover rounded border"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
-                  }}
-                />
-                <div className="mt-2 text-xs">
-                  <div><span className="font-medium">Catalog:</span> {r.pk_catalog_id}</div>
-                  <div><span className="font-medium">Manta:</span> {r.pk_manta_id ?? "—"}</div>
-                  <div><span className="font-medium">Name:</span> {r.name ?? "—"}</div>
-                  <div><span className="font-medium">Gender:</span> {r.gender ?? "—"}</div>
-                  <div><span className="font-medium">Age:</span> {r.age_class ?? "—"}</div>
-                </div>
-              </div>
-            ))}
+          <div className="rounded border overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white border-b">
+                <tr className="text-left">
+                  <th className="px-3 py-2 w-28">Photo</th>
+                  <th className="px-3 py-2">Catalog</th>
+                  <th className="px-3 py-2">Manta</th>
+                  <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Gender</th>
+                  <th className="px-3 py-2">Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="border-b last:border-0 align-top">
+                    <td className="px-3 py-2">
+                      <img
+                        src={r.thumbnail_url ?? "/manta-logo.svg"}
+                        alt={`Catalog ${r.pk_catalog_id}`}
+                        className="h-20 w-20 object-cover rounded border bg-white"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2">{r.pk_catalog_id}</td>
+                    <td className="px-3 py-2">{r.pk_manta_id ?? "—"}</td>
+                    <td className="px-3 py-2">{r.name ?? "—"}</td>
+                    <td className="px-3 py-2">{r.gender ?? "—"}</td>
+                    <td className="px-3 py-2">{r.age_class ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </DialogContent>
