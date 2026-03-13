@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -374,6 +374,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // UI
   return (
     <Layout>
+      <div className="max-w-5xl mx-auto px-4 py-3 text-sm">
+        <Link to="/dashboard" className="text-blue-700 underline">
+          Dashboard
+        </Link>
+        <span className="text-slate-600"> / Add Sighting</span>
+      </div>
 
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
 <UnifiedMantaModal

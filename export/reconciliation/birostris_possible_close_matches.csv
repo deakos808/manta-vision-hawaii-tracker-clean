@@ -1,0 +1,11 @@
+catalog_id,hamer_name,hamer_normalized_name,suggested_mprf_name,suggested_mprf_normalized_name,suggested_mprf_date,suggested_mprf_location,suggested_mprf_id_1,suggested_mprf_id_2
+978,'Ele'ele Ka'ohe,'ELE'ELE KA'OHE,Ele'ele Ka'ohe,ELE'ELE KA'OHE,2007-08-04,"Location    Ka'ohe Bay
+Location             1
+Name: 24, dtype: object","ID#    122
+ID#      0
+Name: 24, dtype: object",1
+1018,Jacqueline,JACQUELINE,Jaqueline,JAQUELINE,2019-01-28,"Location    Suck Em Up
+Location             1
+Name: 65, dtype: object","ID#    287
+ID#      0
+Name: 65, dtype: object",1

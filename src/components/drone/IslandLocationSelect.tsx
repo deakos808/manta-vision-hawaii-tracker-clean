@@ -3,48 +3,91 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useIslandsLocations } from "@/lib/useIslandsLocations";
 
 type Props = {
-  island: string; setIsland: (v:string)=>void;
-  location: string; setLocation: (v:string)=>void;
-  lat: string; setLat: (v:string)=>void;
-  lon: string; setLon: (v:string)=>void;
+  island: string;
+  setIsland: (v: string) => void;
+  location: string;
+  setLocation: (v: string) => void;
+  lat: string;
+  setLat: (v: string) => void;
+  lon: string;
+  setLon: (v: string) => void;
+  suggestedIsland?: string | null;
+  suggestedLocation?: string | null;
+  suggestionNote?: string | null;
 };
 
 export default function IslandLocationSelect({
-  island, setIsland,
-  location, setLocation,
-  lat, setLat,
-  lon, setLon,
+  island,
+  setIsland,
+  location,
+  setLocation,
+  lat,
+  setLat,
+  lon,
+  setLon,
+  suggestedIsland,
+  suggestedLocation,
+  suggestionNote,
 }: Props) {
   const { islands, locations, loadingIsl, loadingLoc } = useIslandsLocations(island);
 
   return (
     <Card>
-      <CardHeader><CardTitle>Island &amp; Location</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>Island &amp; Location</CardTitle>
+      </CardHeader>
       <CardContent className="space-y-3">
+        {(suggestedIsland || suggestedLocation || suggestionNote) && (
+          <div className="rounded border bg-blue-50 px-3 py-2 text-xs text-blue-900">
+            {suggestionNote || "Location suggestion available from photo metadata."}
+            {(suggestedIsland || suggestedLocation) && (
+              <div className="mt-1">
+                Suggested:
+                {suggestedIsland ? ` island ${suggestedIsland}` : ""}
+                {suggestedLocation ? ` · location ${suggestedLocation}` : ""}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-3">
           <select
             className="border rounded px-3 py-2"
             value={island}
-            onChange={(e)=>{ setIsland(e.target.value); setLocation(""); }}
+            onChange={(e) => {
+              setIsland(e.target.value);
+              setLocation("");
+            }}
           >
             <option value="">{loadingIsl ? "Loading islands…" : "Select island"}</option>
-            {islands.map(isl => <option key={isl} value={isl}>{isl}</option>)}
+            {islands.map((isl) => (
+              <option key={isl} value={isl}>
+                {isl}
+              </option>
+            ))}
           </select>
 
           <select
             className="border rounded px-3 py-2"
             value={location}
-            onChange={(e)=>{
-              const name=e.target.value; setLocation(name);
-              const rec = locations.find(l=>l.name===name);
+            onChange={(e) => {
+              const name = e.target.value;
+              setLocation(name);
+              const rec = locations.find((l) => l.name === name);
               if (rec) {
-                if (!lat && rec.latitude!=null) setLat(String(Number(rec.latitude).toFixed(6)));
-                if (!lon && rec.longitude!=null) setLon(String(Number(rec.longitude).toFixed(6)));
+                if (!lat && rec.latitude != null) setLat(String(Number(rec.latitude).toFixed(6)));
+                if (!lon && rec.longitude != null) setLon(String(Number(rec.longitude).toFixed(6)));
               }
             }}
           >
-            <option value="">{island ? (loadingLoc ? "Loading locations…" : "Select location") : "Select island first"}</option>
-            {locations.map(l => <option key={l.name} value={l.name}>{l.name}</option>)}
+            <option value="">
+              {island ? (loadingLoc ? "Loading locations…" : "Select location") : "Select island first"}
+            </option>
+            {locations.map((l) => (
+              <option key={l.name} value={l.name}>
+                {l.name}
+              </option>
+            ))}
           </select>
         </div>
       </CardContent>

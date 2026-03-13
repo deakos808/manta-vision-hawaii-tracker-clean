@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import * as XLSX from "xlsx";
 import Layout from "@/components/layout/Layout";
 import BackToTopButton from "@/components/browse/BackToTopButton";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import CatalogFilterBox, { FiltersState } from "@/components/catalog/CatalogFilterBox";
 import CatalogBestPhotoModal from "@/pages/browse_data/modals/CatalogBestPhotoModal";
 import CatalogSightingsQuickModal from "@/pages/browse_data/modals/CatalogSightingsQuickModal";
@@ -34,8 +36,11 @@ type CatalogRow = {
   total_sizes?: number | null;
   total_biopsies?: number | null;
   last_size_m?: number | null;
-  mprf?: "MPRF" | "Non-MPRF" | null;
+  mprf?: "MPRF" | "HAMER" | null;
 };
+
+type SortField = "catalog_id" | "first_sighting" | "last_sighting" | "last_size";
+type ExportPreset = "filtered_catalog_current_view" | "mobula_birostris_best_ventral";
 
 const EMPTY_FILTERS: FiltersState = {
   population: [],
@@ -149,8 +154,8 @@ async function fetchBiopsyCounts(): Promise<Map<number, number>> {
   return out;
 }
 
-async function fetchCatalogMprfMap(): Promise<Map<number, "MPRF" | "Non-MPRF">> {
-  const out = new Map<number, "MPRF" | "Non-MPRF">();
+async function fetchCatalogMprfMap(): Promise<Map<number, "MPRF" | "HAMER">> {
+  const out = new Map<number, "MPRF" | "HAMER">();
   const sightingMprf = new Map<number, boolean>();
   const pageSize = 1000;
 
@@ -192,7 +197,7 @@ async function fetchCatalogMprfMap(): Promise<Map<number, "MPRF" | "Non-MPRF">> 
       const sid = Number(row?.fk_sighting_id ?? 0);
       if (!cid || !sid) continue;
 
-      const label: "MPRF" | "Non-MPRF" = sightingMprf.get(sid) ? "MPRF" : "Non-MPRF";
+      const label: "MPRF" | "HAMER" = sightingMprf.get(sid) ? "MPRF" : "HAMER";
       const prev = out.get(cid);
 
       if (prev !== "MPRF") {
@@ -211,11 +216,14 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState<SortField>("catalog_id");
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<"ventral" | "dorsal">("ventral");
   const [catalogIdPrefix, setCatalogIdPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [exportPreset, setExportPreset] = useState<ExportPreset>("filtered_catalog_current_view");
+  const [exporting, setExporting] = useState(false);
 
   const [selectedCatalogId, setSelectedCatalogId] = useState<number | null>(null);
   const [sightingsCatalogId, setSightingsCatalogId] = useState<number | null>(null);
@@ -321,16 +329,48 @@ export default function Catalog() {
       );
     });
 
-    rows.sort((a, b) =>
-      sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id
-    );
+    const toTime = (v?: string | null) => {
+      if (!v) return null;
+      const t = new Date(v).getTime();
+      return Number.isNaN(t) ? null : t;
+    };
+
+    rows.sort((a, b) => {
+      let cmp = 0;
+
+      if (sortField === "catalog_id") {
+        cmp = a.pk_catalog_id - b.pk_catalog_id;
+      } else if (sortField === "last_size") {
+        const av = a.last_size_m == null ? Number.NEGATIVE_INFINITY : a.last_size_m;
+        const bv = b.last_size_m == null ? Number.NEGATIVE_INFINITY : b.last_size_m;
+        cmp = av - bv;
+        if (cmp === 0) cmp = a.pk_catalog_id - b.pk_catalog_id;
+      } else if (sortField === "first_sighting") {
+        const av = toTime(a.first_sighting);
+        const bv = toTime(b.first_sighting);
+        const ax = av == null ? Number.NEGATIVE_INFINITY : av;
+        const bx = bv == null ? Number.NEGATIVE_INFINITY : bv;
+        cmp = ax - bx;
+        if (cmp === 0) cmp = a.pk_catalog_id - b.pk_catalog_id;
+      } else if (sortField === "last_sighting") {
+        const av = toTime(a.last_sighting);
+        const bv = toTime(b.last_sighting);
+        const ax = av == null ? Number.NEGATIVE_INFINITY : av;
+        const bx = bv == null ? Number.NEGATIVE_INFINITY : bv;
+        cmp = ax - bx;
+        if (cmp === 0) cmp = a.pk_catalog_id - b.pk_catalog_id;
+      }
+
+      return sortAsc ? cmp : -cmp;
+    });
 
     return rows;
-  }, [catalog, search, catalogIdPrefix, namePrefix, filters, sortAsc]);
+  }, [catalog, search, catalogIdPrefix, namePrefix, filters, sortField, sortAsc]);
 
   const clearAll = () => {
     setSearch("");
     setFilters(EMPTY_FILTERS);
+    setSortField("catalog_id");
     setSortAsc(true);
     setCatalogIdPrefix("");
     setNamePrefix("");
@@ -347,10 +387,103 @@ export default function Catalog() {
     if (filters.gender.length) parts.push(`Gender: ${filters.gender.join(", ")}`);
     if (filters.age_class.length) parts.push(`Age: ${filters.age_class.join(", ")}`);
     if (filters.species.length) parts.push(`Species: ${filters.species.join(", ")}`);
-    if (filters.mprf.length) parts.push(`MPRF: ${filters.mprf.join(", ")}`);
+    if (filters.mprf.length) parts.push(`Source: ${filters.mprf.join(", ")}`);
     if (viewMode) parts.push(`Photo View: ${viewMode}`);
     return parts.join("; ");
   }, [catalogIdPrefix, namePrefix, filters, viewMode]);
+
+  const handleExportExcel = () => {
+    try {
+      setExporting(true);
+
+      const sourceRows =
+        exportPreset === "mobula_birostris_best_ventral"
+          ? filtered.filter((row) => (row.species ?? "").toLowerCase() === "mobula birostris")
+          : filtered;
+
+      const rowsToExport = sourceRows.map((row) => {
+        const previewUrl =
+          viewMode === "ventral"
+            ? row.best_catalog_ventral_thumb_url ?? ""
+            : row.best_catalog_dorsal_thumb_url ?? "";
+
+        return {
+          catalog_id: row.pk_catalog_id ?? "",
+          name: row.name ?? "",
+          species: row.species ?? "",
+          gender: row.gender ?? "",
+          age_class: row.age_class ?? "",
+          first_sighting: row.first_sighting ?? "",
+          last_sighting: row.last_sighting ?? "",
+          last_size_m: row.last_size_m ?? "",
+          total_sightings: row.total_sightings ?? 0,
+          total_sizes: row.total_sizes ?? 0,
+          total_biopsies: row.total_biopsies ?? 0,
+          mprf: row.mprf ?? "",
+          populations: Array.isArray(row.populations) ? row.populations.join(", ") : "",
+          islands: Array.isArray(row.islands) ? row.islands.join(", ") : "",
+          sitelocation: row.sitelocation ?? "",
+          image_link: previewUrl ? "Open Image" : "",
+          best_catalog_ventral_thumb_url: row.best_catalog_ventral_thumb_url ?? "",
+          best_catalog_ventral_path: row.best_catalog_ventral_path ?? "",
+          best_catalog_dorsal_thumb_url: row.best_catalog_dorsal_thumb_url ?? "",
+          best_catalog_dorsal_path: row.best_catalog_dorsal_path ?? "",
+          current_photo_view: viewMode,
+        };
+      });
+
+      const workbook = XLSX.utils.book_new();
+
+      const summarySheet = XLSX.utils.json_to_sheet(rowsToExport);
+
+      const headerKeys = Object.keys(rowsToExport[0] ?? {});
+      const imageLinkCol = headerKeys.indexOf("image_link");
+
+      if (imageLinkCol >= 0) {
+        for (let i = 0; i < sourceRows.length; i += 1) {
+          const previewUrl =
+            viewMode === "ventral"
+              ? sourceRows[i]?.best_catalog_ventral_thumb_url ?? ""
+              : sourceRows[i]?.best_catalog_dorsal_thumb_url ?? "";
+
+          if (!previewUrl) continue;
+
+          const safeUrl = String(previewUrl).replace(/"/g, '""');
+          const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: imageLinkCol });
+          summarySheet[cellRef] = {
+            t: "str",
+            f: `HYPERLINK("${safeUrl}","Open Image")`,
+            v: "Open Image",
+          };
+        }
+      }
+
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Catalog Summary");
+
+      const notesRows = [
+        { field: "export_preset", value: exportPreset },
+        { field: "exported_at", value: new Date().toISOString() },
+        { field: "row_count", value: String(rowsToExport.length) },
+        { field: "photo_view", value: viewMode },
+        { field: "filter_summary", value: summary || "none" },
+      ];
+      const notesSheet = XLSX.utils.json_to_sheet(notesRows);
+      XLSX.utils.book_append_sheet(workbook, notesSheet, "Export Notes");
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename =
+        exportPreset === "mobula_birostris_best_ventral"
+          ? `catalog_mobula_birostris_best_ventral_${stamp}.xlsx`
+          : `catalog_filtered_current_view_${stamp}.xlsx`;
+
+      XLSX.writeFile(workbook, filename);
+    } catch (error) {
+      console.error("[Catalog export]", error);
+      alert("Catalog export failed. Check console for details.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Layout title="Catalog">
@@ -376,6 +509,8 @@ export default function Catalog() {
           catalog={catalog}
           filters={filters}
           setFilters={setFilters}
+          sortField={sortField}
+          setSortField={setSortField}
           sortAsc={sortAsc}
           setSortAsc={setSortAsc}
           onClearAll={clearAll}
@@ -388,6 +523,33 @@ export default function Catalog() {
           onOpenStats={() => setStatsOpen(true)}
           isAdmin={isAdmin}
         />
+
+        {isAdmin && (
+          <div className="mb-3 flex flex-col gap-2 rounded border bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="text-sm font-medium text-gray-700">Export to Excel:</div>
+
+              <select
+                value={exportPreset}
+                onChange={(e) =>
+                  setExportPreset(e.target.value as "filtered_catalog_current_view" | "mobula_birostris_best_ventral")
+                }
+                className="rounded border px-3 py-2 text-sm bg-white"
+              >
+                <option value="filtered_catalog_current_view">Current filtered catalog view</option>
+                <option value="mobula_birostris_best_ventral">Mobula birostris best ventral</option>
+              </select>
+
+              <Button type="button" variant="outline" onClick={handleExportExcel} disabled={exporting || loading}>
+                {exporting ? "Exporting..." : "Export Excel"}
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              Exports {exportPreset === "mobula_birostris_best_ventral" ? "filtered mobula birostris rows" : "current filtered/sorted rows"} as .xlsx
+            </div>
+          </div>
+        )}
 
         <div className="text-sm text-gray-700">
           {!loading ? `${filtered.length} records showing of ${catalog.length} total records${summary ? `, filtered by ${summary}` : ""}` : ""}

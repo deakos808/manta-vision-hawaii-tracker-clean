@@ -1,0 +1,9 @@
+metric,value
+hamer_rows,115
+hamer_unique_normalized_names,114
+mprf_rows,133
+mprf_unique_normalized_names,112
+exact_name_matches,82
+hamer_not_in_mprf_by_name,33
+mprf_source_file,/Users/littlemac/Dropbox/Work/HAMER/Research/Elasmobranchs/Manta Rays/Marine Megafauna Birostris/Birostris Sightings latest 2025 20260203.xlsx
+hamer_source_file,/Users/littlemac/Dropbox/Mac (2)/Downloads/catalog_mprf_comparison_export_2026-03-13-07-05-38.xlsx

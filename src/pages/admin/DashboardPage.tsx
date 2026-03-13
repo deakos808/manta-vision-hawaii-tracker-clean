@@ -10,6 +10,13 @@ import {
   CardTitle,
   CardContent,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const keyFeatures = [
   {
@@ -44,6 +51,7 @@ export default function DashboardPage() {
     totalSightings: 0,
     latestActivity: 'Loading...',
   });
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,11 +98,13 @@ export default function DashboardPage() {
             Monitor and manage manta ray sightings, identifications, and research data.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/sightings/add">
-              <button className="bg-white text-blue-600 font-semibold px-6 py-3 rounded-md shadow hover:bg-blue-100 transition">
-                Add New Sighting
-              </button>
-            </Link>
+            <button
+              type="button"
+              onClick={() => setAddModalOpen(true)}
+              className="bg-white text-blue-600 font-semibold px-6 py-3 rounded-md shadow hover:bg-blue-100 transition"
+            >
+              Add New Sighting
+            </button>
             <Link to="/browse/data">
               <button className="bg-white text-blue-600 font-semibold px-6 py-3 rounded-md shadow hover:bg-blue-100 transition">
                 Browse Data
@@ -104,7 +114,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Group */}
       <div className="max-w-6xl mx-auto mt-8 px-4">
         <div className="bg-gray-50 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <Card>
@@ -128,7 +137,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Key Features Group */}
       <div className="max-w-6xl mx-auto mt-10 px-4">
         <div className="bg-gray-50 rounded-xl p-6">
           <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-6 text-blue-800">Key Features</h2>
@@ -143,6 +151,33 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose submission type</DialogTitle>
+            <DialogDescription>
+              Select the type of new survey or sighting you want to add.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3 pt-2">
+            <Link to="/sightings/add" onClick={() => setAddModalOpen(false)}>
+              <button className="w-full rounded border px-4 py-3 text-left hover:bg-slate-50">
+                <div className="font-medium">In-Water Sighting</div>
+                <div className="text-sm text-slate-600">Submit a diver or in-water manta sighting.</div>
+              </button>
+            </Link>
+
+            <Link to="/drone/add" onClick={() => setAddModalOpen(false)}>
+              <button className="w-full rounded border px-4 py-3 text-left hover:bg-slate-50">
+                <div className="font-medium">Drone Survey</div>
+                <div className="text-sm text-slate-600">Submit a drone survey, with or without manta observations.</div>
+              </button>
+            </Link>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

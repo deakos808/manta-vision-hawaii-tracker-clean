@@ -33,6 +33,8 @@ interface Props {
   catalog: CatalogEntry[];
   filters: FiltersState;
   setFilters: (f: FiltersState) => void;
+  sortField: "catalog_id" | "first_sighting" | "last_sighting" | "last_size";
+  setSortField: (v: "catalog_id" | "first_sighting" | "last_sighting" | "last_size") => void;
   sortAsc: boolean;
   setSortAsc: (v: boolean) => void;
   onClearAll: () => void;
@@ -48,7 +50,7 @@ interface Props {
 
 const GENDERS = ["Male", "Female", "Unknown"] as const;
 const AGES = ["Adult", "Juvenile", "Yearling", "Unknown"] as const;
-const MPRF_OPTIONS = ["MPRF", "Non-MPRF"] as const;
+const MPRF_OPTIONS = ["MPRF", "HAMER"] as const;
 
 const populationIslandMap: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
@@ -86,6 +88,8 @@ export default function CatalogFilterBox({
   catalog,
   filters,
   setFilters,
+  sortField,
+  setSortField,
   sortAsc,
   setSortAsc,
   onClearAll,
@@ -211,6 +215,11 @@ export default function CatalogFilterBox({
     return { ventral, dorsal };
   }, [catalog]);
 
+  const sortDirectionLabels =
+    sortField === "catalog_id" || sortField === "last_size"
+      ? { asc: "Small → Large", desc: "Large → Small" }
+      : { asc: "Earlier → Later", desc: "Later → Earlier" };
+
   const renderMenu = (
     label: string,
     key: keyof FiltersState,
@@ -286,7 +295,7 @@ export default function CatalogFilterBox({
         {renderMenu("Location", "sitelocation", siteOptions, siteCounts)}
         {renderMenu("Gender", "gender", [...GENDERS], genderCounts)}
         {renderMenu("Age Class", "age_class", [...AGES], ageCounts)}
-        {isAdmin && renderMenu("MPRF", "mprf", [...MPRF_OPTIONS], mprfCounts)}
+        {isAdmin && renderMenu("HAMER", "mprf", [...MPRF_OPTIONS], mprfCounts)}
 
         <Popover>
           <PopoverTrigger asChild>
@@ -344,24 +353,49 @@ export default function CatalogFilterBox({
         </div>
       </div>
 
-      <div className="flex items-center text-sm text-gray-700 mt-3 gap-2">
-        <span>Sort by Catalog ID</span>
-        <Button
-          size="icon"
-          variant="ghost"
-          className={sortAsc ? "text-blue-600" : ""}
-          onClick={() => setSortAsc(true)}
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="text-sm text-gray-700">Sort by:</div>
+
+        <select
+          value={sortField}
+          onChange={(e) =>
+            setSortField(
+              e.target.value as "catalog_id" | "first_sighting" | "last_sighting" | "last_size"
+            )
+          }
+          className="rounded border px-3 py-2 text-sm bg-white"
         >
-          ▲
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className={!sortAsc ? "text-blue-600" : ""}
-          onClick={() => setSortAsc(false)}
-        >
-          ▼
-        </Button>
+          <option value="catalog_id">Catalog ID</option>
+          <option value="first_sighting">First Sighting</option>
+          <option value="last_sighting">Last Sighting</option>
+          <option value="last_size">Last Size</option>
+        </select>
+
+        <div className="flex items-center text-sm text-gray-700 gap-1">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            title={sortDirectionLabels.asc}
+            aria-label={sortDirectionLabels.asc}
+            className={sortAsc ? "text-blue-600" : ""}
+            onClick={() => setSortAsc(true)}
+          >
+            ▲
+          </Button>
+
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            title={sortDirectionLabels.desc}
+            aria-label={sortDirectionLabels.desc}
+            className={!sortAsc ? "text-blue-600" : ""}
+            onClick={() => setSortAsc(false)}
+          >
+            ▼
+          </Button>
+        </div>
       </div>
     </div>
   );

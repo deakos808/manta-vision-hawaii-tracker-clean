@@ -1,0 +1,83 @@
+catalog_id,name,normalized_name,species,gender,age_class,first_sighting,last_sighting,last_size_m,total_sightings,total_sizes,total_biopsies,mprf,populations,islands,sitelocation,image_link,best_catalog_ventral_thumb_url,best_catalog_ventral_path,best_catalog_photo_url,hamer_name_raw,mprf_name_raw,mprf_example_date,mprf_example_location,mprf_example_location,mprf_id_1,mprf_id_1,mprf_id_2
+559,MP_Mindy,MINDY,mobula birostris,Female,,2006-01-11,2006-01-11,,1,0,0,,Maui Nui,Maui,Molokini,Open Image,https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/manta-images/photos/5079/5079.jpg,photos/5079/5079.jpg,,MP_Mindy,Mindy,2020-07-24 00:00:00,"Off the S end of Pebble Beach, just offshore at 65'",1,305,0,1
+907,Jennifer,JENNIFER,mobula birostris,Female,Unknown,2024-07-01,2024-07-01,,1,0,0,,Oahu,Oahu,Angler's Reef,Open Image,https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/manta-images/photos/7426/7426.jpg,photos/7426/7426.jpg,,Jennifer,Jennifer,2003-06-01 00:00:00,Kaiwi Point,1,102,0,1
+922,Ash Ali'i,ASH ALI'I,mobula birostris,,,,,,0,0,0,,,,,,,,,Ash Ali'i,Ash Ali'i,2022-02-19 00:00:00,Suck-em-up,1,325,0,1
+927,Barbara Ann,BARBARA ANN,mobula birostris,,,,,,0,0,0,,,,,,,,,Barbara Ann,Barbara Ann,2007-11-17 00:00:00,Alula Beach,1,133,0,1
+928,Barbara Sue,BARBARA SUE,mobula birostris,,,,,,0,0,0,,,,,,,,,Barbara Sue,Barbara Sue,2020-12-04 00:00:00,"Red Hill, ""on the way to the manta night dive""",1,315,0,1
+929,Beartooth,BEARTOOTH,mobula birostris,,,,,,0,0,0,,,,,,,,,Beartooth,Beartooth,2021-05-09 00:00:00,Just out and north of Kealakekua Bay,1,317,0,1
+930,Bectina,BECTINA,mobula birostris,,,,,,0,0,0,,,,,,,,,Bectina,Bectina,2018-06-11 00:00:00,Nr Skull Cave,1,280,0,1
+931,Bella,BELLA,mobula birostris,,,,,,0,0,0,,,,,,,,,Bella,Bella,2007-07-03 00:00:00,High Rock (nr Golden Arches),1,112,0,1
+933,Betty,BETTY,mobula birostris,,,,,,0,0,0,,,,,,,,,Betty,Betty,2019-07-08 00:00:00,1 mi off Magic's,1,289,0,1
+935,Billy Ray,BILLY RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Billy Ray,Billy Ray,2017-11-21 00:00:00,Aquarium,1,270,0,1
+936,Black Beauty,BLACK BEAUTY,mobula birostris,,,,,,0,0,0,,,,,,,,,Black Beauty,Black Beauty,2011-09-23 00:00:00,At cages 10-70 miles offshore,0,208,0,1
+938,Black Manta,BLACK MANTA,mobula birostris,,,,,,0,0,0,,,,,,,,,Black Manta,Black Manta,1995-09-24 00:00:00,Near Kaiwi Point,1,35,0,1
+952,Carter Ray,CARTER RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Carter Ray,Carter Ray,2022-11-30 00:00:00,Pawai,1,333,0,1
+954,Chill Ray,CHILL RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Chill Ray,Chill Ray,2009-10-11 00:00:00,Honokohau Harbor,1,166,0,1
+967,Daveeed,DAVEEED,mobula birostris,,,,,,0,0,0,,,,,,,,,Daveeed,Daveeed,2015-12-27 00:00:00,Pyramid Pinnacles,1,250,0,1
+973,Dola Ray,DOLA RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Dola Ray,Dola Ray,2014-07-12 00:00:00,Suck Em Up,1,224,0,1
+974,Dory,DORY,mobula birostris,,,,,,0,0,0,,,,,,,,,Dory,Dory,2016-10-24 00:00:00,Manta Ray Bay,1,258,0,1
+976,Dre Ray,DRE RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Dre Ray,Dre Ray,2007-10-28 00:00:00,Off Red Hill,1,131,0,1
+985,Fran,FRAN,mobula birostris,,,,,,0,0,0,,,,,,,,,Fran,Fran,2003-07-11 00:00:00,Kailua Pier,1,75,0,1
+988,Gamma Ray,GAMMA RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Gamma Ray,Gamma Ray,2004-12-12 00:00:00,,0,91,0,1
+989,Gary,GARY,mobula birostris,,,,,,0,0,0,,,,,,,,,Gary,Gary,2011-06-20 00:00:00,Betw Crescent Beach and GEC,1,183,0,1
+993,Ginny,GINNY,mobula birostris,,,,,,0,0,0,,,,,,,,,Ginny,Ginny,2007-07-30 00:00:00,,0,121,0,1
+995,Gramma Bo,GRAMMA BO,mobula birostris,,,,,,0,0,0,,,,,,,,,Gramma Bo,Gramma Bo,2015-01-21 00:00:00,Off Royal Kona hotel,1,239,0,1
+1000,Hahalua,HAHALUA,mobula birostris,,,,,,0,0,0,,,,,,,,,Hahalua,Hahalua,1998-06-19 00:00:00,Kaiwi Point,1,51,0,1
+1001,Hahalua Lana,HAHALUA LANA,mobula birostris,,,,,,0,0,0,,,,,,,,,Hahalua Lana,Hahalua Lana,2006-04-06 00:00:00,Suck Em Up,1,100,0,1
+1002,Hailey Ray,HAILEY RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Hailey Ray,Hailey Ray,2020-11-08 00:00:00,,0,310,0,1
+1003,Hannah Mantana,HANNAH MANTANA,mobula birostris,,,,,,0,0,0,,,,,,,,,Hannah Mantana,Hannah Mantana,2022-12-28 00:00:00,"Honokahau, Crescent",1,334,0,1
+1017,Jack-O-Lantern,JACK-O-LANTERN,mobula birostris,,,,,,0,0,0,,,,,,,,,Jack-O-Lantern,Jack-O-Lantern,2015-09-08 00:00:00,1/4 mi off Kaiwi Pt,1,255,0,1
+1028,Jet 'uhane,JET 'UHANE,mobula birostris,,,,,,0,0,0,,,,,,,,,Jet 'uhane,Jet 'uhane,2020-11-07 00:00:00,"Papa Bay, near shore",1,311,0,1
+1030,Jill,JILL,mobula birostris,,,,,,0,0,0,,,,,,,,,Jill,Jill,2021-01-13 00:00:00,Lone Tree Arch mooring,1,314,0,1
+1031,JK Ray,JK RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,JK Ray,JK Ray,2014-10-30 00:00:00,"Hoover's Tower, over drop off",1,232,0,1
+1035,Joshi Ray,JOSHI RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Joshi Ray,Joshi Ray,2014-08-31 00:00:00,"Sand Chutes (aka Tako City, S Makako Bay)",1,225,0,1
+1038,Kaia Ray,KAIA RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Kaia Ray,Kaia Ray,2014-06-28 00:00:00,Garden Eel Cove,1,220,0,1
+1058,Khloe Lochs,KHLOE LOCHS,mobula birostris,,,,,,0,0,0,,,,,,,,,Khloe Lochs,Khloe Lochs,2020-06-23 00:00:00,N end of Papa Bay (nr Milolii),1,303,0,1
+1059,Kikola,KIKOLA,mobula birostris,,,,,,0,0,0,,,,,,,,,Kikola,Kikola,2003-09-06 00:00:00,,0,76,0,1
+1060,Kiwami Ray,KIWAMI RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Kiwami Ray,Kiwami Ray,2014-06-28 00:00:00,Garden Eel Cove,1,221,0,1
+1069,La Reina,LA REINA,mobula birostris,,,,,,0,0,0,,,,,,,,,La Reina,La Reina,2005-07-09 00:00:00,Garden Eel Cove,1,93,0,1
+1076,Lilo Maluhia,LILO MALUHIA,mobula birostris,,,,,,0,0,0,,,,,,,,,Lilo Maluhia,Lilo Maluhia,2020-10-22 00:00:00,,0,309,0,1
+1079,Lisa-Ann,LISA-ANN,mobula birostris,,,,,,0,0,0,,,,,,,,,Lisa-Ann,Lisa-Ann,2018-03-25 00:00:00,Pawai Washrock,1,273,0,1
+1086,Lupe Ray,LUPE RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Lupe Ray,Lupe Ray,2003-06-03 00:00:00,Off 3 Room Cave,1,77,0,1
+1090,Mahon Manta,MAHON MANTA,mobula birostris,,,,,,0,0,0,,,,,,,,,Mahon Manta,Mahon Manta,1998-07-12 00:00:00,Hoovers Pinnacle,1,52,0,1
+1093,Malasky Ray,MALASKY RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Malasky Ray,Malasky Ray,2007-07-03 00:00:00,Kaiwi Point,1,119,0,1
+1094,Malie Grace,MALIE GRACE,mobula birostris,,,,,,0,0,0,,,,,,,,,Malie Grace,Malie Grace,2020-10-14 00:00:00,,0,308,0,1
+1097,Manny,MANNY,mobula birostris,,,,,,0,0,0,,,,,,,,,Manny,Manny,2020-06-09 00:00:00,Pipe Dreams,1,302,0,1
+1098,Man-Ta,MAN-TA,mobula birostris,,,,,,0,0,0,,,,,,,,,Man-Ta,Man-Ta,2022-10-13 00:00:00,~500m off Hokulia / Driftwood site,1,331,0,1
+1100,Manta Claus,MANTA CLAUS,mobula birostris,,,,,,0,0,0,,,,,,,,,Manta Claus,Manta Claus,2017-12-27 00:00:00,Surface Feeding in current line,0,281,0,1
+1103,Manta's Little Helper,MANTA'S LITTLE HELPER,mobula birostris,,,,,,0,0,0,,,,,,,,,Manta's Little Helper,Manta's Little Helper,2018-08-15 00:00:00,1/4 mi off Keahole Pt,1,286,0,1
+1105,Markie,MARKIE,mobula birostris,,,,,,0,0,0,,,,,,,,,Markie,Markie,2021-12-28 00:00:00,Kohanaiki,1,324,0,1
+1107,Martina,MARTINA,mobula birostris,,,,,,0,0,0,,,,,,,,,Martina,Martina,2004-10-01 00:00:00,2 miles off Keauhou,1,89,0,1
+1110,Meeteetsee,MEETEETSEE,mobula birostris,,,,,,0,0,0,,,,,,,,,Meeteetsee,Meeteetsee,2021-05-09 00:00:00,Just out and north of Kealakekua Bay,1,318,0,1
+1112,Melissa Ray,MELISSA RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Melissa Ray,Melissa Ray,2015-02-06 00:00:00,Kaiwi Point,1,237,0,1
+1120,Mindy,MINDY,mobula birostris,,,,,,0,0,0,,,,,,,,,Mindy,Mindy,2020-07-24 00:00:00,"Off the S end of Pebble Beach, just offshore at 65'",1,305,0,1
+1121,Minoru Ray,MINORU RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Minoru Ray,Minoru Ray,2014-07-04 00:00:00,1/4 mi off Parrot's Cove,0,222,0,1
+1122,Mirabella,MIRABELLA,mobula birostris,,,,,,0,0,0,,,,,,,,,Mirabella,Mirabella,2019-01-21 00:00:00,1/2 mi off Kua Bay,1,284,0,1
+1125,Mr. T,MR. T,mobula birostris,,,,,,0,0,0,,,,,,,,,Mr. T,Mr. T,2012-03-21 00:00:00,Just S of Green Can,1,201,0,1
+1126,Murphy,MURPHY,mobula birostris,,,,,,0,0,0,,,,,,,,,Murphy,Murphy,2007-08-05 00:00:00,Kaiwi Point,1,124,0,1
+1127,Mylene,MYLENE,mobula birostris,,,,,,0,0,0,,,,,,,,,Mylene,Mylene,2016-02-14 00:00:00,Rabbi's Reef drop off,1,254,0,1
+1128,Nae Nae,NAE NAE,mobula birostris,,,,,,0,0,0,,,,,,,,,Nae Nae,Nae Nae,2020-06-25 00:00:00,,0,316,0,1
+1129,Netti Ray,NETTI RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Netti Ray,Netti Ray,2007-11-16 00:00:00,Black Hole (N Makako Bay),1,132,0,1
+1139,Parker,PARKER,mobula birostris,,,,,,0,0,0,,,,,,,,,Parker,Parker,2022-06-17 00:00:00,"Papa Bay, ~3 miles offshore",1,327,0,1
+1140,Patrice,PATRICE,mobula birostris,,,,,,0,0,0,,,,,,,,,Patrice,Patrice,1999-01-01 00:00:00,,0,50,0,1
+1142,Precious,PRECIOUS,mobula birostris,,,,,,0,0,0,,,,,,,,,Precious,Precious,2019-08-04 00:00:00,Off Lyman's,1,290,0,1
+1149,Rami Ray,RAMI RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Rami Ray,Rami Ray,2011-10-31 00:00:00,Just N of GEC,1,193,0,1
+1152,Ray Of Hope,RAY OF HOPE,mobula birostris,,,,,,0,0,0,,,,,,,,,Ray Of Hope,Ray of Hope,2015-04-30 00:00:00,Bay N of Kealakekua Bay,1,242,0,1
+1153,Rayven,RAYVEN,mobula birostris,,,,,,0,0,0,,,,,,,,,Rayven,Rayven,2011-09-10 00:00:00,Garden Eel Cove,1,189,0,1
+1176,Sarah,SARAH,mobula birostris,,,,,,0,0,0,,,,,,,,,Sarah,Sarah,2007-06-09 00:00:00,Golden Arches,1,116,0,1
+1177,Sari,SARI,mobula birostris,,,,,,0,0,0,,,,,,,,,Sari,Sari,2007-08-03 00:00:00,Shark Ledge,0,123,0,1
+1179,Sephie,SEPHIE,mobula birostris,,,,,,0,0,0,,,,,,,,,Sephie,Sephie,2007-07-17 00:00:00,Never Never Land dive site,1,120,0,1
+1184,Sid,SID,mobula birostris,,,,,,0,0,0,,,,,,,,,Sid,Sid,2007-08-14 00:00:00,Kona Paradise,1,126,0,1
+1190,St James,ST JAMES,mobula birostris,,,,,,0,0,0,,,,,,,,,St James,St James,2004-10-01 00:00:00,2 miles off Keauhou,1,90,0,1
+1199,Tek Ray,TEK RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Tek Ray,Tek Ray,2006-06-01 00:00:00,Nr 3 Room Cave,1,115,0,1
+1202,Testa Ray,TESTA RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Testa Ray,Testa Ray,2014-03-10 00:00:00,Aquarium,1,216,0,1
+1203,Thumper,THUMPER,mobula birostris,,,,,,0,0,0,,,,,,,,,Thumper,Thumper,2003-06-13 00:00:00,Sand Chutes (S Makako Bay),1,105,0,1
+1207,Tommy Ray,TOMMY RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Tommy Ray,Tommy Ray,2006-08-26 00:00:00,Paradise Pinnacle,1,143,0,1
+1213,Tuxedo Ray,TUXEDO RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Tuxedo Ray,Tuxedo Ray,1999-01-01 00:00:00,,0,53,0,1
+1220,Victory,VICTORY,mobula birostris,,,,,,0,0,0,,,,,,,,,Victory,Victory,2009-04-27 00:00:00,Paradise Pinnacle,1,162,0,1
+1224,Wander Ray,WANDER RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Wander Ray,Wander Ray,2017-03-28 00:00:00,Off Kohanaiki,1,263,0,1
+1225,Weiss Ray,WEISS RAY,mobula birostris,,,,,,0,0,0,,,,,,,,,Weiss Ray,Weiss Ray,2000-05-01 00:00:00,,0,55,0,1
+1227,Wesley,WESLEY,mobula birostris,,,,,,0,0,0,,,,,,,,,Wesley,Wesley,2017-01-01 00:00:00,Au Au Crater,1,306,0,1
+1234,Xuan,XUAN,mobula birostris,,,,,,0,0,0,,,,,,,,,Xuan,Xuan,2014-12-26 00:00:00,Betw. Golden Arches & Wacky's,1,235,0,1
+1235,Yosie,YOSIE,mobula birostris,,,,,,0,0,0,,,,,,,,,Yosie,Yosie,2022-03-22 00:00:00,Pyramid Pinnacles,1,326,0,1
+1239,Zephyr,ZEPHYR,mobula birostris,,,,,,0,0,0,,,,,,,,,Zephyr,Zephyr,2022-11-11 00:00:00,Devil's Doorway,1,332,0,1
