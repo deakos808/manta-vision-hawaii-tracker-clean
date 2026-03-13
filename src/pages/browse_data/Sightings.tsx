@@ -121,6 +121,34 @@ async function fetchSpeciesSightingIds(species: string): Promise<Set<number>> {
   return ids;
 }
 
+async function fetchSightingIdPrefixIds(prefix: string): Promise<Set<number> | null> {
+  const needle = prefix.trim();
+  if (!needle) return null;
+
+  const ids = new Set<number>();
+  const pageSz = 1000;
+
+  for (let from = 0; from < 500000; from += pageSz) {
+    const { data, error } = await supabase
+      .from("sightings")
+      .select("pk_sighting_id")
+      .order("pk_sighting_id", { ascending: true })
+      .range(from, from + pageSz - 1);
+
+    if (error) break;
+
+    const chunk: any[] = data || [];
+    for (const row of chunk) {
+      const sid = Number((row as any)?.pk_sighting_id || 0);
+            if (sid && String(sid).startsWith(needle)) ids.add(sid);
+    }
+
+    if (chunk.length < pageSz) break;
+  }
+
+  return ids;
+}
+
 async function fetchCatalogMatchedSightingIds(catalogIdPrefix: string, namePrefix: string): Promise<Set<number> | null> {
   const catalogPrefix = catalogIdPrefix.trim();
   const trimmedName = namePrefix.trim();
@@ -205,10 +233,13 @@ export default function Sightings() {
   const [speciesIds, setSpeciesIds] = useState<Set<number> | null>(null);
   const [speciesReady, setSpeciesReady] = useState(true);
 
+  const [sightingIdPrefix, setSightingIdPrefix] = useState("");
   const [catalogIdPrefix, setCatalogIdPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
   const [catalogMatchIds, setCatalogMatchIds] = useState<Set<number> | null>(null);
   const [catalogMatchReady, setCatalogMatchReady] = useState(true);
+  const [sightingIdPrefixIds, setSightingIdPrefixIds] = useState<Set<number> | null>(null);
+  const [sightingIdPrefixReady, setSightingIdPrefixReady] = useState(true);
 
   const [mprf, setMprf] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -279,6 +310,40 @@ export default function Sightings() {
     let alive = true;
 
     (async () => {
+      if (!sightingIdPrefix.trim()) {
+        if (alive) {
+          setSightingIdPrefixIds(null);
+          setSightingIdPrefixReady(true);
+        }
+        return;
+      }
+
+      if (alive) setSightingIdPrefixReady(false);
+
+      try {
+        const ids = await fetchSightingIdPrefixIds(sightingIdPrefix);
+        if (alive) {
+          setSightingIdPrefixIds(ids ?? new Set<number>());
+          setSightingIdPrefixReady(true);
+        }
+      } catch (err) {
+        console.error("[Sightings] sighting id prefix helper error:", err);
+        if (alive) {
+          setSightingIdPrefixIds(new Set<number>());
+          setSightingIdPrefixReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [sightingIdPrefix]);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
       const hasCatalogFilter = catalogIdPrefix.trim() !== "" || namePrefix.trim() !== "";
 
       if (!hasCatalogFilter) {
@@ -324,6 +389,7 @@ export default function Sightings() {
       dateKnown ||
       dateUnknown ||
       species.trim() !== "" ||
+      sightingIdPrefix.trim() !== "" ||
       catalogIdPrefix.trim() !== "" ||
       namePrefix.trim() !== "" ||
       mprf.trim() !== "";
@@ -344,6 +410,7 @@ export default function Sightings() {
     dateKnown,
     dateUnknown,
     species,
+    sightingIdPrefix,
     catalogIdPrefix,
     namePrefix,
     mprf,
@@ -351,11 +418,11 @@ export default function Sightings() {
     setSearchParams,
   ]);
 
-  const helperFiltersReady = catalogMatchReady && speciesReady;
+  const helperFiltersReady = catalogMatchReady && speciesReady && sightingIdPrefixReady;
 
   const canonicalFilteredIds = useMemo(() => {
-    return intersectIdSets(catalogMatchIds, speciesIds);
-  }, [catalogMatchIds, speciesIds]);
+    return intersectIdSets(intersectIdSets(catalogMatchIds, speciesIds), sightingIdPrefixIds);
+  }, [catalogMatchIds, speciesIds, sightingIdPrefixIds]);
 
   const fetchSightings = async ({ pageParam = 0 }: { pageParam?: number }) => {
     let q = supabase
@@ -369,7 +436,7 @@ export default function Sightings() {
     if (location) q = q.eq("sitelocation", location.trim());
     if (population) q = q.ilike("population", "%" + population + "%");
     if (mprf === "MPRF") q = q.eq("is_mprf", true);
-    if (mprf === "Non-MPRF") q = q.or("is_mprf.is.false,is_mprf.is.null");
+    if (mprf === "HAMER") q = q.or("is_mprf.is.false,is_mprf.is.null");
     if (minMantas !== "") q = q.gte("total_mantas", Number(minMantas));
     if (dateKnown) q = q.not("sighting_date", "is", null);
     if (dateUnknown) q = q.is("sighting_date", null);
@@ -434,6 +501,7 @@ export default function Sightings() {
         photographer,
         location,
         population,
+        sightingIdPrefix,
         catalogIdPrefix,
         namePrefix,
         species,
@@ -502,7 +570,7 @@ export default function Sightings() {
       if (location) q = q.eq("sitelocation", location.trim());
       if (population) q = q.ilike("population", "%" + population + "%");
       if (mprf === "MPRF") q = q.eq("is_mprf", true);
-      if (mprf === "Non-MPRF") q = q.or("is_mprf.is.false,is_mprf.is.null");
+      if (mprf === "HAMER") q = q.or("is_mprf.is.false,is_mprf.is.null");
       if (minMantas !== "") q = q.gte("total_mantas", Number(minMantas));
       if (dateKnown) q = q.not("sighting_date", "is", null);
       if (dateUnknown) q = q.is("sighting_date", null);
@@ -573,7 +641,7 @@ export default function Sightings() {
     if (location) base = base.eq("sitelocation", location.trim());
     if (population) base = base.ilike("population", "%" + population + "%");
     if (mprf === "MPRF") base = base.eq("is_mprf", true);
-    if (mprf === "Non-MPRF") base = base.or("is_mprf.is.false,is_mprf.is.null");
+    if (mprf === "HAMER") base = base.or("is_mprf.is.false,is_mprf.is.null");
     if (minMantas !== "") base = base.gte("total_mantas", Number(minMantas));
     if (dateKnown) base = base.not("sighting_date", "is", null);
     if (dateUnknown) base = base.is("sighting_date", null);
@@ -694,9 +762,10 @@ export default function Sightings() {
     const p: string[] = [];
     if (date) p.push("Date: " + date);
     if (population) p.push("Population: " + population);
+    if (sightingIdPrefix) p.push("Sighting ID starts with: " + sightingIdPrefix);
     if (catalogIdPrefix) p.push("Catalog ID starts with: " + catalogIdPrefix);
     if (namePrefix) p.push("Name starts with: " + namePrefix);
-    if (mprf) p.push("MPRF: " + mprf);
+    if (mprf) p.push("Source: " + mprf);
     if (island && island !== "all") p.push("Island: " + island);
     if (location) p.push("Location: " + location);
     if (photographer) p.push("Photographer: " + photographer);
@@ -705,7 +774,7 @@ export default function Sightings() {
     if (dateUnknown) p.push("Date: unknown");
     if (species) p.push("Species: " + species);
     return p.join("; ");
-  }, [date, population, catalogIdPrefix, namePrefix, mprf, island, location, photographer, minMantas, dateKnown, dateUnknown, species]);
+  }, [date, population, sightingIdPrefix, catalogIdPrefix, namePrefix, mprf, island, location, photographer, minMantas, dateKnown, dateUnknown, species]);
 
   const isInitialLoading = query.isLoading || !helperFiltersReady;
 
@@ -756,6 +825,8 @@ export default function Sightings() {
             setDateKnown={setDateKnown}
             dateUnknown={dateUnknown}
             setDateUnknown={setDateUnknown}
+            sightingIdPrefix={sightingIdPrefix}
+            setSightingIdPrefix={setSightingIdPrefix}
             catalogIdPrefix={catalogIdPrefix}
             setCatalogIdPrefix={setCatalogIdPrefix}
             namePrefix={namePrefix}
@@ -799,20 +870,23 @@ export default function Sightings() {
                   <p><strong>Organization:</strong> {s.organization || "—"}</p>
                   <p>
                     <strong>Total Mantas:</strong>{" "}
-                    <button
-                      type="button"
-                      className="text-blue-600 underline hover:text-blue-700"
-                      onClick={() => {
-                        setMantasForSighting(s.pk_sighting_id);
-                        setShowMantas(true);
-                      }}
-                    >
-                      {typeof s.total_mantas === "number"
-                        ? String(s.total_mantas)
-                        : typeof s.linked_manta_count === "number"
-                          ? String(s.linked_manta_count)
-                          : "0"}
-                    </button>
+                    {typeof s.linked_manta_count === "number" && s.linked_manta_count > 0 ? (
+                      <button
+                        type="button"
+                        className="text-blue-600 underline hover:text-blue-700"
+                        onClick={() => {
+                          setMantasForSighting(s.pk_sighting_id);
+                          setShowMantas(true);
+                        }}
+                        title="Open linked manta rows"
+                      >
+                        {String(s.linked_manta_count)}
+                      </button>
+                    ) : (
+                      <span className="text-gray-700" title="No linked manta rows available for modal display">
+                        {typeof s.total_mantas === "number" ? String(s.total_mantas) : "0"}
+                      </span>
+                    )}
                   </p>
                 </div>
 

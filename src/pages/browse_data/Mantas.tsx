@@ -87,6 +87,7 @@ export default function MantasPage() {
 
   // Search + Filters
   const [q, setQ] = useState("");
+  const [mantaIdPrefix, setMantaIdPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
   const [catalogPrefix, setCatalogPrefix] = useState("");
   const [population, setPopulation] = useState<string[]>([]);
@@ -113,9 +114,10 @@ export default function MantasPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [serverFrom, setServerFrom] = useState(0);
-  const prefixMode = !!namePrefix.trim() || !!catalogPrefix.trim();
+  const prefixMode = !!mantaIdPrefix.trim() || !!namePrefix.trim() || !!catalogPrefix.trim();
   const hasActiveFilters =
     !!q.trim() ||
+    !!mantaIdPrefix.trim() ||
     !!namePrefix.trim() ||
     !!catalogPrefix.trim() ||
     population.length > 0 ||
@@ -127,6 +129,7 @@ export default function MantasPage() {
     mprf.length > 0;
 
   const handleClearFilters = () => {
+    setMantaIdPrefix("");
     setNamePrefix("");
     setCatalogPrefix("");
     setPopulation([]);
@@ -148,6 +151,7 @@ export default function MantasPage() {
 
   const rawRowMatchesFilters = (r: any) => {
     const query = q.trim().toLowerCase();
+    const mantaNeedle = mantaIdPrefix.trim();
     const nameNeedle = namePrefix.trim().toLowerCase();
     const catNeedle = catalogPrefix.trim();
 
@@ -161,6 +165,7 @@ export default function MantasPage() {
     const rowAgeClass = r?.age_class ?? null;
     const rowIsMprf = !!r?.is_mprf;
 
+    if (mantaNeedle && !String(r?.pk_manta_id ?? "").startsWith(mantaNeedle)) return false;
     if (nameNeedle && !rowName.startsWith(nameNeedle)) return false;
     if (catNeedle && !rowCatalogId.startsWith(catNeedle)) return false;
 
@@ -484,6 +489,7 @@ export default function MantasPage() {
   }, [
     hasActiveFilters,
     q,
+    mantaIdPrefix,
     namePrefix,
     catalogPrefix,
     population,
@@ -502,8 +508,11 @@ export default function MantasPage() {
     const query = q.trim().toLowerCase();
 
     return allMantas.filter((m) => {
+      const mantaNeedle = mantaIdPrefix.trim();
       const nameNeedle = namePrefix.trim().toLowerCase();
       const catNeedle = catalogPrefix.trim().toLowerCase();
+
+      const mantaIdOk = !mantaNeedle || String(m.pk_manta_id ?? "").startsWith(mantaNeedle);
 
       const nameOk =
         !nameNeedle ||
@@ -524,7 +533,7 @@ export default function MantasPage() {
         (mprf.includes("MPRF") && m.is_mprf) ||
         (mprf.includes("Non-MPRF") && !m.is_mprf);
 
-      if (!(nameOk && catalogIdOk && popOk && islOk && locOk && phoOk && genOk && ageOk && mprfOk)) return false;
+      if (!(mantaIdOk && nameOk && catalogIdOk && popOk && islOk && locOk && phoOk && genOk && ageOk && mprfOk)) return false;
 
       if (!query) return true;
       if (/^\d+$/.test(query)) {
@@ -541,7 +550,7 @@ export default function MantasPage() {
         (m.age_class ?? "").toLowerCase().includes(query)
       );
     });
-  }, [allMantas, q, namePrefix, catalogPrefix, population, island, location, photographer, gender, ageClass, mprf]);
+  }, [allMantas, q, mantaIdPrefix, namePrefix, catalogPrefix, population, island, location, photographer, gender, ageClass, mprf]);
 
   // Sort AFTER filters
   const sortedMantas = useMemo(() => {
@@ -561,6 +570,7 @@ export default function MantasPage() {
   const activeFiltersText = useMemo(() => {
     const parts: string[] = [];
     if (q.trim()) parts.push(`Search: "${q.trim()}"`);
+    if (mantaIdPrefix.trim()) parts.push(`Manta ID starts with "${mantaIdPrefix.trim()}"`);
     if (namePrefix.trim()) parts.push(`Name starts with "${namePrefix.trim()}"`);
     if (catalogPrefix.trim()) parts.push(`Catalog ID starts with "${catalogPrefix.trim()}"`);
     if (population.length) parts.push(`Population: ${population.join(", ")}`);
@@ -571,7 +581,7 @@ export default function MantasPage() {
     if (ageClass.length) parts.push(`Age Class: ${ageClass.join(", ")}`);
     if (mprf.length) parts.push(`MPRF: ${mprf.join(", ")}`);
     return parts.join(" · ");
-  }, [q, namePrefix, catalogPrefix, population, island, location, photographer, gender, ageClass, mprf]);
+  }, [q, mantaIdPrefix, namePrefix, catalogPrefix, population, island, location, photographer, gender, ageClass, mprf]);
 
   // Infinite scroll:
   // 1) increases visible slice (UI paging)
@@ -802,6 +812,8 @@ export default function MantasPage() {
           
           <MantaFilterBox
             rows={filterBasisRows}
+            mantaIdPrefix={mantaIdPrefix}
+            setMantaIdPrefix={setMantaIdPrefix}
             namePrefix={namePrefix}
             setNamePrefix={setNamePrefix}
             catalogPrefix={catalogPrefix}

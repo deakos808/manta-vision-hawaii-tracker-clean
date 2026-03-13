@@ -32,6 +32,8 @@ interface Props {
   onClearAll: () => void;
   search: string;
   setSearch: (v: string) => void;
+  photoIdPrefix: string;
+  setPhotoIdPrefix: (v: string) => void;
   hideSearch?: boolean;
   catalogPrefix: string;
   setCatalogPrefix: (v: string) => void;
@@ -82,6 +84,8 @@ export default function PhotoFilterBox({
   onClearAll,
   search,
   setSearch,
+  photoIdPrefix,
+  setPhotoIdPrefix,
   hideSearch = false,
   catalogPrefix,
   setCatalogPrefix,
@@ -289,7 +293,16 @@ export default function PhotoFilterBox({
         </Popover>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Photo ID (starts with)</div>
+          <Input
+            value={photoIdPrefix}
+            onChange={(e) => setPhotoIdPrefix(e.target.value)}
+            placeholder="e.g., 73..."
+            className="bg-white text-sm"
+          />
+        </div>
         <div>
           <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
           <Input

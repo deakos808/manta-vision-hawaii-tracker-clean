@@ -83,6 +83,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
   const [speciesOptionsAll, setSpeciesOptionsAll] = useState<string[]>([]);
 
   const [search, setSearch] = useState("");
+  const [photoIdPrefix, setPhotoIdPrefix] = useState("");
   const [catalogPrefix, setCatalogPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
 
@@ -103,7 +104,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
   const loadingRef = useRef<HTMLDivElement>(null);
   const [lastQuery, setLastQuery] = useState<string>("");
   const requestSeq = useRef(0);
-  const prefixMode = !!catalogPrefix.trim() || !!namePrefix.trim();
+  const prefixMode = !!photoIdPrefix.trim() || !!catalogPrefix.trim() || !!namePrefix.trim();
 
   // Modal state for choosing a new best manta ventral
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -309,6 +310,11 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
       let incoming = (data ?? []) as Photo[];
 
+      if (photoIdPrefix.trim()) {
+        const needle = photoIdPrefix.trim();
+        incoming = incoming.filter((p) => String(p.pk_photo_id ?? "").startsWith(needle));
+      }
+
       if (catalogPrefix.trim()) {
         const needle = catalogPrefix.trim();
         incoming = incoming.filter((p) => String(p.fk_catalog_id ?? "").startsWith(needle));
@@ -377,6 +383,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     },
     [
       search,
+      photoIdPrefix,
       catalogPrefix,
       namePrefix,
       filters,
@@ -393,6 +400,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
   useEffect(() => {
     const queryKey = JSON.stringify({
       search,
+      photoIdPrefix,
       catalogPrefix,
       namePrefix,
       filters,
@@ -410,7 +418,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
       fetchPhotos(true);
     }
     // eslint-disable-next-line
-  }, [search, catalogPrefix, namePrefix, filters, sortAsc, mantaIdParam, catalogIdParam, sightingIdParam]);
+  }, [search, photoIdPrefix, catalogPrefix, namePrefix, filters, sortAsc, mantaIdParam, catalogIdParam, sightingIdParam]);
 
   // Infinite scroll
   useEffect(() => {
@@ -432,6 +440,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
   const onClearFilters = () => {
     setSearch("");
+    setPhotoIdPrefix("");
     setCatalogPrefix("");
     setNamePrefix("");
     setFilters({
@@ -448,6 +457,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     const f: string[] = [];
     if (mantaIdParam || catalogIdParam || sightingIdParam) f.push("Scoped");
     if (search) f.push(`Search: "${search}"`);
+    if (photoIdPrefix) f.push(`Photo ID starts with "${photoIdPrefix}"`);
     if (catalogPrefix) f.push(`Catalog ID starts with "${catalogPrefix}"`);
     if (namePrefix) f.push(`Name starts with "${namePrefix}"`);
     if (filters.view.length) f.push(`View: ${filters.view.join(", ")}`);
@@ -727,6 +737,8 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           onClearAll={onClearFilters}
           search={search}
           setSearch={setSearch}
+          photoIdPrefix={photoIdPrefix}
+          setPhotoIdPrefix={setPhotoIdPrefix}
           catalogPrefix={catalogPrefix}
           setCatalogPrefix={setCatalogPrefix}
           namePrefix={namePrefix}

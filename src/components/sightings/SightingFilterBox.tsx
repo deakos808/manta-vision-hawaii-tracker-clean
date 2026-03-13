@@ -14,7 +14,7 @@ const POP_ISLANDS: Record<string, string[]> = {
   "Big Island": ["Big Island", "Hawaii", "Hawaiʻi"],
 };
 
-const MPRF_OPTIONS = ["MPRF", "Non-MPRF"] as const;
+const MPRF_OPTIONS = ["MPRF", "HAMER"] as const;
 
 interface Props {
   island: string;
@@ -35,6 +35,8 @@ interface Props {
   setDateUnknown: (v: boolean) => void;
   species: string;
   setSpecies: (v: string) => void;
+  sightingIdPrefix: string;
+  setSightingIdPrefix: (v: string) => void;
   catalogIdPrefix: string;
   setCatalogIdPrefix: (v: string) => void;
   namePrefix: string;
@@ -77,7 +79,7 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
   if (f.dateUnknown && !!dt) return false;
 
   if (f.mprf === "MPRF" && !isMprf) return false;
-  if (f.mprf === "Non-MPRF" && isMprf) return false;
+  if (f.mprf === "HAMER" && isMprf) return false;
 
   if (f.species) {
     const set = speciesBySighting.get(Number(r.pk_sighting_id)) ?? new Set();
@@ -108,6 +110,8 @@ export default function SightingFilterBox(props: Props) {
     setDateUnknown,
     species,
     setSpecies,
+    sightingIdPrefix,
+    setSightingIdPrefix,
     catalogIdPrefix,
     setCatalogIdPrefix,
     namePrefix,
@@ -150,7 +154,7 @@ export default function SightingFilterBox(props: Props) {
       if (dateKnown) q = q.not("sighting_date", "is", null);
       if (dateUnknown) q = q.is("sighting_date", null);
       if (mprf === "MPRF") q = q.eq("is_mprf", true);
-      if (mprf === "Non-MPRF") q = q.or("is_mprf.is.false,is_mprf.is.null");
+      if (mprf === "HAMER") q = q.or("is_mprf.is.false,is_mprf.is.null");
 
       const pageSz = 1000;
       const acc: any[] = [];
@@ -454,7 +458,7 @@ export default function SightingFilterBox(props: Props) {
           )}
         </Pill>
 
-        <Pill label={`MPRF${mprf ? `: ${mprf}` : ""}`} active={!!mprf}>
+        <Pill label={`HAMER${mprf ? `: ${mprf}` : ""}`} active={!!mprf}>
           {mprfRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
@@ -470,7 +474,16 @@ export default function SightingFilterBox(props: Props) {
         </Pill>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        <div>
+          <div className="text-xs text-gray-600 mb-1">Sighting ID (starts with)</div>
+          <Input
+            value={sightingIdPrefix}
+            onChange={(e) => setSightingIdPrefix(e.target.value)}
+            placeholder="e.g., 96..."
+            className="bg-white text-sm"
+          />
+        </div>
         <div>
           <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
           <Input

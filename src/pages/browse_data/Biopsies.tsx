@@ -41,6 +41,7 @@ export default function Biopsies() {
   const [flt, setFlt] = useState({ species: [] as string[], gender: [] as string[], ageClass: [] as string[], mprf: [] as string[] });
   const [multiOnly, setMultiOnly] = useState(false);
 
+  const [biopsyPrefix, setBiopsyPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
   const [catalogPrefix, setCatalogPrefix] = useState("");
   const [openStats, setOpenStats] = useState(false);
@@ -206,6 +207,7 @@ export default function Biopsies() {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const biopsyNeedle = biopsyPrefix.trim().toLowerCase();
     const nameNeedle = namePrefix.trim().toLowerCase();
     const catNeedle = catalogPrefix.trim().toLowerCase();
 
@@ -219,6 +221,10 @@ export default function Biopsies() {
         String(r.pk_biopsy_id ?? "").toLowerCase().includes(needle) ||
         String(r.fk_catalog_id ?? "").toLowerCase().includes(needle) ||
         String(c?.name ?? "").toLowerCase().includes(needle);
+
+      const biopsyOK =
+        !biopsyNeedle ||
+        String(r.pk_biopsy_id ?? "").toLowerCase().startsWith(biopsyNeedle);
 
       const nameOK =
         !nameNeedle ||
@@ -240,6 +246,7 @@ export default function Biopsies() {
 
       return (
         inText &&
+        biopsyOK &&
         nameOK &&
         catOK &&
         multiOK &&
@@ -249,7 +256,7 @@ export default function Biopsies() {
         pass(flt.ageClass, c?.last_age_class ?? null)
       );
     });
-  }, [rows, q, namePrefix, catalogPrefix, flt, multiOnly]);
+  }, [rows, q, biopsyPrefix, namePrefix, catalogPrefix, flt, multiOnly]);
 
   const activeFiltersText = useMemo(() => {
     const parts: string[] = [];
@@ -258,10 +265,11 @@ export default function Biopsies() {
     if (flt.gender.length) parts.push(`Gender: ${flt.gender.join(", ")}`);
     if (flt.ageClass.length) parts.push(`Age: ${flt.ageClass.join(", ")}`);
     if (multiOnly) parts.push("Catalogs ≥ 2 biopsies");
+    if (biopsyPrefix.trim()) parts.push(`Biopsy ID starts with "${biopsyPrefix.trim()}"`);
     if (namePrefix.trim()) parts.push(`Name starts with "${namePrefix.trim()}"`);
     if (catalogPrefix.trim()) parts.push(`Catalog ID starts with "${catalogPrefix.trim()}"`);
     return parts.join(" · ");
-  }, [q, flt, multiOnly, namePrefix, catalogPrefix]);
+  }, [q, flt, multiOnly, biopsyPrefix, namePrefix, catalogPrefix]);
 
 
 
@@ -388,7 +396,7 @@ export default function Biopsies() {
                 <div className="flex justify-end items-center gap-3">
                   <button
                     className="text-xs text-blue-700 underline"
-                    onClick={() => { setFlt({species:[],gender:[],ageClass:[],mprf:[]}); setMultiOnly(false); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
+                    onClick={() => { setFlt({species:[],gender:[],ageClass:[],mprf:[]}); setMultiOnly(false); setBiopsyPrefix(""); setNamePrefix(""); setCatalogPrefix(""); setQ(""); }}
                   >
                     Clear All Filters
                   </button>
@@ -420,7 +428,16 @@ export default function Biopsies() {
                 </label>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Biopsy ID (starts with)</div>
+                  <input
+                    value={biopsyPrefix}
+                    onChange={(e) => setBiopsyPrefix(e.target.value)}
+                    placeholder="e.g., B..."
+                    className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
+                  />
+                </div>
                 <div>
                   <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
                   <input
