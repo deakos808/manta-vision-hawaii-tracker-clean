@@ -24,6 +24,8 @@ interface PhotoRow {
 }
 
 interface Props {
+  showHamrFilter?: boolean;
+  hamrLabel?: string;
   rows?: PhotoRow[];
   filters: FiltersState;
   setFilters: (f: FiltersState) => void;
@@ -46,7 +48,7 @@ interface Props {
 
 const VIEW_TYPES = ["ventral", "dorsal", "other"] as const;
 const POPULATIONS = ["Big Island", "Maui Nui", "Oahu", "Kauai"] as const;
-const MPRF_OPTIONS = ["MPRF", "Non-MPRF"] as const;
+const HAMER_OPTIONS = ["HAMER", "Non-HAMER"] as const;
 const FLAGS = [
   { key: "best_catalog", label: "Best Catalog Ventral" },
   { key: "best_manta", label: "Best Manta Ventral" },
@@ -76,6 +78,8 @@ function tallyBase<T extends PhotoRow>(
 }
 
 export default function PhotoFilterBox({
+  showHamrFilter = true,
+  hamrLabel = "HAMER",
   rows,
   filters,
   setFilters,
@@ -172,7 +176,7 @@ export default function PhotoFilterBox({
   );
 
   const mprfCounts = useMemo(
-    () => tallyBase(all, (r) => norm(r.mprf), [...MPRF_OPTIONS]),
+    () => tallyBase(all, (r) => norm(r.mprf), [...HAMER_OPTIONS]),
     [all],
   );
 
@@ -265,7 +269,7 @@ export default function PhotoFilterBox({
         {renderMenu("Island", "island", islandOptions, islandCounts)}
         {renderMenu("Location", "location", locationOptions, locationCounts)}
         {renderMenu("View Type", "view", [...VIEW_TYPES], viewCounts)}
-        {renderMenu("MPRF", "mprf", [...MPRF_OPTIONS], mprfCounts)}
+        {showHamrFilter ? renderMenu(hamrLabel, "mprf", [...HAMER_OPTIONS], mprfCounts) : null}
 
         <Popover>
           <PopoverTrigger asChild>

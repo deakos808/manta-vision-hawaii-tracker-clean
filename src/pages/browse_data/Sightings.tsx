@@ -243,6 +243,7 @@ export default function Sightings() {
 
   const [mprf, setMprf] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const showHamrFilter = isAdmin;
   const [sortAsc, setSortAsc] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
@@ -427,10 +428,11 @@ export default function Sightings() {
   const fetchSightings = async ({ pageParam = 0 }: { pageParam?: number }) => {
     let q = supabase
       .from("sightings")
-      .select("pk_sighting_id,sighting_date,start_time,end_time,island,sitelocation,latitude,longitude,photographer,organization,total_mantas,population")
+      .select("pk_sighting_id,sighting_date,start_time,end_time,island,sitelocation,latitude,longitude,photographer,organization,total_mantas,population,is_mprf")
       .order("pk_sighting_id", { ascending: sortAsc })
       .range(pageParam * PAGE_SIZE, pageParam * PAGE_SIZE + PAGE_SIZE - 1);
 
+    if (!isAdmin) q = q.or("is_mprf.is.false,is_mprf.is.null");
     if (island && island !== "all") q = q.ilike("island", "%" + island + "%");
     if (photographer) q = q.ilike("photographer", "%" + photographer + "%");
     if (location) q = q.eq("sitelocation", location.trim());
@@ -565,6 +567,7 @@ export default function Sightings() {
     (async () => {
       let q: any = supabase.from("sightings").select("*", { count: "exact", head: true });
 
+      if (!isAdmin) q = q.or("is_mprf.is.false,is_mprf.is.null");
       if (island && island !== "all") q = q.ilike("island", "%" + island + "%");
       if (photographer) q = q.ilike("photographer", "%" + photographer + "%");
       if (location) q = q.eq("sitelocation", location.trim());
@@ -634,7 +637,9 @@ export default function Sightings() {
       return;
     }
 
-    let base: any = supabase.from("sightings").select("pk_sighting_id,latitude,longitude");
+    let base: any = supabase.from("sightings").select("pk_sighting_id,latitude,longitude,is_mprf");
+
+    if (!isAdmin) base = base.or("is_mprf.is.false,is_mprf.is.null");
 
     if (island && island !== "all") base = base.ilike("island", "%" + island + "%");
     if (photographer) base = base.ilike("photographer", "%" + photographer + "%");

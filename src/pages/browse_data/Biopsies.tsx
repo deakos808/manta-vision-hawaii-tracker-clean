@@ -99,7 +99,7 @@ export default function Biopsies() {
     });
     const mprf: [string, number][] = [
       ["MPRF", mprfTrue],
-      ["Non-MPRF", mprfFalse],
+      ["HAMER", mprfFalse],
     ];
 
     return { species, gender, ageClass, mprf };
@@ -242,7 +242,7 @@ export default function Biopsies() {
       const mprfOK =
         mprfSel.length === 0 ||
         (mprfSel.includes("MPRF") && isMprf) ||
-        (mprfSel.includes("Non-MPRF") && !isMprf);
+        (mprfSel.includes("HAMER") && !isMprf);
 
       return (
         inText &&
@@ -421,7 +421,7 @@ export default function Biopsies() {
                 <FilterPill label="Species"  options={distinct.species}  selected={flt.species}  onChange={(v)=>setFlt(f=>({...f,species:v}))}/>
                 <FilterPill label="Gender"   options={distinct.gender}   selected={flt.gender}   onChange={(v)=>setFlt(f=>({...f,gender:v}))}/>
                 <FilterPill label="Age Class" options={distinct.ageClass} selected={flt.ageClass} onChange={(v)=>setFlt(f=>({...f,ageClass:v}))}/>
-                <FilterPill label="MPRF" options={distinct.mprf} selected={flt.mprf} onChange={(v)=>setFlt(f=>({...f,mprf:v}))}/>
+                <FilterPill label="HAMER" options={distinct.mprf} selected={flt.mprf} onChange={(v)=>setFlt(f=>({...f,mprf:v}))}/>
                 <label className="ml-3 flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={multiOnly} onChange={(e)=>setMultiOnly(e.target.checked)}/>
                   <span>Only catalogs with ≥ 2 biopsies</span>

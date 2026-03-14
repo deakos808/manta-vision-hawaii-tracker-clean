@@ -222,6 +222,7 @@ export default function Catalog() {
   const [catalogIdPrefix, setCatalogIdPrefix] = useState("");
   const [namePrefix, setNamePrefix] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const showHamrFilter = isAdmin;
   const [exportPreset, setExportPreset] = useState<ExportPreset>("filtered_catalog_current_view");
   const [exporting, setExporting] = useState(false);
 
@@ -271,7 +272,9 @@ export default function Catalog() {
         fetchCatalogMprfMap(),
       ]);
 
-      const merged = rows.map((row) => {
+      const filteredRows = isAdmin ? rows : rows.filter((row) => (mprfMap.get(row.pk_catalog_id) ?? null) !== "MPRF");
+
+      const merged = filteredRows.map((row) => {
         const sizeInfo = sizeCounts.get(row.pk_catalog_id) ?? { total_sizes: 0, last_size_m: null };
         return {
           ...row,
@@ -293,7 +296,7 @@ export default function Catalog() {
 
   useEffect(() => {
     load();
-  }, [catalogIdParam]);
+  }, [catalogIdParam, isAdmin]);
 
   const filtered = useMemo(() => {
     const term = (search || "").trim().toLowerCase();
@@ -522,6 +525,8 @@ export default function Catalog() {
           setNamePrefix={setNamePrefix}
           onOpenStats={() => setStatsOpen(true)}
           isAdmin={isAdmin}
+        
+          showMprfFilter={showHamrFilter}
         />
 
         {isAdmin && (

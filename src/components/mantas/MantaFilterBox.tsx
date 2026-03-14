@@ -16,6 +16,10 @@ interface Row {
 }
 
 interface Props {
+  mantaIdPrefix: string;
+  setMantaIdPrefix: (v: string) => void;
+  showHamrFilter?: boolean;
+  hamrLabel?: string;
   rows: Row[];
   namePrefix: string;
   setNamePrefix: (v: string) => void;
@@ -53,6 +57,8 @@ const countSingles = (rows: Row[], field: keyof Row) => {
 };
 
 export default function MantaFilterBox({
+  showHamrFilter = true,
+  hamrLabel = "HAMER",
   rows,
   mantaIdPrefix,
   setMantaIdPrefix,
@@ -206,7 +212,7 @@ export default function MantaFilterBox({
         {renderMenu("Photographer", photographer, setPhotographer, photographerOptions, photographerCounts)}
         {renderMenu("Gender", gender, setGender, genderOptions, genderCounts)}
         {renderMenu("Age Class", ageClass, setAgeClass, ageOptions, ageCounts)}
-        {renderMenu("MPRF", mprf, setMprf, mprfOptions, mprfCounts)}
+        {showHamrFilter ? renderMenu(hamrLabel, mprf, setMprf, mprfOptions, mprfCounts) : null}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-3 w-full">

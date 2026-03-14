@@ -153,8 +153,8 @@ export default function SightingFilterBox(props: Props) {
       if (date) q = q.eq("sighting_date", date);
       if (dateKnown) q = q.not("sighting_date", "is", null);
       if (dateUnknown) q = q.is("sighting_date", null);
-      if (mprf === "MPRF") q = q.eq("is_mprf", true);
-      if (mprf === "HAMER") q = q.or("is_mprf.is.false,is_mprf.is.null");
+      if (isAdmin && mprf === "MPRF") q = q.eq("is_mprf", true);
+      if (isAdmin && mprf === "HAMER") q = q.or("is_mprf.is.false,is_mprf.is.null");
 
       const pageSz = 1000;
       const acc: any[] = [];
@@ -181,7 +181,7 @@ export default function SightingFilterBox(props: Props) {
     return () => {
       alive = false;
     };
-  }, [population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf]);
+  }, [population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, isAdmin]);
 
   const [speciesMap, setSpeciesMap] = useState<Map<number, Set<string>>>(new Map());
 
@@ -458,7 +458,8 @@ export default function SightingFilterBox(props: Props) {
           )}
         </Pill>
 
-        <Pill label={`HAMER${mprf ? `: ${mprf}` : ""}`} active={!!mprf}>
+        {isAdmin && (
+          <Pill label={`HAMER${mprf ? `: ${mprf}` : ""}`} active={!!mprf}>
           {mprfRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
@@ -471,7 +472,8 @@ export default function SightingFilterBox(props: Props) {
               <span className="text-xs text-muted-foreground">{r.count}</span>
             </label>
           ))}
-        </Pill>
+          </Pill>
+        )}
       </div>
 
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">

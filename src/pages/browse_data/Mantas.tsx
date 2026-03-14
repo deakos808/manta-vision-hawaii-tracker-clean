@@ -65,6 +65,7 @@ const PAGE = 500;
 
 export default function MantasPage() {
   const isAdmin = useIsAdmin();
+  const showHamrFilter = isAdmin;
   const [searchParams] = useSearchParams();
 
   // Optional scoping context from the URL
@@ -178,7 +179,7 @@ export default function MantasPage() {
 
     if (
       mprf.length > 0 &&
-      !((mprf.includes("MPRF") && rowIsMprf) || (mprf.includes("Non-MPRF") && !rowIsMprf))
+      !((mprf.includes("MPRF") && rowIsMprf) || (mprf.includes("HAMER") && !rowIsMprf))
     ) {
       return false;
     }
@@ -213,6 +214,7 @@ export default function MantasPage() {
     for (const r of rows) {
       const photog = r.sightings?.photographer ?? r.photographer ?? null;
       const isMprf = !!r.is_mprf;
+      if (!isAdmin && isMprf) continue;
 
       const m: MantaRow = {
         pk_manta_id: r.pk_manta_id,
@@ -238,7 +240,7 @@ export default function MantasPage() {
         photographer: m.photographer,
         gender: m.gender,
         age_class: m.age_class,
-        mprf: isMprf ? "MPRF" : "Non-MPRF",
+        mprf: isMprf ? "MPRF" : "HAMER",
       });
     }
 
@@ -349,6 +351,7 @@ export default function MantasPage() {
 
       if (sightingId) q = q.eq("fk_sighting_id", sightingId);
       if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
+      if (!isAdmin) q = q.eq("is_mprf", false);
 
       const { data, error } = await q;
       if (!active) return;
@@ -441,6 +444,7 @@ export default function MantasPage() {
         if (nameNeedle) base = base.ilike("name", `${nameNeedle}%`);
         if (sightingId) base = base.eq("fk_sighting_id", sightingId);
         if (crumbCatalogId) base = base.eq("fk_catalog_id", crumbCatalogId);
+        if (!isAdmin) base = base.eq("is_mprf", false);
 
         const { data, error } = await base;
         if (!active) return;
@@ -531,7 +535,7 @@ export default function MantasPage() {
       const mprfOk =
         mprf.length === 0 ||
         (mprf.includes("MPRF") && m.is_mprf) ||
-        (mprf.includes("Non-MPRF") && !m.is_mprf);
+        (mprf.includes("HAMER") && !m.is_mprf);
 
       if (!(mantaIdOk && nameOk && catalogIdOk && popOk && islOk && locOk && phoOk && genOk && ageOk && mprfOk)) return false;
 
@@ -624,6 +628,7 @@ export default function MantasPage() {
 
             if (sightingId) q = q.eq("fk_sighting_id", sightingId);
             if (crumbCatalogId) q = q.eq("fk_catalog_id", crumbCatalogId);
+            if (!isAdmin) q = q.eq("is_mprf", false);
 
             const { data, error } = await q;
             if (error) {
@@ -724,7 +729,7 @@ export default function MantasPage() {
           photographer: r.photographer?.photographer ?? null,
           gender: r.gender ?? null,
           age_class: r.age_class ?? null,
-          mprf: r.is_mprf ? "MPRF" : "Non-MPRF",
+          mprf: r.is_mprf ? "MPRF" : "HAMER",
         })) as MantaFacetRow[];
 
         rows.push(...chunk);
@@ -834,6 +839,9 @@ export default function MantasPage() {
             setMprf={setMprf}
             onClear={handleClearFilters}
             onOpenStats={() => setShowStats(true)}
+          
+            showHamrFilter={showHamrFilter}
+            hamrLabel="HAMER"
           />
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700 mt-1">

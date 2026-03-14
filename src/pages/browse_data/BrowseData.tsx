@@ -3,16 +3,22 @@ import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from "react-router-dom";
 import hamerLogo from '@/assets/hamer_logo_1.png';
-import { useIsAdmin } from "@/lib/isAdmin";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function BrowseData() {
-  const isAdmin = useIsAdmin();
+  const { role } = useUserRole();
   const navigate = useNavigate();
 
   return (
     <Layout title="Search Database">
       <div className="bg-blue-600 text-white py-6 px-4 sm:px-8 lg:px-16 shadow text-center">
         <h1 className="text-4xl font-bold">Search Database</h1>
+      </div>
+
+      <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm">
+        <a href="/dashboard" className="text-blue-600 hover:underline">
+          &larr; Return to Dashboard
+        </a>
       </div>
 
       <div className="max-w-3xl mx-auto py-12 px-4 text-center space-y-8">
@@ -35,15 +41,34 @@ export default function BrowseData() {
           <Button variant="outline" onClick={() => navigate('/browse/photos')}>
             📸 Search Photos
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/sizes')}>
-            🔎 Search Sizes
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/browse/drone')}>
-            🚁 Drone Surveys
-          </Button>
-        
-<Link to="/browse/biopsies" className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm">🔬 Search Biopsies</Link>
-</div>
+
+          {role === "admin" && (
+            <Link
+              to="/browse/sizes"
+              className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm inline-flex items-center justify-center"
+            >
+              🔎 Search Sizes
+            </Link>
+          )}
+
+          {role === "admin" && (
+            <Link
+              to="/browse/drone"
+              className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm inline-flex items-center justify-center"
+            >
+              🚁 Drone Surveys
+            </Link>
+          )}
+
+          {role === "admin" && (
+            <Link
+              to="/browse/biopsies"
+              className="px-4 py-2 rounded bg-slate-100 border shadow-sm text-sm inline-flex items-center justify-center"
+            >
+              🔬 Search Biopsies
+            </Link>
+          )}
+        </div>
 
         <div className="pt-10">
           <img src={hamerLogo} alt="Hawaii Manta Tracker logo" className="mx-auto w-24 h-24 opacity-50" />

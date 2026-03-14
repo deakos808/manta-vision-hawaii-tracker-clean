@@ -74,9 +74,9 @@ function App() {
       <Route path="/browse/sightings" element={<Sightings />} />
       <Route path="/browse/photos" element={<Photos />} />
       <Route path="/browse/mantas" element={<Mantas />} />
-      <Route path="/browse/sizes" element={<SizesPage />} />
-      <Route path="/browse/drone" element={<DroneSurveysPage />} />
-      <Route path="/browse/biopsies" element={<Biopsies />} />
+      <Route path="/browse/sizes" element={<RequireAuth adminOnly><SizesPage /></RequireAuth>} />
+      <Route path="/browse/drone" element={<RequireAuth adminOnly><DroneSurveysPage /></RequireAuth>} />
+      <Route path="/browse/biopsies" element={<RequireAuth adminOnly><Biopsies /></RequireAuth>} />
 
       <Route path="/test-match-ui" element={<MatchingPage />} />
 

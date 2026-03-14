@@ -50,7 +50,7 @@ interface Photo {
   catalog_name?: string | null;
   island?: string | null;
   location?: string | null;
-  mprf?: "MPRF" | "Non-MPRF" | null;
+  mprf?: "MPRF" | "HAMER" | null;
 }
 
 const PAGE_SIZE = 80;
@@ -89,6 +89,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
   // Admin role gate for update buttons
   const [isAdmin, setIsAdmin] = useState(false);
+  const showHamrFilter = isAdmin;
   useEffect(() => { (async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -270,6 +271,16 @@ const [photos, setPhotos] = useState<Photo[]>([]);
         .from("photos_with_photo_view")
         .select("*", { count: "exact" });
 
+      if (!isAdmin) {
+        const allowedSightingIds = await fetchSightingIdsByMprf(["HAMER"]);
+        if (reqId !== requestSeq.current) return;
+        if (allowedSightingIds && allowedSightingIds.length > 0) {
+          query = query.in("fk_sighting_id", allowedSightingIds);
+        } else {
+          query = query.eq("fk_sighting_id", -1);
+        }
+      }
+
       query = applySupabaseFilters(query);
 
       if (filters.flag.length > 0) {
@@ -327,7 +338,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
       incoming = incoming.map((p) => ({
         ...p,
-        mprf: mprfMap.get(Number(p.fk_sighting_id ?? 0)) ? "MPRF" : "Non-MPRF",
+        mprf: mprfMap.get(Number(p.fk_sighting_id ?? 0)) ? "MPRF" : "HAMER",
       }));
 
       if (filters.mprf.length > 0) {
@@ -645,7 +656,7 @@ const [photos, setPhotos] = useState<Photo[]>([]);
             photo_view: r.photo_view ?? null,
             species: null,
             fk_sighting_id: Number.isFinite(sid) && sid > 0 ? sid : null,
-            mprf: mprfMap.get(sid) ? "MPRF" : "Non-MPRF",
+            mprf: mprfMap.get(sid) ? "MPRF" : "HAMER",
           };
         });
 
@@ -749,6 +760,9 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           hideSearch={true}
           sortAsc={sortAsc}
           setSortAsc={setSortAsc}
+        
+          showHamrFilter={showHamrFilter}
+          hamrLabel="HAMER"
         />
         </div>
 
