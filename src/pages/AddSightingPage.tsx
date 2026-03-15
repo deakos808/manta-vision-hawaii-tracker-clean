@@ -9,6 +9,7 @@ import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 import { saveReviewServer } from "@/utils/reviewSave";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -17,6 +18,23 @@ const TIME_OPTIONS = buildTimes(5);
 // helpers
 const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (Array.isArray(m?.photos) ? m.photos.length : 0), 0);
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
+type PendingExif = { date?: string; time?: string; lat?: number; lon?: number };
+
+type ExifSuggestion = PendingExif & {
+  suggestedIsland?: string | null;
+  suggestedLocation?: string | null;
+};
+
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 export default function AddSightingPage() {
   const navigate = useNavigate();
@@ -99,6 +117,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
   const [coordSource, setCoordSource] = useState<string>("");
+
+  const [confirmExifOpen, setConfirmExifOpen] = useState(false);
+  const [exifSuggestion, setExifSuggestion] = useState<ExifSuggestion | null>(null);
+
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [mapOpen, setMapOpen] = useState(false);
   const formSightingId = useMemo(()=>uuid(),[]);
@@ -249,6 +273,89 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     }catch(e){ console.warn("[AddSighting] fetchEarliestCoords failed", e); return null; }
   }
 
+
+  async function prepareExifSuggestion(meta: PendingExif): Promise<ExifSuggestion | null> {
+    let bestIsland: string | null = null;
+    let bestLocation: string | null = null;
+
+    if (typeof meta.lat === "number" && typeof meta.lon === "number") {
+      try {
+        const { data } = await supabase
+          .from("location_defaults")
+          .select("name,island,latitude,longitude");
+
+        const rows = (data || []).filter(
+          (r: any) => typeof r.latitude === "number" && typeof r.longitude === "number"
+        );
+
+        let best: any = null;
+        for (const r of rows) {
+          const d = haversineMeters(meta.lat, meta.lon, r.latitude, r.longitude);
+          if (!best || d < best.dist) best = { dist: d, row: r };
+        }
+
+        if (best?.row) {
+          bestIsland = String(best.row.island || "").trim() || null;
+          bestLocation = String(best.row.name || "").trim() || null;
+        }
+      } catch (e) {
+        console.warn("[AddSighting][EXIF] location_defaults lookup failed", e);
+      }
+    }
+
+    if (!bestIsland && typeof meta.lat === "number" && typeof meta.lon === "number") {
+      const centers = [
+        { name: "Big Island", lat: 19.6, lon: -155.5 },
+        { name: "Maui", lat: 20.8, lon: -156.3 },
+        { name: "Oahu", lat: 21.48, lon: -157.97 },
+        { name: "Kauai", lat: 22.05, lon: -159.5 },
+        { name: "Molokai", lat: 21.13, lon: -157.03 },
+        { name: "Lanai", lat: 20.83, lon: -156.92 },
+        { name: "Niihau", lat: 21.9, lon: -160.15 },
+        { name: "Kahoolawe", lat: 20.55, lon: -156.6 },
+      ];
+
+      let best: any = null;
+      for (const c of centers) {
+        const d = haversineMeters(meta.lat, meta.lon, c.lat, c.lon);
+        if (!best || d < best.dist) best = { dist: d, name: c.name };
+      }
+      bestIsland = best?.name ?? null;
+    }
+
+    const suggestion: ExifSuggestion = {
+      date: meta.date,
+      time: meta.time,
+      lat: meta.lat,
+      lon: meta.lon,
+      suggestedIsland: bestIsland,
+      suggestedLocation: bestLocation,
+    };
+
+    console.log("[AddSighting][EXIF] prepareExifSuggestion result", suggestion);
+    setExifSuggestion(suggestion);
+    setConfirmExifOpen(true);
+    return suggestion;
+  }
+
+  function applyExifMetadata(meta: ExifSuggestion) {
+    console.log("[AddSighting][EXIF] applyExifMetadata", meta);
+
+    if (meta.date && !String(date || "").trim()) setDate(meta.date);
+    if (meta.time && !String(startTime || "").trim()) setStartTime(meta.time);
+    if (typeof meta.lat === "number" && !String(lat || "").trim()) setLat(String(Number(meta.lat).toFixed(5)));
+    if (typeof meta.lon === "number" && !String(lng || "").trim()) setLng(String(Number(meta.lon).toFixed(5)));
+
+    if (meta.suggestedIsland && !String(island || "").trim()) setIsland(meta.suggestedIsland);
+    if (meta.suggestedLocation && !String(locationId || "").trim()) {
+      setLocationId(meta.suggestedLocation);
+      setLocationName(meta.suggestedLocation);
+    }
+
+    setConfirmExifOpen(false);
+    setExifSuggestion(null);
+  }
+
   // On location change, autofill coords
   useEffect(()=>{
     if(!locationId) return;
@@ -268,14 +375,16 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // Submit (user mode)
   const handleSubmit = async () => {
-    if (!dateValid) { window.alert("Date is required."); return; }
+    if (!dateValid) return;
     if (!emailValid) return;
+
     const payload = {
       date, startTime, stopTime, photographer, email, phone,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
       mantas
     };
+
     try {
       await supabase.from("sighting_submissions").insert({
         email: email || null,
@@ -286,19 +395,57 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         status: "pending"
       });
     } catch {}
-    window.alert(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
-    navigate("/");
+
+    setSuccessMessage(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
+    setSuccessOpen(true);
   };
 
   // Save handlers for Add/Edit manta
-  const onAddSave = (m: MantaDraft) => {
+  const onAddSave = async (m: MantaDraft) => {
+    console.log("[AddSighting][onAddSave] received manta", m);
+
     setAddOpen(false);
     setMantas(prev => {
       const incomingId = (m as any).id ? String((m as any).id) : "";
       const exists = incomingId && prev.some(p => String(p.id) === incomingId);
       const id = exists || !incomingId ? uuid() : incomingId;
-      return [...prev, { ...(m as any), id }];
+      const next = [...prev, { ...(m as any), id }];
+      console.log("[AddSighting][onAddSave] next mantas", next);
+      return next;
     });
+
+    const surveyHasDate = !!String(date || "").trim();
+    const surveyHasLocation = !!String(locationId || locationName || "").trim();
+    const exif = (m as any)?.firstExifMeta ?? null;
+
+    console.log("[AddSighting][onAddSave] survey state", {
+      surveyHasDate,
+      surveyHasLocation,
+      date,
+      locationId,
+      locationName,
+      exif,
+    });
+
+    if ((!surveyHasDate || !surveyHasLocation) && exif) {
+      console.log("[AddSighting][onAddSave] calling prepareExifSuggestion", exif);
+
+      const suggestion = await prepareExifSuggestion(exif);
+
+      console.log("[AddSighting][onAddSave] prepareExifSuggestion result", suggestion);
+
+      if (suggestion) {
+        setPendingExif(suggestion.meta);
+        setSuggestedExifIsland(suggestion.bestIsland ?? null);
+        setSuggestedExifLocation(suggestion.bestLocation ?? null);
+        setConfirmExifOpen(true);
+      }
+    } else {
+      console.log("[AddSighting][onAddSave] not prompting", {
+        missingSurveyField: !surveyHasDate || !surveyHasLocation,
+        hasExif: !!exif,
+      });
+    }
   };
   const onEditSave = (m:MantaDraft) => {
     setMantas(prev=>{
@@ -314,6 +461,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     });
     setEditingManta(null);
   };
+
   async function handleSaveReview() {
     if (!reviewId) { window.alert("Not in review mode"); return; }
     const payload:any = {
@@ -567,9 +715,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
                         <Button onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
-            <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
-              Submit Sighting
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>Cancel</Button>
+              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
+                Submit Sighting
+              </Button>
+            </>
           )}
         </div>
         <div id="probe-add-sighting-v2" className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">probe:add-sighting-v2</div>
@@ -619,6 +770,82 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           </div>
         </div>
       )}
+
+      <Dialog
+        open={confirmExifOpen}
+        onOpenChange={(open) => {
+          setConfirmExifOpen(open);
+          if (!open) setExifSuggestion(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Use photo metadata?</DialogTitle>
+            <DialogDescription>
+              This photo includes metadata that may help populate sighting date and location.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm">
+            {exifSuggestion?.date ? <div>Date: {exifSuggestion.date}</div> : null}
+            {(typeof exifSuggestion?.lat === "number" && typeof exifSuggestion?.lon === "number") ? (
+              <div>Coordinates: {exifSuggestion.lat}, {exifSuggestion.lon}</div>
+            ) : null}
+            {exifSuggestion?.suggestedIsland ? <div>Suggested island: {exifSuggestion.suggestedIsland}</div> : null}
+            {exifSuggestion?.suggestedLocation ? <div>Suggested location: {exifSuggestion.suggestedLocation}</div> : null}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmExifOpen(false);
+                setExifSuggestion(null);
+              }}
+            >
+              No, I’ll enter manually
+            </Button>
+            <Button
+              onClick={() => {
+                console.log("[AddSighting][EXIF] YES button clicked", exifSuggestion);
+                if (!exifSuggestion) return;
+                applyExifMetadata(exifSuggestion);
+                setConfirmExifOpen(false);
+                setExifSuggestion(null);
+              }}
+            >
+              Yes, use metadata
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={successOpen}
+        onOpenChange={(v) => {
+          setSuccessOpen(v);
+          if (!v) navigate("/dashboard");
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sighting submitted</DialogTitle>
+            <DialogDescription>{successMessage}</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                setSuccessOpen(false);
+                navigate("/dashboard");
+              }}
+            >
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </Layout>
   );
 }
