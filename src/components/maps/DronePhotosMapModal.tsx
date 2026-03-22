@@ -1,16 +1,17 @@
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import L, { Map as LeafletMap, LayerGroup, DivIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabase";
 
-type PhotoPoint = {
-  id: string | number;                  // pk_drone_photo (or similar)
-  lat: number;                          // drone_photo_lat
-  lon: number;                          // drone_photo_lon
-  ts?: string | null;                   // drone_photo_timestamp
-  pilot?: string | null;                // drone_pilot
-  mantas?: number | null;               // total_mantas
+export type PhotoPoint = {
+  id: string | number;
+  lat: number;
+  lon: number;
+  ts?: string | null;
+  pilot?: string | null;
+  mantas?: number | null;
 };
 
 type Props = {
@@ -29,7 +30,8 @@ function round5(n: number) {
 function groupByExactCoord(points: PhotoPoint[]): Map<string, Group> {
   const m = new Map<string, Group>();
   for (const p of points || []) {
-    const lat = Number(p.lat), lon = Number(p.lon);
+    const lat = Number(p.lat);
+    const lon = Number(p.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
     const key = `${round5(lat)},${round5(lon)}`;
     if (!m.has(key)) m.set(key, { lat: round5(lat), lon: round5(lon), items: [] });
@@ -57,115 +59,84 @@ function makeBadgeIcon(count?: number): DivIcon {
   }) as unknown as DivIcon;
 }
 
-export default function DronePhotosMapModal({ open, onOpenChange, title = "Photo Map", points }: Props) {
+export default function DronePhotosMapModal({
+  open,
+  onOpenChange,
+  title = "Photo Map",
+  points,
+}: Props) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<LeafletMap | null>(null);
   const overlayRef = React.useRef<LayerGroup | null>(null);
 
   const groups = React.useMemo(() => groupByExactCoord(points), [points]);
 
-  React.useEffect(() => {
-    if (!open) {
-      teardown();
-      return;
-    }
-    let raf: number | null = null;
-    const init = () => {
-      if (!containerRef.current) { raf = requestAnimationFrame(init); return; }
-      if (mapRef.current) { draw(); return; }
-      const arr = Array.from(groups.values());
-      const has = arr.length > 0;
-      const defaultCenter: [number, number] = [20.7984, -156.3319]; // Hawaiʻi
-      const center = has
-        ? ((): [number, number] => {
-            const lat = arr.reduce((s, g) => s + g.lat, 0) / arr.length;
-            const lon = arr.reduce((s, g) => s + g.lon, 0) / arr.length;
-            return [lat, lon];
-          })()
-        : defaultCenter;
-
-      const map = L.map(containerRef.current!, { center, zoom: has ? 11 : 7, zoomControl: false });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-      L.control.zoom({ position: "topleft" }).addTo(map);
-
-      mapRef.current = map;
-      overlayRef.current = L.layerGroup().addTo(map);
-
-      if (has) {
-        const bounds = L.latLngBounds(arr.map(g => L.latLng(g.lat, g.lon)));
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+  const teardown = React.useCallback(() => {
+    try {
+      if (overlayRef.current) {
+        try { overlayRef.current.clearLayers(); } catch {}
+        try { overlayRef.current.remove(); } catch {}
       }
-      draw();
-    };
-    raf = requestAnimationFrame(init);
-    return () => { if (raf) cancelAnimationFrame(raf); };
-  }, [open, groups]);
+    } catch {}
+    overlayRef.current = null;
 
-  React.useEffect(() => {
-    if (!open) return;
-    draw();
-  }, [open, groups]);
+    try {
+      if (mapRef.current) {
+        try { mapRef.current.remove(); } catch {}
+      }
+    } catch {}
+    mapRef.current = null;
 
-  
-function teardown() {
-  try {
-    if (overlayRef.current) {
-      try { (overlayRef.current as any).clearLayers?.(); } catch (e) {}
-      try { (overlayRef.current as any).remove?.(); } catch (e) {}
-    }
-  } catch (e) {}
-  overlayRef.current = null;
+    try {
+      if (containerRef.current && (containerRef.current as any)._leaflet_id) {
+        delete (containerRef.current as any)._leaflet_id;
+      }
+    } catch {}
+  }, []);
 
-  try {
-    if (mapRef.current) {
-      try { mapRef.current.remove?.(); } catch (e) {}
-    }
-  } catch (e) {}
-  mapRef.current = null;
-
-  try {
-    if (containerRef.current && (containerRef.current as any)._leaflet_id) {
-      delete (containerRef.current as any)._leaflet_id;
-    }
-  } catch (e) {}
-}
-
-  function draw() {
-
-    const toInt = (v:any) => { const n = parseInt(String(v ?? '').trim(), 10); return Number.isFinite(n) ? n : 0; };
+  const draw = React.useCallback(() => {
     if (!mapRef.current) return;
+
     const map = mapRef.current;
     if (!overlayRef.current) overlayRef.current = L.layerGroup().addTo(map);
-    overlayRef.current!.clearLayers();
+    overlayRef.current.clearLayers();
+
+    const toInt = (v: any) => {
+      const n = parseInt(String(v ?? "").trim(), 10);
+      return Number.isFinite(n) ? n : 0;
+    };
 
     groups.forEach((g) => {
       const count = g.items.length;
-      const initialSum = g.items.reduce((a, it:any) => a + (typeof it?.mantas === 'number' ? it.mantas : (typeof it?.total_mantas === 'number' ? it.total_mantas : 0)), 0);
-      const badgeValue = (count === 1)
-        ? (() => { const v:any = g.items[0]; const m = toInt(v?.mantas ?? v?.total_mantas); return m > 0 ? m : 1; })()
+      const initialSum = g.items.reduce((a, it) => a + toInt(it.mantas), 0);
+      const badgeValue = count === 1
+        ? (() => {
+            const m = toInt(g.items[0]?.mantas);
+            return m > 0 ? m : 1;
+          })()
         : (initialSum > 0 ? initialSum : count);
-      const icon = makeBadgeIcon(badgeValue);
-      const marker = L.marker([g.lat, g.lon], { icon: icon as any, zIndexOffset: 1000 }).addTo(overlayRef.current!);
 
-const rows = g.items.map((it) => {
-        const id = it?.id ?? "";
-        const idAttr = id ? ` data-id="${id}"` : "";
-        // Placeholders; we’ll fill from DB if needed
-        const date = it?.ts ? String(it.ts).slice(0,10) : "—";
-        const pilot = it?.pilot ?? "—";
-        const m = (typeof it?.mantas === "number") ? String(it.mantas) : "—";
+      const marker = L.marker([g.lat, g.lon], {
+        icon: makeBadgeIcon(badgeValue) as any,
+        zIndexOffset: 1000,
+      }).addTo(overlayRef.current!);
+
+      const rows = g.items.map((it) => {
+        const pid = String(it.id ?? "");
+        const date = it.ts ? String(it.ts).slice(0, 10) : "—";
+        const pilot = it.pilot ?? "—";
+        const m = typeof it.mantas === "number" ? String(it.mantas) : "—";
+
         return `
           <div style="display:flex;gap:8px;align-items:center;padding:2px 0;">
-            <div style="min-width:90px"><span class="js-photo" data-id="${id}" data-field="date">${date}</span></div>
-            <div style="flex:1"><span class="js-photo" data-id="${id}" data-field="pilot">${pilot}</span></div>
-            <div style="min-width:30px;text-align:right;"><span class="js-photo" data-id="${id}" data-field="mantas">${m}</span></div>
-            ${id ? `<a href="#"${idAttr} style="margin-left:8px;color:#2563eb;text-decoration:none">open</a>` : ""}
+            <div style="min-width:90px"><span class="js-photo" data-id="${pid}" data-field="date">${date}</span></div>
+            <div style="flex:1"><span class="js-photo" data-id="${pid}" data-field="pilot">${pilot}</span></div>
+            <div style="min-width:30px;text-align:right;"><span class="js-photo" data-id="${pid}" data-field="mantas">${m}</span></div>
+            <a href="#" class="js-open-photo" data-id="${pid}" style="margin-left:8px;color:#2563eb;text-decoration:none">open</a>
           </div>`;
       }).join("");
 
-      const html = `
+      marker.bindPopup(`
         <div style="min-width:320px">
           <div style="font-weight:700;margin-bottom:6px">${count} ${count === 1 ? "photo" : "photos"} at ${g.lat.toFixed(5)}, ${g.lon.toFixed(5)}</div>
           <div style="font-size:12px;color:#111;max-height:240px;overflow:auto;">
@@ -177,109 +148,144 @@ const rows = g.items.map((it) => {
             </div>
             ${rows || "<em>No details</em>"}
           </div>
-        </div>`;
+        </div>
+      `);
 
-      marker.bindPopup(html);
-
-      // Optional: fetch missing details for those rows from a photos table, if you want “source of truth”.
       marker.on("popupopen", async (ev: any) => {
-        const __rebadgeFromPopup = () => {
-          try {
-            const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
-            if (!root) return;
-            const spans = Array.from(root.querySelectorAll('.js-photo[data-field="mantas"]')) as HTMLElement[];
-            const total = spans.reduce((a,el)=>{ const v=parseInt(String(el.textContent ?? '').trim(),10); return a + (Number.isFinite(v)?v:0); },0);
-            const val = total > 0 ? total : 1;
-            marker.setIcon(makeBadgeIcon(val));
-          } catch {}
-        };
-        setTimeout(__rebadgeFromPopup, 0);
-    const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
+        const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
         if (!root) return;
 
-        // Keep click-through for "open"
-        root.addEventListener("click", (e: Event) => {
-          const t = e.target as HTMLElement;
-          const link = t.closest("[data-id]") as HTMLElement | null;
-          if (link) {
-            e.preventDefault();
-            const pid = String(link.getAttribute("data-id") || "");
-            // wire to whatever you need (e.g., open a sidebar); no-op for now
-            console.info("[DroneMap] open photo", pid);
-          }
-        });
+        const spans = Array.from(root.querySelectorAll(".js-photo")) as HTMLElement[];
+        const ids = Array.from(
+          new Set(
+            spans.map((el) => String(el.getAttribute("data-id") || "")).filter(Boolean)
+          )
+        );
 
-        // Hydrate from DB
-        (async () => {
-          const spans = Array.from(root.querySelectorAll(".js-photo")) as HTMLElement[];
-          if (!spans.length) return;
-          const ids = Array.from(new Set(spans.map(el => String(el.getAttribute("data-id") || "")).filter(Boolean)));
-          if (!ids.length) return;
-          const { data, error } = await supabase
-            .from("drone_photos")
-            .select("pk_drone_photo, drone_photo_timestamp, drone_pilot, total_mantas")
-            .in("pk_drone_photo", ids);
-          if (error || !Array.isArray(data)) return;
-          const byId: Record<string, any> = {};
-          for (const r of data) byId[String(r.pk_drone_photo)] = r;
+        if (!ids.length) return;
+
+        const { data, error } = await supabase
+          .from("drone_photos")
+          .select("pk_drone_photo, drone_photo_timestamp, drone_pilot, total_mantas")
+          .in("pk_drone_photo", ids);
+
+        const byId: Record<string, any> = {};
+        for (const r of data ?? []) {
+          byId[String(r.pk_drone_photo)] = r;
+        }
+
+        if (!error && Array.isArray(data)) {
           for (const el of spans) {
             const id = String(el.getAttribute("data-id") || "");
             const field = String(el.getAttribute("data-field") || "");
             const r = byId[id];
             if (!r) continue;
+
             if (field === "date") {
-              el.textContent = r?.drone_photo_timestamp ? String(r.drone_photo_timestamp).slice(0,10) : "—";
+              el.textContent = r?.drone_photo_timestamp ? String(r.drone_photo_timestamp).slice(0, 10) : "—";
             } else if (field === "pilot") {
               el.textContent = r?.drone_pilot ?? "—";
             } else if (field === "mantas") {
-              el.textContent = (typeof r?.total_mantas === "number") ? String(r.total_mantas) : "—";
+              el.textContent = typeof r?.total_mantas === "number" ? String(r.total_mantas) : "—";
             }
           }
-        })();
-        setTimeout(__rebadgeFromPopup, 200);
-      /* __recompute badge from visible rows */
-      try {
-        const root: HTMLElement | null = ev?.popup?.getElement?.() ?? null;
-        if (root) {
-          const spans = Array.from(root.querySelectorAll('.js-photo[data-field="mantas"]')) as HTMLElement[];
-          const total = spans.reduce((a, el) => {
-            const v = parseInt(String(el.textContent ?? '').trim(), 10);
-            return a + (Number.isFinite(v) ? v : 0);
-          }, 0);
-          if (total > 0) marker.setIcon(makeBadgeIcon(total));
-        }
-      } catch {}
 
-        // Update badge icon to sum of mantas from fetched rows (fallback current)
-        try {
           const total = ids.reduce((a, id) => {
-            const r = byId[String(id)] || byId[id];
-            const v = (typeof r?.total_mantas === "number") ? r.total_mantas
-                    : (typeof r?.total_manta_ids === "number" ? r.total_manta_ids : 0);
+            const r = byId[id];
+            const v = typeof r?.total_mantas === "number" ? r.total_mantas : 0;
             return a + (Number.isFinite(v) ? v : 0);
           }, 0);
-          if (total > 0 && marker && typeof marker.setIcon === "function") {
+
+          if (total > 0) {
             marker.setIcon(makeBadgeIcon(total));
           }
-        } catch {}
-    
+        }
+
+        root.onclick = (e: any) => {
+          const link = e.target?.closest?.(".js-open-photo") as HTMLElement | null;
+          if (!link) return;
+          e.preventDefault();
+
+          const pid = String(link.getAttribute("data-id") || "");
+          if (!pid) return;
+
+          const publicUrl = supabase.storage.from("drone-photo").getPublicUrl(pid).data.publicUrl;
+          if (publicUrl) {
+            window.open(publicUrl, "_blank", "noopener,noreferrer");
+          }
+        };
       });
     });
-        // Update badge to sum of mantas across these rows (fallback current value)
-        try {
-          const sum = ids.reduce((a, id) => {
-            const r = byId[String(id)] || byId[id];
-            const v = (typeof r?.total_mantas === "number") ? r.total_mantas
-                    : (typeof r?.total_manta_ids === "number") ? r.total_manta_ids
-                    : 0;
-            return a + (Number.isFinite(v) ? v : 0);
-          }, 0);
-          if (sum > 0) {
-            ev?.target?.setIcon && ev.target.setIcon(makeBadgeIcon(sum));
-          }
-        } catch {}
-    
-  }
+  }, [groups]);
+
+  React.useEffect(() => {
+    if (!open) {
+      teardown();
+      return;
+    }
+
+    let raf: number | null = null;
+
+    const init = () => {
+      if (!containerRef.current) {
+        raf = requestAnimationFrame(init);
+        return;
+      }
+
+      if (mapRef.current) {
+        draw();
+        return;
+      }
+
+      const arr = Array.from(groups.values());
+      const has = arr.length > 0;
+      const defaultCenter: [number, number] = [20.7984, -156.3319];
+      const center = has
+        ? (() => {
+            const lat = arr.reduce((s, g) => s + g.lat, 0) / arr.length;
+            const lon = arr.reduce((s, g) => s + g.lon, 0) / arr.length;
+            return [lat, lon] as [number, number];
+          })()
+        : defaultCenter;
+
+      const map = L.map(containerRef.current, {
+        center,
+        zoom: has ? 11 : 7,
+        zoomControl: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      L.control.zoom({ position: "topleft" }).addTo(map);
+
+      mapRef.current = map;
+      overlayRef.current = L.layerGroup().addTo(map);
+
+      if (has) {
+        const bounds = L.latLngBounds(arr.map((g) => L.latLng(g.lat, g.lon)));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+      }
+
+      setTimeout(() => {
+        try { map.invalidateSize(); } catch {}
+      }, 0);
+
+      draw();
+    };
+
+    raf = requestAnimationFrame(init);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [open, groups, draw, teardown]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    draw();
+  }, [open, draw]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -288,6 +294,11 @@ const rows = g.items.map((it) => {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div ref={containerRef} className="h-[60vh] w-full rounded overflow-hidden" />
+        <div className="flex justify-end">
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </div>
       </DialogContent>
     </Dialog>
   );

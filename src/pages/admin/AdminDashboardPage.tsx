@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import ReviewSubmissionsTile from "@/components/admin/ReviewSubmissionsTile";
+import DroneReviewSubmissionsTile from "@/components/admin/DroneReviewSubmissionsTile";
 import CalibrationTile from "@/components/admin/CalibrationTile";
 
 export default function AdminDashboardPage() {
@@ -29,6 +30,7 @@ export default function AdminDashboardPage() {
       <div className="p-6 space-y-8">
         <Section title="Sighting Submissions">
           <ReviewSubmissionsTile />
+          <DroneReviewSubmissionsTile />
         </Section>
 
         <Section title="Photogrammetry">

@@ -353,48 +353,52 @@ export default function CatalogFilterBox({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="text-sm text-gray-700">Sort by:</div>
+      <div className="mt-3 rounded-lg border bg-white p-3">
+        <div className="mb-2 text-sm font-medium text-gray-700">Sort Catalog Cards</div>
 
-        <select
-          value={sortField}
-          onChange={(e) =>
-            setSortField(
-              e.target.value as "catalog_id" | "first_sighting" | "last_sighting" | "last_size"
-            )
-          }
-          className="rounded border px-3 py-2 text-sm bg-white"
-        >
-          <option value="catalog_id">Catalog ID</option>
-          <option value="first_sighting">First Sighting</option>
-          <option value="last_sighting">Last Sighting</option>
-          <option value="last_size">Last Size</option>
-        </select>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-1">
+            <div className="text-xs text-gray-600">Sort field</div>
+            <select
+              value={sortField}
+              onChange={(e) =>
+                setSortField(
+                  e.target.value as "catalog_id" | "first_sighting" | "last_sighting" | "last_size"
+                )
+              }
+              className="min-w-[220px] rounded border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm"
+            >
+              <option value="catalog_id">Catalog ID</option>
+              <option value="first_sighting">First Sighting</option>
+              <option value="last_sighting">Last Sighting</option>
+              <option value="last_size">Last Size</option>
+            </select>
+          </div>
 
-        <div className="flex items-center text-sm text-gray-700 gap-1">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            title={sortDirectionLabels.asc}
-            aria-label={sortDirectionLabels.asc}
-            className={sortAsc ? "text-blue-600" : ""}
-            onClick={() => setSortAsc(true)}
-          >
-            ▲
-          </Button>
+          <div className="flex flex-col gap-1">
+            <div className="text-xs text-gray-600">Direction</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant={sortAsc ? "default" : "outline"}
+                title={sortDirectionLabels.asc}
+                aria-label={sortDirectionLabels.asc}
+                onClick={() => setSortAsc(true)}
+              >
+                {sortDirectionLabels.asc}
+              </Button>
 
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            title={sortDirectionLabels.desc}
-            aria-label={sortDirectionLabels.desc}
-            className={!sortAsc ? "text-blue-600" : ""}
-            onClick={() => setSortAsc(false)}
-          >
-            ▼
-          </Button>
+              <Button
+                type="button"
+                variant={!sortAsc ? "default" : "outline"}
+                title={sortDirectionLabels.desc}
+                aria-label={sortDirectionLabels.desc}
+                onClick={() => setSortAsc(false)}
+              >
+                {sortDirectionLabels.desc}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

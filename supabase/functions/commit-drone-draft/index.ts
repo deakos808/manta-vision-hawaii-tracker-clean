@@ -22,42 +22,49 @@ function mustEnv(...names: string[]) {
 
 function composeTimestamp(d?: string | null, t?: string | null) {
   if (!d) return null;
-  if (!t) return d; // already ISO-ish date
+  if (!t) return d;
   return `${d}T${t}:00Z`;
 }
 
 serve(async (req) => {
-  // CORS preflight
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
 
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
     const { draft_id } = await req.json().catch(() => ({}));
-    if (!draft_id || typeof draft_id !== "string") return json({ error: "draft_id required" }, 400);
+    if (!draft_id || typeof draft_id !== "string") {
+      return json({ error: "draft_id required" }, 400);
+    }
 
     const url = mustEnv("PROJECT_URL", "SUPABASE_URL");
     const key = mustEnv("SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY");
     const sb = createClient(url, key, { auth: { persistSession: false } });
 
-    // 1) Load draft + photos
     const { data: draft, error: e1 } = await sb
       .from("temp_drone_sightings")
       .select("*")
       .eq("id", draft_id)
       .single();
-    if (e1 || !draft) return json({ error: e1?.message || "Draft not found" }, 404);
+
+    if (e1 || !draft) {
+      return json({ error: e1?.message || "Draft not found" }, 404);
+    }
 
     const { data: photos, error: e2 } = await sb
       .from("temp_drone_photos")
       .select("id,path,url,taken_date,taken_time,lat,lon,total_mantas")
       .eq("draft_id", draft_id)
       .order("created_at", { ascending: true });
-    if (e2) return json({ error: e2.message }, 400);
+
+    if (e2) {
+      return json({ error: e2.message }, 400);
+    }
 
     const pk_drone_survey = crypto.randomUUID();
 
-    // 2) Copy files to permanent bucket and build live photo rows
     const results: Array<{ src: string; dest?: string; ok: boolean; msg?: string }> = [];
     const livePhotos: Array<{
       pk_drone_photo: string;
@@ -73,29 +80,32 @@ serve(async (req) => {
 
     for (const p of photos ?? []) {
       const srcPath = String(p.path || "");
-      if (!srcPath) { results.push({ src: "", ok: false, msg: "missing path" }); continue; }
+      if (!srcPath) {
+        results.push({ src: "", ok: false, msg: "missing path" });
+        continue;
+      }
 
       const fileName = srcPath.split("/").pop() || `${crypto.randomUUID()}.jpg`;
       const destPath = `surveys/${pk_drone_survey}/${fileName}`;
 
-      // download from temp-images
       const dl = await sb.storage.from("temp-images").download(srcPath);
       if ((dl as any).error || !dl.data) {
         results.push({ src: srcPath, ok: false, msg: (dl as any).error?.message || "download failed" });
         continue;
       }
 
-      // upload to drone-photo
       const contentType = dl.data.type || "application/octet-stream";
-      const up = await sb.storage.from("drone-photo").upload(destPath, dl.data, { contentType, upsert: true });
+      const up = await sb.storage.from("drone-photo").upload(destPath, dl.data, {
+        contentType,
+        upsert: true,
+      });
+
       if (up.error) {
         results.push({ src: srcPath, ok: false, msg: up.error.message });
         continue;
       }
 
-      // remove temp (best-effort)
       await sb.storage.from("temp-images").remove([srcPath]).catch(() => {});
-
       results.push({ src: srcPath, dest: destPath, ok: true });
 
       livePhotos.push({
@@ -104,46 +114,57 @@ serve(async (req) => {
         drone_photo_lat: typeof p.lat === "number" ? p.lat : null,
         drone_photo_lon: typeof p.lon === "number" ? p.lon : null,
         drone_photo_timestamp: composeTimestamp(p.taken_date, p.taken_time),
-        total_mantas: Number.isFinite(p.total_mantas) ? p.total_mantas : null,
+        total_mantas: Number.isFinite(p.total_mantas) ? Number(p.total_mantas) : null,
         author: draft?.email ?? null,
         drone_pilot: draft?.pilot ?? null,
         island: draft?.island ?? null,
       });
     }
 
-    // choose survey-level seed from the first photo with GPS
-    const seed = livePhotos.find(ph => ph.drone_photo_lat != null && ph.drone_photo_lon != null) || null;
+    const seed = livePhotos.find((ph) => ph.drone_photo_lat != null && ph.drone_photo_lon != null) || null;
 
-    // 3) Insert survey
+    const surveyTotal =
+      Number.isFinite(draft?.total_mantas_observed) ? Number(draft.total_mantas_observed) : null;
+
     const surveyRow: any = {
       pk_drone_survey,
-      survey_date: draft?.date ?? new Date().toISOString().slice(0,10),
+      survey_date: draft?.date ?? new Date().toISOString().slice(0, 10),
+      author: draft?.email ?? null,
       drone_pilot: draft?.pilot ?? null,
+      min_mantas_observed: surveyTotal,
+      total_mantas: surveyTotal,
       island: draft?.island ?? null,
       location: draft?.location ?? null,
       notes: draft?.notes ?? null,
+      created_at: new Date().toISOString(),
+      created_by: draft?.email ?? null,
       drone_photo_lat: seed?.drone_photo_lat ?? null,
       drone_photo_lon: seed?.drone_photo_lon ?? null,
       drone_photo_timestamp: seed?.drone_photo_timestamp ?? null,
-      created_at: new Date().toISOString(),
-      created_by: draft?.email ?? null,
     };
 
-    const insSurvey = await sb.from("drone_surveys").insert(surveyRow).select("pk_drone_survey").single();
-    if (insSurvey.error) return json({ error: insSurvey.error.message, where: "drone_surveys" }, 400);
+    const insSurvey = await sb
+      .from("drone_surveys")
+      .insert(surveyRow)
+      .select("pk_drone_survey")
+      .single();
 
-    // 4) Insert photos
-    if (livePhotos.length) {
-      const insPhotos = await sb.from("drone_photos").insert(livePhotos).select("fk_drone_survey");
-      if (insPhotos.error) return json({ error: insPhotos.error.message, where: "drone_photos" }, 400);
+    if (insSurvey.error) {
+      return json({ error: insSurvey.error.message, where: "drone_surveys" }, 400);
     }
 
-    // 5) Delete draft rows
+    if (livePhotos.length) {
+      const insPhotos = await sb.from("drone_photos").insert(livePhotos).select("fk_drone_survey");
+      if (insPhotos.error) {
+        return json({ error: insPhotos.error.message, where: "drone_photos" }, 400);
+      }
+    }
+
     await sb.from("temp_drone_photos").delete().eq("draft_id", draft_id);
     await sb.from("temp_drone_sightings").delete().eq("id", draft_id);
 
     return json({ ok: true, pk_drone_survey, results }, 200);
-  } catch (err) {
+  } catch (err: any) {
     return json({ error: String(err?.message || err) }, 500);
   }
 });

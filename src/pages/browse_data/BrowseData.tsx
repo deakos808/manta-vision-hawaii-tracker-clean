@@ -16,9 +16,9 @@ export default function BrowseData() {
       </div>
 
       <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm">
-        <a href="/dashboard" className="text-blue-600 hover:underline">
+        <Link to="/dashboard" className="text-blue-600 hover:underline">
           &larr; Return to Dashboard
-        </a>
+        </Link>
       </div>
 
       <div className="max-w-3xl mx-auto py-12 px-4 text-center space-y-8">

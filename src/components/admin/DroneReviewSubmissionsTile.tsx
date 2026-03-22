@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function ReviewSubmissionsTile() {
+export default function DroneReviewSubmissionsTile() {
   const navigate = useNavigate();
   const [pending, setPending] = React.useState<number | null>(null);
 
@@ -13,14 +13,14 @@ export default function ReviewSubmissionsTile() {
 
     (async () => {
       const { count, error } = await supabase
-        .from("sighting_submissions")
+        .from("temp_drone_sightings")
         .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
+        .is("committed_at", null);
 
       if (!alive) return;
 
       if (error) {
-        console.debug("[ReviewTile] sighting_submissions pending error:", error.message);
+        console.debug("[DroneReviewTile] temp_drone_sightings pending error:", error.message);
         setPending(0);
         return;
       }
@@ -37,13 +37,13 @@ export default function ReviewSubmissionsTile() {
     <Card>
       <CardContent className="p-4 space-y-2">
         <h3 className="font-semibold">
-          Manage Submitted Water Sightings
+          Manage Submitted Drone Sightings
           {typeof pending === "number" ? ` (${pending})` : ""}
         </h3>
         <p className="text-sm text-muted-foreground">
-          Review and decide on submitted in-water sightings, mantas, and photos.
+          Review and decide on submitted drone surveys and photos.
         </p>
-        <Button variant="outline" onClick={() => navigate("/admin/review")}>
+        <Button variant="outline" onClick={() => navigate("/admin/drone-drafts")}>
           Review
         </Button>
       </CardContent>

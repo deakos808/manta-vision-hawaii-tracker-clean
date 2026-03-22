@@ -1,3 +1,4 @@
+import { Button as UIButton } from "@/components/ui/button";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,16 +24,6 @@ function uuid() {
   }
 }
 
-function buildTimes(stepMin = 5) {
-  const out: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += stepMin) {
-      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
-  }
-  return out;
-}
-
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371000;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -44,14 +35,20 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-const TIME_OPTIONS = buildTimes(5);
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 type PendingExif = {
   date?: string;
   time?: string;
   lat?: number;
   lon?: number;
+};
+
+type SuggestionResult = {
+  island: string | null;
+  location: string | null;
+  note: string | null;
 };
 
 export default function AddDroneSightingPage() {
@@ -61,6 +58,7 @@ export default function AddDroneSightingPage() {
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
   const [timesUnknown, setTimesUnknown] = useState<boolean>(false);
+
   const [lat, setLat] = useState<string>("");
   const [lon, setLon] = useState<string>("");
 
@@ -87,15 +85,23 @@ export default function AddDroneSightingPage() {
   const [suggestionNote, setSuggestionNote] = useState<string | null>(null);
 
   const [timesPromptOpen, setTimesPromptOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const startTimeRef = useRef<HTMLSelectElement | null>(null);
+  const startTimeRef = useRef<HTMLInputElement | null>(null);
 
-  const { islands } = useIslandsLocations("");
   const { locations } = useIslandsLocations(island);
 
   const emailValid = EMAIL_RE.test(email.trim());
   const hasPhotos = photos.length > 0;
   const allPhotoCountsFilled = photos.every((p) => p.total_mantas != null && Number.isFinite(Number(p.total_mantas)));
+  const totalMantasValid =
+    totalMantasObserved.trim().length > 0 &&
+    Number.isFinite(Number(totalMantasObserved)) &&
+    Number(totalMantasObserved) >= 0;
+
+  const startTimeValid = startTime.trim() === "" || TIME_RE.test(startTime.trim());
+  const endTimeValid = endTime.trim() === "" || TIME_RE.test(endTime.trim());
 
   useEffect(() => {
     if (noMantasSeen) {
@@ -105,47 +111,78 @@ export default function AddDroneSightingPage() {
 
   useEffect(() => {
     if (!pendingExif || typeof pendingExif.lat !== "number" || typeof pendingExif.lon !== "number") return;
-    if (!islands.length) return;
 
-    const candidates = [
-      { name: "Big Island", lat: 19.6, lon: -155.5 },
-      { name: "Maui", lat: 20.8, lon: -156.3 },
-      { name: "Oahu", lat: 21.48, lon: -157.97 },
-      { name: "Kauai", lat: 22.05, lon: -159.5 },
-      { name: "Molokai", lat: 21.13, lon: -157.03 },
-      { name: "Lanai", lat: 20.83, lon: -156.92 },
-      { name: "Niihau", lat: 21.9, lon: -160.15 },
-    ];
+    let cancelled = false;
 
-    let best: { name: string; dist: number } | null = null;
-    for (const c of candidates) {
-      const d = haversineMeters(pendingExif.lat, pendingExif.lon, c.lat, c.lon);
-      if (!best || d < best.dist) best = { name: c.name, dist: d };
-    }
+    (async () => {
+      const { data, error } = await supabase
+        .from("location_defaults")
+        .select("name,island,latitude,longitude")
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
 
-    const guessed = best?.name ?? null;
-    if (guessed && !suggestedIsland) {
-      const found = islands.find((x) => x.toLowerCase() === guessed.toLowerCase());
-      if (found) setSuggestedIsland(found);
-    }
-  }, [pendingExif, islands, suggestedIsland]);
+      if (cancelled) return;
 
-  useEffect(() => {
-    if (!pendingExif || typeof pendingExif.lat !== "number" || typeof pendingExif.lon !== "number") return;
-    if (!island || !locations.length) return;
+      if (error || !data || data.length === 0) {
+        setSuggestedIsland(null);
+        setSuggestedLocation(null);
+        setSuggestionNote(null);
+        return;
+      }
 
-    let best: { name: string; dist: number } | null = null;
-    for (const locRec of locations) {
-      if (typeof locRec.latitude !== "number" || typeof locRec.longitude !== "number") continue;
-      const d = haversineMeters(pendingExif.lat, pendingExif.lon, locRec.latitude, locRec.longitude);
-      if (!best || d < best.dist) best = { name: locRec.name, dist: d };
-    }
+      let best: { island: string; location: string; dist: number } | null = null;
 
-    if (best) {
-      setSuggestedLocation(best.name);
-      setSuggestionNote(`Suggested from photo metadata${best.dist < 5000 ? "" : " (nearest known location)"}.`);
-    }
-  }, [pendingExif, island, locations]);
+      for (const row of data as any[]) {
+        const rowLat = Number(row.latitude);
+        const rowLon = Number(row.longitude);
+        if (!Number.isFinite(rowLat) || !Number.isFinite(rowLon)) continue;
+
+        const d = haversineMeters(pendingExif.lat!, pendingExif.lon!, rowLat, rowLon);
+        if (!best || d < best.dist) {
+          best = {
+            island: String(row.island || "").trim(),
+            location: String(row.name || "").trim(),
+            dist: d,
+          };
+        }
+      }
+
+      if (!best) {
+        setSuggestedIsland(null);
+        setSuggestedLocation(null);
+        setSuggestionNote(null);
+        return;
+      }
+
+      let result: SuggestionResult = {
+        island: null,
+        location: null,
+        note: null,
+      };
+
+      if (best.dist <= 5000) {
+        result = {
+          island: best.island || null,
+          location: best.location || null,
+          note: "Suggested from photo metadata.",
+        };
+      } else if (best.dist <= 20000) {
+        result = {
+          island: best.island || null,
+          location: null,
+          note: "Suggested from photo metadata (nearest known island).",
+        };
+      }
+
+      setSuggestedIsland(result.island);
+      setSuggestedLocation(result.location);
+      setSuggestionNote(result.note);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingExif]);
 
   function applyExifMetadata() {
     if (!pendingExif) return;
@@ -154,9 +191,12 @@ export default function AddDroneSightingPage() {
     if (typeof pendingExif.lat === "number" && !lat) setLat(pendingExif.lat.toFixed(6));
     if (typeof pendingExif.lon === "number" && !lon) setLon(pendingExif.lon.toFixed(6));
 
-    if (suggestedIsland && !island) {
+    if (suggestedIsland) {
       setIsland(suggestedIsland);
-      setLocation("");
+    }
+
+    if (suggestedLocation) {
+      setLocation(suggestedLocation);
     }
 
     setConfirmExifOpen(false);
@@ -175,16 +215,14 @@ export default function AddDroneSightingPage() {
     date.trim().length > 0 &&
     island.trim().length > 0 &&
     location.trim().length > 0 &&
+    totalMantasValid &&
+    startTimeValid &&
+    endTimeValid &&
     (hasPhotos || noMantasSeen) &&
     (!hasPhotos || allPhotoCountsFilled);
 
   async function actuallySubmit() {
-    const totalMantas =
-      totalMantasObserved.trim() === ""
-        ? null
-        : Number.isFinite(Number(totalMantasObserved))
-          ? Number(totalMantasObserved)
-          : null;
+    const totalMantas = Number(totalMantasObserved);
 
     const { data: sight, error: e1 } = await supabase
       .from("temp_drone_sightings")
@@ -194,8 +232,8 @@ export default function AddDroneSightingPage() {
         phone: phone || null,
         date: date || null,
         time: null,
-        start_time: startTime || null,
-        end_time: endTime || null,
+        start_time: startTime.trim() || null,
+        end_time: endTime.trim() || null,
         times_unknown: timesUnknown,
         no_mantas_seen: noMantasSeen,
         total_mantas_observed: totalMantas,
@@ -211,7 +249,8 @@ export default function AddDroneSightingPage() {
 
     if (e1 || !sight) {
       console.error("[AddDroneSurvey] insert survey failed", e1?.message);
-      window.alert("Failed to save draft.");
+      setSuccessMessage("Failed to save draft.");
+      setSuccessOpen(true);
       return;
     }
 
@@ -235,15 +274,20 @@ export default function AddDroneSightingPage() {
       }
     }
 
-    window.alert("Drone survey submitted for admin review.");
-    navigate("/browse/drone");
+    setSuccessMessage("Drone survey submitted for admin review.");
+    setSuccessOpen(true);
   }
 
   async function handleSubmitLocal() {
     if (!canSubmit) return;
 
-    if (!timesUnknown && !startTime && !endTime) {
+    if (!timesUnknown && !startTime.trim() && !endTime.trim()) {
       setTimesPromptOpen(true);
+      return;
+    }
+
+    if (!startTimeValid || !endTimeValid) {
+      window.alert("Please enter times using hh:mm format.");
       return;
     }
 
@@ -263,6 +307,19 @@ export default function AddDroneSightingPage() {
     setPhotos((prev) =>
       prev.map((p) => p.id === id ? { ...p, total_mantas: Number.isFinite(n) ? n : null } : p)
     );
+  }
+
+  function handleNoMantasToggle(next: boolean) {
+    if (next && photos.length > 0) {
+      const ok = window.confirm("Checking 'No Mantas Seen' will remove uploaded photos. Continue?");
+      if (!ok) return;
+      setPhotos([]);
+    }
+
+    setNoMantasSeen(next);
+    if (next) {
+      setTotalMantasObserved("0");
+    }
   }
 
   function handlePhotosAdded(items: UploadedDronePhoto[], firstExif?: PendingExif | null) {
@@ -306,27 +363,21 @@ export default function AddDroneSightingPage() {
               onChange={(e) => setDate(e.target.value)}
               className="border rounded px-3 py-2"
             />
-            <select
+            <input
               ref={startTimeRef}
+              type="text"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               className="border rounded px-3 py-2"
-            >
-              <option value="">Start Time</option>
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <select
+              placeholder="hh:mm"
+            />
+            <input
+              type="text"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               className="border rounded px-3 py-2"
-            >
-              <option value="">End Time</option>
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              placeholder="hh:mm"
+            />
 
             <input
               placeholder="Drone Pilot"
@@ -409,7 +460,13 @@ export default function AddDroneSightingPage() {
               <div className="space-y-2">
                 {photos.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 border rounded p-2">
-                    <img src={p.url} className="h-14 w-14 object-cover rounded" alt={p.name} />
+          {String(p.name || "").toLowerCase().endsWith(".heic") || String(p.name || "").toLowerCase().endsWith(".heif") ? (
+                      <div className="h-14 w-14 rounded border bg-slate-100 flex items-center justify-center text-[10px] font-semibold text-slate-600">
+                        HEIC
+                      </div>
+                    ) : (
+                      <img src={p.url} className="h-14 w-14 object-cover rounded" alt={p.name} />
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm truncate">{p.name}</div>
                       <div className="text-xs text-muted-foreground">
@@ -463,7 +520,7 @@ export default function AddDroneSightingPage() {
                   id="no-mantas-seen"
                   type="checkbox"
                   checked={noMantasSeen}
-                  onChange={(e) => setNoMantasSeen(e.target.checked)}
+                  onChange={(e) => handleNoMantasToggle(e.target.checked)}
                 />
                 <label htmlFor="no-mantas-seen" className="text-sm">
                   No Mantas Seen
@@ -483,7 +540,7 @@ export default function AddDroneSightingPage() {
         </div>
 
         <div className="mx-auto mt-2 max-w-5xl px-4 text-[10px] text-muted-foreground">
-          probe:add-drone-survey v5
+          probe:add-drone-survey v6
         </div>
       </div>
 
@@ -521,6 +578,29 @@ export default function AddDroneSightingPage() {
             <Button onClick={applyExifMetadata}>
               Yes, use metadata
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={successOpen}
+        onOpenChange={(v) => {
+          setSuccessOpen(v);
+          if (!v) navigate("/admin/drone-drafts");
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Drone survey submitted</DialogTitle>
+            <DialogDescription>{successMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <UIButton onClick={() => {
+              setSuccessOpen(false);
+              navigate("/admin/drone-drafts");
+            }}>
+              OK
+            </UIButton>
           </div>
         </DialogContent>
       </Dialog>

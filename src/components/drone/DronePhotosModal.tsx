@@ -66,45 +66,78 @@ export default function DronePhotosModal({ open, onClose, draftId, onAdd }: Prop
     let firstExif: ExifSuggestion | null = null;
 
     for (const f of files) {
+      const lower = f.name.toLowerCase();
+      const typeAllowed =
+        f.type.startsWith("image/") ||
+        lower.endsWith(".heic") ||
+        lower.endsWith(".heif");
+
+      if (!typeAllowed) continue;
+
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
       const id = uuid();
       const path = `drone/${draftId}/${id}.${ext}`;
 
-      const { error } = await supabase.storage
-        .from("temp-images")
-        .upload(path, f, { upsert: false, cacheControl: "3600" });
+      try {
+        const { error } = await supabase.storage
+          .from("temp-images")
+          .upload(path, f, {
+            upsert: false,
+            cacheControl: "3600",
+            contentType: f.type || undefined,
+          });
 
-      if (error) {
-        console.warn("[DronePhotosModal] upload error", error.message, "for", path);
-        continue;
-      }
+        if (error) {
+          console.warn("[DronePhotosModal] upload error", error.message, "for", path);
+          continue;
+        }
 
-      const { data: pub } = supabase.storage.from("temp-images").getPublicUrl(path);
-      const url = pub?.publicUrl || "";
+        const { data: pub } = supabase.storage.from("temp-images").getPublicUrl(path);
+        const url = pub?.publicUrl || URL.createObjectURL(f);
 
-      const { takenAt, lat, lon } = await readBasicExif(f);
-      const item: UploadedDronePhoto = {
-        id,
-        name: f.name,
-        url,
-        path,
-        date: takenAt ? toLocalYmd(takenAt) : undefined,
-        time: takenAt ? toLocalHm(takenAt) : undefined,
-        lat,
-        lon,
-        total_mantas: null,
-      };
+        let takenAt: Date | undefined;
+        let lat: number | undefined;
+        let lon: number | undefined;
 
-      if (!firstExif && (item.date || item.time || typeof item.lat === "number" || typeof item.lon === "number")) {
-        firstExif = {
-          date: item.date,
-          time: item.time,
-          lat: item.lat,
-          lon: item.lon,
+        try {
+          const exif = await readBasicExif(f);
+          takenAt = exif?.takenAt;
+          lat = exif?.lat;
+          lon = exif?.lon;
+        } catch {
+          takenAt = undefined;
+          lat = undefined;
+          lon = undefined;
+        }
+
+        const item: UploadedDronePhoto = {
+          id,
+          name: f.name,
+          url,
+          path,
+          date: takenAt ? toLocalYmd(takenAt) : undefined,
+          time: takenAt ? toLocalHm(takenAt) : undefined,
+          lat,
+          lon,
+          total_mantas: null,
         };
-      }
 
-      added.push(item);
+        if (
+          !firstExif &&
+          (item.date || item.time || typeof item.lat === "number" || typeof item.lon === "number")
+        ) {
+          firstExif = {
+            date: item.date,
+            time: item.time,
+            lat: item.lat,
+            lon: item.lon,
+          };
+        }
+
+        added.push(item);
+      } catch (e: any) {
+        console.warn("[DronePhotosModal] upload exception", e?.message || e);
+      }
     }
 
     if (added.length) onAdd(added, firstExif);
@@ -153,7 +186,7 @@ export default function DronePhotosModal({ open, onClose, draftId, onAdd }: Prop
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             className="hidden"
             onChange={onBrowse}

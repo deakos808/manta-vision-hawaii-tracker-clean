@@ -63,6 +63,11 @@ type MantaStats = {
 
 const PAGE = 500;
 
+function getJoinedSighting(row: any) {
+  if (Array.isArray(row?.sightings)) return row.sightings[0] ?? null;
+  return row?.sightings ?? null;
+}
+
 export default function MantasPage() {
   const isAdmin = useIsAdmin();
   const showHamrFilter = isAdmin;
@@ -158,13 +163,14 @@ export default function MantasPage() {
 
     const rowName = String(r?.name ?? "").toLowerCase();
     const rowCatalogId = String(r?.fk_catalog_id ?? "");
-    const rowPopulation = r?.sightings?.population ?? null;
-    const rowIsland = r?.sightings?.island ?? null;
-    const rowLocation = r?.sightings?.sitelocation ?? null;
-    const rowPhotographer = r?.sightings?.photographer ?? r?.photographer ?? null;
+    const sight = getJoinedSighting(r);
+    const rowPopulation = sight?.population ?? null;
+    const rowIsland = sight?.island ?? null;
+    const rowLocation = sight?.sitelocation ?? null;
+    const rowPhotographer = sight?.photographer ?? r?.photographer ?? null;
     const rowGender = r?.gender ?? null;
     const rowAgeClass = r?.age_class ?? null;
-    const rowIsMprf = !!r?.is_mprf;
+    const rowIsMprf = !!(r?.is_mprf ?? sight?.is_mprf);
 
     if (mantaNeedle && !String(r?.pk_manta_id ?? "").startsWith(mantaNeedle)) return false;
     if (nameNeedle && !rowName.startsWith(nameNeedle)) return false;
@@ -213,7 +219,7 @@ export default function MantasPage() {
 
     for (const r of rows) {
       const photog = r.sightings?.photographer ?? r.photographer ?? null;
-      const isMprf = !!r.is_mprf;
+      const isMprf = !!(r.is_mprf ?? r.sightings?.is_mprf);
       if (!isAdmin && isMprf) continue;
 
       const m: MantaRow = {
@@ -343,7 +349,7 @@ export default function MantasPage() {
             "gender",
             "age_class",
             "is_mprf",
-            "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+            "sightings:fk_sighting_id ( population, island, sitelocation, photographer, is_mprf )",
           ].join(",")
         )
         .order("pk_manta_id", { ascending: false })
@@ -364,6 +370,12 @@ export default function MantasPage() {
       }
 
       const rows = (data ?? []) as any[];
+      console.log("[Mantas][debug] first page sample", {
+        count: rows.length,
+        first: rows[0] ?? null,
+        firstSightings: rows[0]?.sightings ?? null,
+        firstKeys: rows[0] ? Object.keys(rows[0]) : [],
+      });
       const enriched = await buildEnrichedRows(rows);
 
       if (!active) return;
@@ -435,7 +447,7 @@ export default function MantasPage() {
               "gender",
               "age_class",
               "is_mprf",
-              "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+              "sightings:fk_sighting_id ( population, island, sitelocation, photographer, is_mprf )",
             ].join(",")
           )
           .order("pk_manta_id", { ascending: false })
@@ -620,7 +632,7 @@ export default function MantasPage() {
                   "gender",
                   "age_class",
                   "catalog:fk_catalog_id ( name )",
-                  "sightings:fk_sighting_id ( population, island, sitelocation, photographer )",
+                  "sightings:fk_sighting_id ( population, island, sitelocation, photographer, is_mprf )",
                 ].join(",")
               )
               .order("pk_manta_id", { ascending: false })
