@@ -1,15 +1,19 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import UnifiedMantaModal, { type MantaDraft, type Uploaded } from "@/components/mantas/UnifiedMantaModal";
+import PhotoEditModal from "@/components/mantas/PhotoEditModal";
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 import { saveReviewServer } from "@/utils/reviewSave";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Trash2 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { resolvePhotoUrl } from "@/lib/photoUrl";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -36,10 +40,27 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+function mantaTempName(index: number) {
+  let n = index;
+  let name = "";
+  do {
+    name = String.fromCharCode(65 + (n % 26)) + name;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return name;
+}
+
+function mantaOrdinalLabel(index: number) {
+  const labels = ["First Manta", "Second Manta", "Third Manta", "Fourth Manta", "Fifth Manta", "Sixth Manta"];
+  return labels[index] || `Manta ${index + 1}`;
+}
+
 export default function AddSightingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { role } = useUserRole();
+  const canMeasureMantas = role === "admin";
 
   const [reviewId, setReviewId] = useState<string | null>(null);
   const isReview = !!reviewId;
@@ -61,19 +82,24 @@ export default function AddSightingPage() {
   // Mantas
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
   const totalPhotos = useMemo(() => useTotalPhotos(mantas as any), [mantas]);
+  const [selectedMantaIds, setSelectedMantaIds] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<{ mantaId: string; photo: Uploaded } | null>(null);
+  const [replacingPhoto, setReplacingPhoto] = useState<{ mantaId: string; photo: Uploaded } | null>(null);
+  const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Sighting details
   const [date, setDate] = useState<string>("");
+  const [dateUnknown, setDateUnknown] = useState(false);
   const [startTime, setStartTime] = useState<string>("");
   const [stopTime, setStopTime] = useState<string>("");
 
   // Contact
   const [photographer, setPhotographer] = useState("");
+  const [photographerUnknown, setPhotographerUnknown] = useState(false);
   const [email, setEmail] = useState("");
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
-  const dateValid  = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState<string>("");
 
@@ -111,6 +137,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [locList, setLocList] = useState<LocRec[]>([]);
   const [locationId, setLocationId] = useState<string>("");
   const [locationName, setLocationName] = useState<string>("");
+  const [locationUnknown, setLocationUnknown] = useState(false);
   const [addingLoc, setAddingLoc] = useState(false);
   const [newLoc, setNewLoc] = useState("");
 
@@ -123,10 +150,16 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [morePhotosManta, setMorePhotosManta] = useState<MantaDraft | null>(null);
+  const [mantaAddedMessage, setMantaAddedMessage] = useState("");
 
   const [mapOpen, setMapOpen] = useState(false);
   const formSightingId = useMemo(()=>uuid(),[]);
   const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
+  const dateValid  = dateUnknown || /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
+  const photographerValid = photographerUnknown || photographer.trim().length > 0;
+  const locationValid = locationUnknown || !!String(locationId || locationName).trim();
+  const canSubmit = dateValid && photographerValid && emailValid && locationValid;
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
@@ -176,6 +209,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           setMantas(p.mantas.map((m:any) => ({
             id: m.id || uuid(),
             name: m.name || "",
+            species: m.species === "birostris" ? "birostris" : "alfredi",
             gender: m.gender ?? null,
             ageClass: m.ageClass ?? null,
             size: m.size ?? null,
@@ -341,15 +375,22 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   function applyExifMetadata(meta: ExifSuggestion) {
     console.log("[AddSighting][EXIF] applyExifMetadata", meta);
 
-    if (meta.date && !String(date || "").trim()) setDate(meta.date);
+    if (meta.date && (!String(date || "").trim() || dateUnknown)) {
+      setDate(meta.date);
+      setDateUnknown(false);
+    }
     if (meta.time && !String(startTime || "").trim()) setStartTime(meta.time);
-    if (typeof meta.lat === "number" && !String(lat || "").trim()) setLat(String(Number(meta.lat).toFixed(5)));
-    if (typeof meta.lon === "number" && !String(lng || "").trim()) setLng(String(Number(meta.lon).toFixed(5)));
+    if (typeof meta.lat === "number" && (!String(lat || "").trim() || locationUnknown)) setLat(String(Number(meta.lat).toFixed(5)));
+    if (typeof meta.lon === "number" && (!String(lng || "").trim() || locationUnknown)) setLng(String(Number(meta.lon).toFixed(5)));
 
-    if (meta.suggestedIsland && !String(island || "").trim()) setIsland(meta.suggestedIsland);
-    if (meta.suggestedLocation && !String(locationId || "").trim()) {
+    if (meta.suggestedIsland && (!String(island || "").trim() || locationUnknown)) {
+      setIsland(meta.suggestedIsland);
+      setLocationUnknown(false);
+    }
+    if (meta.suggestedLocation && (!String(locationId || "").trim() || locationUnknown)) {
       setLocationId(meta.suggestedLocation);
       setLocationName(meta.suggestedLocation);
+      setLocationUnknown(false);
     }
 
     setConfirmExifOpen(false);
@@ -375,20 +416,34 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // Submit (user mode)
   const handleSubmit = async () => {
-    if (!dateValid) return;
-    if (!emailValid) return;
+    if (!canSubmit) return;
+
+    const selectedLocation =
+      (locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId)) ?? null;
+
+    const sitelocationValue =
+      String(locationName || selectedLocation?.name || locationId || "").trim() || null;
 
     const payload = {
-      date, startTime, stopTime, photographer, email, phone,
-      island, locationId, locationName,
-      latitude: lat, longitude: lng,
+      date: dateUnknown ? null : date,
+      startTime,
+      stopTime,
+      photographer: photographerUnknown ? "Unknown" : photographer,
+      email,
+      phone,
+      island,
+      sitelocation: locationUnknown ? "Unknown" : sitelocationValue,
+      locationId,
+      locationName: locationUnknown ? "Unknown" : sitelocationValue,
+      latitude: lat || null,
+      longitude: lng || null,
       mantas
     };
 
     try {
       await supabase.from("sighting_submissions").insert({
         email: email || null,
-        sighting_date: date || null,
+        sighting_date: dateUnknown ? null : date || null,
         manta_count: mantas.length,
         photo_count: totalPhotos,
         payload,
@@ -405,47 +460,18 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     console.log("[AddSighting][onAddSave] received manta", m);
 
     setAddOpen(false);
+    const incomingId = (m as any).id ? String((m as any).id) : "";
+    const savedManta = { ...(m as any), id: incomingId || uuid() } as MantaDraft;
     setMantas(prev => {
-      const incomingId = (m as any).id ? String((m as any).id) : "";
-      const exists = incomingId && prev.some(p => String(p.id) === incomingId);
-      const id = exists || !incomingId ? uuid() : incomingId;
-      const next = [...prev, { ...(m as any), id }];
+      const exists = savedManta.id && prev.some(p => String(p.id) === String(savedManta.id));
+      const next = exists
+        ? prev.map(p => String(p.id) === String(savedManta.id) ? savedManta : p)
+        : [...prev, savedManta];
       console.log("[AddSighting][onAddSave] next mantas", next);
       return next;
     });
+    setMorePhotosManta(savedManta);
 
-    const surveyHasDate = !!String(date || "").trim();
-    const surveyHasLocation = !!String(locationId || locationName || "").trim();
-    const exif = (m as any)?.firstExifMeta ?? null;
-
-    console.log("[AddSighting][onAddSave] survey state", {
-      surveyHasDate,
-      surveyHasLocation,
-      date,
-      locationId,
-      locationName,
-      exif,
-    });
-
-    if ((!surveyHasDate || !surveyHasLocation) && exif) {
-      console.log("[AddSighting][onAddSave] calling prepareExifSuggestion", exif);
-
-      const suggestion = await prepareExifSuggestion(exif);
-
-      console.log("[AddSighting][onAddSave] prepareExifSuggestion result", suggestion);
-
-      if (suggestion) {
-        setPendingExif(suggestion.meta);
-        setSuggestedExifIsland(suggestion.bestIsland ?? null);
-        setSuggestedExifLocation(suggestion.bestLocation ?? null);
-        setConfirmExifOpen(true);
-      }
-    } else {
-      console.log("[AddSighting][onAddSave] not prompting", {
-        missingSurveyField: !surveyHasDate || !surveyHasLocation,
-        hasExif: !!exif,
-      });
-    }
   };
   const onEditSave = (m:MantaDraft) => {
     setMantas(prev=>{
@@ -487,17 +513,73 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     if (!reviewId) return;
     if (!window.confirm("Commit this submission to final tables?")) return;
     try {
-      const { error } = await supabase.rpc("commit_sighting_submission", { sub_id: reviewId });
-      if (error) { throw error; }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? null;
+
+      const envEdgeBase = (import.meta as any)?.env?.VITE_SUPABASE_EDGE_URL;
+      const envSupabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL;
+      const clientSupabaseUrl =
+        (supabase as any)?.supabaseUrl ||
+        (supabase as any)?.url ||
+        null;
+
+      const resolvedSupabaseUrl = envSupabaseUrl || clientSupabaseUrl;
+      const edgeBase =
+        envEdgeBase ||
+        (resolvedSupabaseUrl ? `${String(resolvedSupabaseUrl).replace(/\/$/, "")}/functions/v1` : null);
+
+      const anonKey =
+        (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY ||
+        (supabase as any)?.supabaseKey ||
+        null;
+
+      if (!edgeBase) {
+        throw new Error("Missing Supabase Edge Function base URL");
+      }
+
+      const res = await fetch(`${edgeBase}/commit-sighting-submission`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(anonKey ? { apikey: anonKey } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ sub_id: reviewId }),
+      });
+
+      let body: any = null;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+
+      console.log("[CommitReview] raw function response", {
+        status: res.status,
+        ok: res.ok,
+        body,
+      });
+
+      if (!res.ok) {
+        throw new Error(
+          body?.error ||
+          body?.message ||
+          `Commit function failed with status ${res.status}`
+        );
+      }
+
+      if (body?.error) {
+        throw new Error(body.error);
+      }
+
       window.alert("Committed.");
-    } catch (e) {
-      console.warn("[CommitReview] RPC not available or failed; falling back to status update.", (e && (e.message||e)) || e);
-      await supabase.from("sighting_submissions")
-        .update({ status: "committed", committed_at: new Date().toISOString() })
-        .eq("id", reviewId);
-      window.alert("Marked committed.");
+      navigate(returnPath);
+    } catch (e:any) {
+      console.error("[CommitReview] failed", e);
+      window.alert(
+        "Commit failed. No final records were written, and this submission was not marked committed. A real server-side commit function must be installed before this action can succeed."
+      );
     }
-    navigate(returnPath);
   }
   async function handleRejectReview() {
     if (!reviewId) return;
@@ -511,13 +593,133 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // MantasList hooks
   const onEdit = (m: MantaDraft) => setEditingManta(m);
-  const onRemove = (id: string) => setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
+  const onRemove = (id: string) => {
+    setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
+    setSelectedMantaIds(prev => prev.filter(selectedId => selectedId !== id));
+  };
+  const toggleMantaSelected = (id: string, checked: boolean) => {
+    setSelectedMantaIds(prev => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter(selectedId => selectedId !== id);
+    });
+  };
+  const toggleAllMantasSelected = (checked: boolean) => {
+    setSelectedMantaIds(checked ? mantas.map(m => String(m.id)) : []);
+  };
+  const deleteSelectedMantas = () => {
+    if (selectedMantaIds.length === 0) return;
+    const selected = new Set(selectedMantaIds);
+    setMantas(prev => prev.filter(m => !selected.has(String(m.id))));
+    setSelectedMantaIds([]);
+  };
   const openMatch = (m: MantaDraft, ventralUrl?: string) => {
     setPageMatchMeta({ name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
     setPageMatchUrl(ventralUrl || "");
     setPageMatchFor(String(m.id));
     setPageMatchOpen(true);
   };
+
+  async function saveTableEditedPhoto(target: { mantaId: string; photo: Uploaded }, blob: Blob) {
+    const photo = target.photo;
+    const extless = photo.path.replace(/\.[^.]+$/, "");
+    const editedPath = `${extless}-edited-${Date.now()}.jpg`;
+
+    const { error } = await supabase.storage.from("temp-images").upload(editedPath, blob, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: "image/jpeg",
+    });
+
+    if (error) {
+      throw new Error(error.message || "Could not upload edited photo.");
+    }
+
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(editedPath);
+    const previewUrl = URL.createObjectURL(blob);
+
+    setMantas((prev) =>
+      prev.map((m) => {
+        if (String(m.id) !== target.mantaId) return m;
+        return {
+          ...m,
+          photos: m.photos.map((p) => {
+            if (p.id !== photo.id) return p;
+            if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
+              try { URL.revokeObjectURL(p.previewUrl); } catch {}
+            }
+            return {
+              ...p,
+              name: `${p.name.replace(/\.[^.]+$/, "")}-edited.jpg`,
+              path: editedPath,
+              url: data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : previewUrl,
+              previewUrl,
+              isHeicLike: false,
+              edited: true,
+            };
+          }),
+        };
+      })
+    );
+  }
+
+  async function replaceTablePhoto(target: { mantaId: string; photo: Uploaded }, file: File) {
+    const lower = file.name.toLowerCase();
+    const isHeicLike = file.type === "image/heic" || file.type === "image/heif" || lower.endsWith(".heic") || lower.endsWith(".heif");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const replacementPath = `${formSightingId}/${target.mantaId}/${target.photo.id}-replacement-${Date.now()}.${ext}`;
+    const previewUrl = URL.createObjectURL(file);
+
+    const { error } = await supabase.storage.from("temp-images").upload(replacementPath, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type || undefined,
+    });
+
+    if (error) {
+      try { URL.revokeObjectURL(previewUrl); } catch {}
+      throw new Error(error.message || "Could not replace photo.");
+    }
+
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(replacementPath);
+
+    setMantas((prev) =>
+      prev.map((m) => {
+        if (String(m.id) !== target.mantaId) return m;
+        return {
+          ...m,
+          photos: m.photos.map((p) => {
+            if (p.id !== target.photo.id) return p;
+            if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
+              try { URL.revokeObjectURL(p.previewUrl); } catch {}
+            }
+            return {
+              ...p,
+              name: file.name,
+              path: replacementPath,
+              url: data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : previewUrl,
+              previewUrl,
+              isHeicLike,
+              edited: false,
+              measure: undefined,
+            };
+          }),
+        };
+      })
+    );
+  }
+
+  async function onReplaceTablePhotoBrowse(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    e.currentTarget.value = "";
+    if (!file || !replacingPhoto) return;
+    try {
+      await replaceTablePhoto(replacingPhoto, file);
+    } catch (err: any) {
+      window.alert(err?.message || "Could not replace photo.");
+    } finally {
+      setReplacingPhoto(null);
+    }
+  }
 
   // UI
   return (
@@ -534,6 +736,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   open={addOpen}
   onClose={()=>setAddOpen(false)}
   sightingId={formSightingId}
+  defaultName={mantaTempName(mantas.length)}
+  ordinalLabel={mantaOrdinalLabel(mantas.length)}
+  canMeasure={canMeasureMantas}
+  needsExifPrompt={!dateValid || !String(startTime || "").trim() || !locationValid}
+  onApplyExifMetadata={applyExifMetadata}
   onSave={onAddSave}
 />
 <UnifiedMantaModal
@@ -541,6 +748,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   onClose={()=>setEditingManta(null)}
   sightingId={formSightingId}
   existingManta={editingManta || undefined}
+  ordinalLabel={editingManta ? `${editingManta.name || "Manta"} Manta` : "Manta"}
+  canMeasure={canMeasureMantas}
+  needsExifPrompt={!dateValid || !String(startTime || "").trim() || !locationValid}
+  onApplyExifMetadata={applyExifMetadata}
   onSave={onEditSave}
 />
 
@@ -554,22 +765,29 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 )}
 
       {/* Hero */}
-      <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-8 text-white text-center">
-        <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
+      <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-5 text-white text-center">
+        <h1 className="text-2xl font-semibold">Add Manta Sighting</h1>
         <div className="text-xs opacity-90 mt-1">sighting: {formSightingId.slice(0,8)}</div>
       </div>
 
       {/* Sighting Details */}
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <Card>
-          <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-3">
-            <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="border rounded px-3 py-2" />
-            <select value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="border rounded px-3 py-2">
+      <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
+        <Card className="rounded-md">
+          <CardContent className="grid items-center gap-3 p-3 md:grid-cols-[150px_1fr_1fr_1fr]">
+            <h2 className="text-base font-semibold text-slate-900">Sighting Details</h2>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Date <span className="text-red-600">*</span></label>
+              <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} disabled={dateUnknown} className="h-9 w-full border rounded px-3 text-sm disabled:bg-slate-100" />
+              <label className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                <input type="checkbox" checked={dateUnknown} onChange={(e)=>setDateUnknown(e.target.checked)} />
+                Unknown
+              </label>
+            </div>
+            <select value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="h-9 border rounded px-3 text-sm">
               <option value="">Start Time</option>
               {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
             </select>
-            <select value={stopTime} onChange={(e)=>setStopTime(e.target.value)} className="border rounded px-3 py-2">
+            <select value={stopTime} onChange={(e)=>setStopTime(e.target.value)} className="h-9 border rounded px-3 text-sm">
               <option value="">Stop Time</option>
               {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
             </select>
@@ -577,131 +795,224 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         </Card>
 
         {/* Photographer & Contact */}
-        <Card>
-          <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-3">
-            <input placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className="border rounded px-3 py-2" />
-            <input id="contact-email-field" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className={"border rounded px-3 py-2 " + (email && !emailValid ? "border-red-500" : "")} />
-            <input placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} className="border rounded px-3 py-2" />
-            {!emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
+        <Card className="rounded-md">
+          <CardContent className="grid items-center gap-3 p-3 md:grid-cols-[150px_1fr_1fr_1fr]">
+            <h2 className="text-base font-semibold text-slate-900">Photographer & Contact</h2>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Photographer <span className="text-red-600">*</span></label>
+              <input placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} disabled={photographerUnknown} className="h-9 w-full border rounded px-3 text-sm disabled:bg-slate-100" />
+              <label className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                <input type="checkbox" checked={photographerUnknown} onChange={(e)=>setPhotographerUnknown(e.target.checked)} />
+                Unknown
+              </label>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Email <span className="text-red-600">*</span></label>
+              <input id="contact-email-field" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className={"h-9 w-full border rounded px-3 text-sm " + (email && !emailValid ? "border-red-500" : "")} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Phone</label>
+              <input placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} className="h-9 w-full border rounded px-3 text-sm" />
+            </div>
           </CardContent>
         </Card>
 
         {/* Location */}
-        <Card>
-          <CardHeader><CardTitle>Location</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-  <div className="grid md:grid-cols-2 gap-3">
-    {/* Island select */}
-    <select value={island} onChange={(e)=>setIsland(e.target.value)} className="border rounded px-3 py-2">
-  <option value="">{islandsLoading ? 'Loading islands…' : 'Select island'}</option>
-  {islands.map(isl => (<option key={isl} value={isl}>{isl}</option>))}
-</select>
+        <Card className="rounded-md">
+          <CardContent className="space-y-2 p-3">
+            <div className="grid items-start gap-3 md:grid-cols-[150px_1fr_1fr_1fr_1fr_auto]">
+              <h2 className="text-base font-semibold text-slate-900">Location <span className="text-red-600">*</span></h2>
+              <div>
+                <select value={island} onChange={(e)=>setIsland(e.target.value)} disabled={locationUnknown} className="h-9 w-full border rounded px-3 text-sm disabled:bg-slate-100">
+                  <option value="">{islandsLoading ? 'Loading islands...' : 'Select island'}</option>
+                  {islands.map(isl => (<option key={isl} value={isl}>{isl}</option>))}
+                </select>
+                <label className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                  <input type="checkbox" checked={locationUnknown} onChange={(e)=>setLocationUnknown(e.target.checked)} />
+                  Unknown
+                </label>
+              </div>
+              <div>
+                <select
+                  value={locationId}
+                  onChange={(e)=>setLocationId(e.target.value)}
+                  disabled={locationUnknown}
+                  className="h-9 w-full border rounded px-3 text-sm disabled:bg-slate-100"
+                >
+                  <option value="">{island ? 'Select location' : 'Select island first'}</option>
+                  {locList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+                {!locationUnknown && !addingLoc ? (
+                  <button
+                    type="button"
+                    data-clean-id="add-location-link"
+                    className="mt-1 text-[11px] text-sky-700 underline"
+                    onClick={()=>setAddingLoc(true)}
+                  >
+                    + Add new location
+                  </button>
+                ) : !locationUnknown ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-[11px] text-slate-600 underline"
+                    onClick={()=>setAddingLoc(false)}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+              <input
+                placeholder="Latitude"
+                value={lat}
+                onChange={(e)=>setLat(e.target.value)}
+                disabled={locationUnknown}
+                className="h-9 border rounded px-3 text-sm disabled:bg-slate-100"
+              />
+              <input
+                placeholder="Longitude"
+                value={lng}
+                onChange={(e)=>setLng(e.target.value)}
+                disabled={locationUnknown}
+                className="h-9 border rounded px-3 text-sm disabled:bg-slate-100"
+              />
+              <Button type="button" variant="outline" className="h-9 whitespace-nowrap" onClick={()=>setMapOpen(true)} disabled={locationUnknown}>
+                Use Map
+              </Button>
+            </div>
 
-    {/* Location select + small link underneath */}
-    <div className="space-y-1">
-  <select
-    value={locationId}
-    onChange={(e)=>setLocationId(e.target.value)}
-    className="border rounded px-3 py-2"
-  >
-    <option value="">{island ? 'Select location' : 'Select island first'}</option>
-    {locList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-  </select>
-  {!addingLoc ? (
-    <button
-      type="button"
-      data-clean-id="add-location-link"
-      className="block mt-1 text-sky-700 text-xs underline"
-      onClick={()=>setAddingLoc(true)}
-    >
-      + Add new location
-    </button>
-  ) : (
-    <button
-      type="button"
-      className="block mt-1 text-slate-600 text-xs underline"
-      onClick={()=>setAddingLoc(false)}
-    >
-      Cancel
-    </button>
-  )}
-</div>
-  </div>
+            {addingLoc && !locationUnknown && (
+              <div className="grid gap-2 md:grid-cols-[150px_1fr_auto]">
+                <div />
+                <input
+                  placeholder="New location name"
+                  value={newLoc}
+                  onChange={(e)=>setNewLoc(e.target.value)}
+                  className="h-9 border rounded px-3 text-sm"
+                />
+                <button
+                  type="button"
+                  className="h-9 px-3 border rounded text-sm"
+                  onClick={async () => {
+                    const name = newLoc.trim();
+                    if (!name || !island) return;
 
-  {addingLoc && (
-    <div className="grid md:grid-cols-3 gap-2">
-      <input
-        placeholder="New location name"
-        value={newLoc}
-        onChange={(e)=>setNewLoc(e.target.value)}
-        className="border rounded px-3 py-2 md:col-span-2"
-      />
-      <button
-        type="button"
-        className="px-2 py-1 border rounded"
-        onClick={()=>{
-          const name = newLoc.trim();
-          if (!name) return;
-          setLocationId(name);
-          setLocationName(name);
-          setAddingLoc(false);
-        }}
-      >
-        Use this name
-      </button>
-    </div>
-  )}
+                    try {
+                      const latitudeValue = lat ? Number(lat) : null;
+                      const longitudeValue = lng ? Number(lng) : null;
 
-  <div className="grid md:grid-cols-2 gap-3">
-    <input
-      placeholder="Latitude"
-      value={lat}
-      onChange={(e)=>setLat(e.target.value)}
-      className="border rounded px-3 py-2"
-    />
-    <input
-      placeholder="Longitude"
-      value={lng}
-      onChange={(e)=>setLng(e.target.value)}
-      className="border rounded px-3 py-2"
-    />
-  </div>
+                      const { error } = await supabase
+                        .from("location_overrides")
+                        .insert({
+                          island,
+                          region: null,
+                          sitelocation: name,
+                          lat_found: Number.isFinite(latitudeValue) ? latitudeValue : null,
+                          lon_found: Number.isFinite(longitudeValue) ? longitudeValue : null,
+                          lat_offshore: null,
+                          lon_offshore: null,
+                          geocoder_note: "user_added_from_add_sighting",
+                        });
 
-  <div className="text-xs text-slate-500">coords source: {coordSource || "—"}</div>
-  <button
-    type="button"
-    className="px-3 py-2 border rounded"
-    onClick={()=>setMapOpen(true)}
-  >
-    Use Map for Location
-  </button>
-</CardContent>
+                      if (error) {
+                        const duplicate =
+                          error.code === "23505" ||
+                          String(error.message || "").toLowerCase().includes("duplicate");
+
+                        if (!duplicate) {
+                          console.error("[AddLocation] insert error", error);
+                          window.alert("Failed to save location");
+                          return;
+                        }
+                      }
+
+                      setLocList((prev) => {
+                        const exists = prev.some(
+                          (loc) =>
+                            String(loc.name).trim().toLowerCase() === name.toLowerCase() &&
+                            String(loc.island || "").trim().toLowerCase() === island.toLowerCase()
+                        );
+
+                        if (exists) return prev;
+
+                        return [
+                          {
+                            id: name,
+                            name,
+                            island,
+                            latitude: Number.isFinite(latitudeValue) ? latitudeValue : null,
+                            longitude: Number.isFinite(longitudeValue) ? longitudeValue : null,
+                          },
+                          ...prev,
+                        ];
+                      });
+
+                      setLocationId(name);
+                      setLocationName(name);
+                      setAddingLoc(false);
+                      setNewLoc("");
+                    } catch (e) {
+                      console.error("[AddLocation] exception", e);
+                      window.alert("Unexpected error saving location");
+                    }
+                  }}
+                >
+                  Use Name
+                </button>
+              </div>
+            )}
+
+          </CardContent>
         </Card>
 
         {/* Notes (placeholder) */}
-        <Card>
-          <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
-          <CardContent>
-            <textarea className="w-full min-h-[120px] border rounded px-3 py-2" placeholder="Enter notes about this sighting..."  value={notes} onChange={(e)=>setNotes(e.target.value)} />
+        <Card className="rounded-md">
+          <CardContent className="grid gap-3 p-3 md:grid-cols-[150px_1fr]">
+            <h2 className="text-base font-semibold text-slate-900">Notes</h2>
+            <textarea className="min-h-[58px] w-full border rounded px-3 py-2 text-sm" placeholder="Enter notes about this sighting..."  value={notes} onChange={(e)=>setNotes(e.target.value)} />
           </CardContent>
         </Card>
 
         {/* Mantas Added */}
-        <Card>
-          <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
-          <CardContent>
+        <Card className="rounded-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+            <CardTitle className="text-base">Mantas Added</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button type="button" data-clean-id="add-mantas" size="sm" onClick={()=>setAddOpen(true)}>
+                Add New Manta
+              </Button>
+              <button
+                type="button"
+                aria-label="Delete selected mantas"
+                className="inline-flex h-9 w-9 items-center justify-center rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={deleteSelectedMantas}
+                disabled={selectedMantaIds.length === 0}
+                title="Delete selected mantas"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
             <MantasList
               mantas={mantas}
               setMantas={setMantas}
               onEdit={onEdit}
+              onEditPhoto={(m, photo) => setEditingPhoto({ mantaId: String(m.id), photo })}
+              onReplacePhoto={(m, photo) => {
+                const ok = window.confirm(
+                  "Replace this photo? Any edits and size measurements for this photo will be lost."
+                );
+                if (!ok) return;
+                setReplacingPhoto({ mantaId: String(m.id), photo });
+                replacePhotoInputRef.current?.click();
+              }}
               onRemove={onRemove}
               openMatch={openMatch}
               totalPhotosAll={totalPhotosAll}
+              selectedIds={selectedMantaIds}
+              onToggleSelect={toggleMantaSelected}
+              onToggleAll={toggleAllMantasSelected}
             />
-            <div className="mt-3">
-              <Button type="button" data-clean-id="add-mantas" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -717,9 +1028,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           ) : (
             <>
               <Button variant="outline" onClick={() => navigate("/dashboard")}>Cancel</Button>
-              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
+              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!canSubmit}>
                 Submit Sighting
               </Button>
+              <div className="flex items-center text-xs text-slate-500">
+                <span className="text-red-600">*</span>
+                <span className="ml-1">Required fields</span>
+              </div>
             </>
           )}
         </div>
@@ -756,6 +1071,23 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         }}
       />
 
+      {editingPhoto ? (
+        <PhotoEditModal
+          open={true}
+          src={resolvePhotoUrl(editingPhoto.photo)}
+          fileName={editingPhoto.photo.name}
+          onClose={() => setEditingPhoto(null)}
+          onSave={(blob) => saveTableEditedPhoto(editingPhoto, blob)}
+        />
+      ) : null}
+      <input
+        ref={replacePhotoInputRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        className="hidden"
+        onChange={onReplaceTablePhotoBrowse}
+      />
+
       {/* Map modal */}
       {mapOpen && (
         <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
@@ -782,17 +1114,21 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           <DialogHeader>
             <DialogTitle>Use photo metadata?</DialogTitle>
             <DialogDescription>
-              This photo includes metadata that may help populate sighting date and location.
+              Please verify that the photo metadata looks correct before applying it to this sighting.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2 text-sm">
             {exifSuggestion?.date ? <div>Date: {exifSuggestion.date}</div> : null}
+            {exifSuggestion?.time ? <div>Start time: {exifSuggestion.time}</div> : null}
             {(typeof exifSuggestion?.lat === "number" && typeof exifSuggestion?.lon === "number") ? (
               <div>Coordinates: {exifSuggestion.lat}, {exifSuggestion.lon}</div>
             ) : null}
             {exifSuggestion?.suggestedIsland ? <div>Suggested island: {exifSuggestion.suggestedIsland}</div> : null}
             {exifSuggestion?.suggestedLocation ? <div>Suggested location: {exifSuggestion.suggestedLocation}</div> : null}
+            {!exifSuggestion?.date && !exifSuggestion?.time && typeof exifSuggestion?.lat !== "number" && (
+              <div className="text-slate-500">No usable date, time, or location metadata was found.</div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">
@@ -842,6 +1178,64 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             >
               OK
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!morePhotosManta}
+        onOpenChange={(open) => {
+          if (!open) setMorePhotosManta(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>More photos for this manta?</DialogTitle>
+            <DialogDescription>
+              Do you have any more photos of Manta {morePhotosManta?.name || "this manta"} to add?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                const mantaName = morePhotosManta?.name || "this manta";
+                setMorePhotosManta(null);
+                setMantaAddedMessage(
+                  `Manta ${mantaName} has been added. If you have additional mantas in your encounter, add them now.`
+                );
+              }}
+            >
+              No
+            </Button>
+            <Button
+              onClick={() => {
+                if (!morePhotosManta) return;
+                setEditingManta(morePhotosManta);
+                setMorePhotosManta(null);
+              }}
+            >
+              Yes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!mantaAddedMessage}
+        onOpenChange={(open) => {
+          if (!open) setMantaAddedMessage("");
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manta added</DialogTitle>
+            <DialogDescription>{mantaAddedMessage}</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end">
+            <Button onClick={() => setMantaAddedMessage("")}>OK</Button>
           </div>
         </DialogContent>
       </Dialog>

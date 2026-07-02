@@ -217,11 +217,11 @@ export default function MantaFilterBox({
 
       <div className="mt-3 flex flex-wrap gap-3 w-full">
         <div className="w-[220px]">
-          <div className="text-xs text-gray-600 mb-1">Manta ID (starts with)</div>
+          <div className="text-xs text-gray-600 mb-1">Manta ID (exact)</div>
           <input
             value={mantaIdPrefix}
             onChange={(e) => setMantaIdPrefix(e.target.value)}
-            placeholder="e.g., 73..."
+            placeholder="e.g., 3100"
             className="border rounded-lg px-3 py-2 w-full bg-white text-sm"
           />
         </div>

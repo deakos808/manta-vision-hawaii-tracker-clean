@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
+import PhotoEditModal from "./PhotoEditModal";
 import { readBasicExif } from "@/lib/exif";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { resolvePhotoUrl } from "@/lib/photoUrl";
 
 type View = "ventral" | "dorsal" | "other";
+type MantaSpecies = "alfredi" | "birostris";
 
 export type Uploaded = {
   id: string;
@@ -18,11 +20,13 @@ export type Uploaded = {
   measure?: { dlCm: number; dwCm: number; discPx: number; scalePx: number; scaleCm: number };
   previewUrl?: string | null;
   isHeicLike?: boolean;
+  edited?: boolean;
 };
 
 export type MantaDraft = {
   id: string;
   name: string;
+  species?: MantaSpecies | null;
   gender?: string | null;
   ageClass?: string | null;
   size?: string | null;
@@ -41,9 +45,11 @@ type Props = {
   sightingId: string;
   onSave: (m: MantaDraft) => void;
   existingManta?: MantaDraft | null;
+  defaultName?: string;
+  ordinalLabel?: string;
+  canMeasure?: boolean;
   onApplyExifMetadata?: (meta: { date?: string; time?: string; lat?: number; lon?: number }) => void;
   needsExifPrompt?: boolean;
-  onApplyExifMetadata?: (meta: { date?: string; time?: string; lat?: number; lon?: number }) => void;
 };
 
 function uuid() {
@@ -78,10 +84,14 @@ export default function UnifiedMantaModal({
   sightingId,
   onSave,
   existingManta,
+  defaultName = "",
+  ordinalLabel = "Manta",
+  canMeasure = false,
   onApplyExifMetadata,
   needsExifPrompt = false,
 }: Props) {
   const [name, setName] = useState("");
+  const [species, setSpecies] = useState<MantaSpecies>("alfredi");
   const [gender, setGender] = useState<string | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
@@ -90,20 +100,25 @@ export default function UnifiedMantaModal({
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
   const [measureOpen, setMeasureOpen] = useState<Uploaded | null>(null);
+  const [editOpen, setEditOpen] = useState<Uploaded | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<Uploaded | null>(null);
   const [matchOpen, setMatchOpen] = useState<Uploaded | null>(null);
   const [potentialCatalogId, setPotentialCatalogId] = useState<number | null>(null);
   const [potentialNoMatch, setPotentialNoMatch] = useState<boolean>(false);
 
   const [localExifPromptOpen, setLocalExifPromptOpen] = useState(false);
   const [localExifMeta, setLocalExifMeta] = useState<{ date?: string; time?: string; lat?: number; lon?: number } | null>(null);
+  const [localExifDecision, setLocalExifDecision] = useState<"use" | "manual" | null>(null);
   const [firstExifMeta, setFirstExifMeta] = useState<{ date?: string; time?: string; lat?: number; lon?: number } | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
 
   useEffect(() => {
     if (!open) return;
-    setName((existingManta?.name || "").trim());
+    setName((existingManta?.name || defaultName || "").trim());
+    setSpecies((existingManta?.species === "birostris" ? "birostris" : "alfredi"));
     setGender(existingManta?.gender ?? null);
     setAgeClass(existingManta?.ageClass ?? null);
     setSize(existingManta?.size ?? null);
@@ -112,7 +127,10 @@ export default function UnifiedMantaModal({
     setPotentialNoMatch(existingManta?.potentialNoMatch ?? false);
     setNoPhotos(existingManta?.noPhotos ?? false);
     setFirstExifMeta(existingManta?.firstExifMeta ?? null);
-  }, [open, existingManta]);
+    setLocalExifMeta(null);
+    setLocalExifPromptOpen(false);
+    setLocalExifDecision(null);
+  }, [open, existingManta, defaultName]);
 
   useEffect(() => {
     return () => {
@@ -135,6 +153,19 @@ export default function UnifiedMantaModal({
       setSize(meters.toFixed(2));
     }
   }, [meanDorsalDW]);
+
+  useEffect(() => {
+    if (!needsExifPrompt || !firstExifMeta || !onApplyExifMetadata) return;
+    const hasUsableExif =
+      !!firstExifMeta.date ||
+      !!firstExifMeta.time ||
+      typeof firstExifMeta.lat === "number" ||
+      typeof firstExifMeta.lon === "number";
+    if (!hasUsableExif) return;
+    setLocalExifMeta(firstExifMeta);
+    setLocalExifPromptOpen(true);
+    setLocalExifDecision(null);
+  }, [needsExifPrompt, firstExifMeta, onApplyExifMetadata]);
 
   if (!open) return null;
 
@@ -186,7 +217,11 @@ export default function UnifiedMantaModal({
             lat: typeof exif.lat === "number" ? exif.lat : undefined,
             lon: typeof exif.lon === "number" ? exif.lon : undefined,
           };
-          console.log("[UnifiedMantaModal][EXIF] firstExif selected", firstExif);
+          if (firstExif.date || firstExif.time || typeof firstExif.lat === "number" || typeof firstExif.lon === "number") {
+            console.log("[UnifiedMantaModal][EXIF] firstExif selected", firstExif);
+          } else {
+            firstExif = null;
+          }
         }
       } catch {}
 
@@ -243,6 +278,61 @@ export default function UnifiedMantaModal({
     e.currentTarget.value = "";
   }
 
+  async function replacePhoto(photo: Uploaded, file: File) {
+    const lower = file.name.toLowerCase();
+    const isHeicLike = file.type === "image/heic" || file.type === "image/heif" || lower.endsWith(".heic") || lower.endsWith(".heif");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const replacementPath = `${sightingId}/${mantaId}/${photo.id}-replacement-${Date.now()}.${ext}`;
+    const previewUrl = URL.createObjectURL(file);
+
+    const { error } = await supabase.storage.from("temp-images").upload(replacementPath, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type || undefined,
+    });
+
+    if (error) {
+      try { URL.revokeObjectURL(previewUrl); } catch {}
+      throw new Error(error.message || "Could not replace photo.");
+    }
+
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(replacementPath);
+
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id !== photo.id) return p;
+        if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
+          try { URL.revokeObjectURL(p.previewUrl); } catch {}
+        }
+        return {
+          ...p,
+          name: file.name,
+          path: replacementPath,
+          url: data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : previewUrl,
+          previewUrl,
+          isHeicLike,
+          edited: false,
+          measure: undefined,
+        };
+      })
+    );
+  }
+
+  async function onReplaceBrowse(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    e.currentTarget.value = "";
+    if (!file || !replaceTarget) return;
+    setBusy(true);
+    try {
+      await replacePhoto(replaceTarget, file);
+    } catch (err: any) {
+      window.alert(err?.message || "Could not replace photo.");
+    } finally {
+      setBusy(false);
+      setReplaceTarget(null);
+    }
+  }
+
   function setView(id: string, view: View) {
     setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, view } : p)));
   }
@@ -273,6 +363,42 @@ export default function UnifiedMantaModal({
     });
   }
 
+  async function saveEditedPhoto(photo: Uploaded, blob: Blob) {
+    const extless = photo.path.replace(/\.[^.]+$/, "");
+    const editedPath = `${extless}-edited-${Date.now()}.jpg`;
+
+    const { error } = await supabase.storage.from("temp-images").upload(editedPath, blob, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: "image/jpeg",
+    });
+
+    if (error) {
+      throw new Error(error.message || "Could not upload edited photo.");
+    }
+
+    const { data } = supabase.storage.from("temp-images").getPublicUrl(editedPath);
+    const previewUrl = URL.createObjectURL(blob);
+
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id !== photo.id) return p;
+        if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
+          try { URL.revokeObjectURL(p.previewUrl); } catch {}
+        }
+        return {
+          ...p,
+          name: `${p.name.replace(/\.[^.]+$/, "")}-edited.jpg`,
+          path: editedPath,
+          url: data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : previewUrl,
+          previewUrl,
+          isHeicLike: false,
+          edited: true,
+        };
+      })
+    );
+  }
+
   function onMeasureApplied(photoId: string, r: MeasureResult) {
     setPhotos((prev) =>
       prev.map((p) =>
@@ -295,13 +421,15 @@ export default function UnifiedMantaModal({
   function canSave() {
     const hasName = name.trim().length > 0;
     const hasPhotosOrOverride = photos.length > 0 || noPhotos;
-    return hasName && hasPhotosOrOverride;
+    const hasResolvedExifChoice = !localExifPromptOpen || localExifDecision !== null;
+    return hasName && hasPhotosOrOverride && hasResolvedExifChoice;
   }
 
   function save() {
     const draft: MantaDraft = {
       id: mantaId,
       name: (name || "").trim(),
+      species,
       gender,
       ageClass,
       size: size ?? null,
@@ -320,10 +448,10 @@ export default function UnifiedMantaModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center"
+        className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center p-3"
       >
         <div
-          className="bg-white rounded-lg border w-[min(1100px,95vw)] pointer-events-auto relative"
+          className="bg-white rounded-lg border w-[min(1180px,96vw)] max-h-[88vh] overflow-y-auto pointer-events-auto relative"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -335,28 +463,50 @@ export default function UnifiedMantaModal({
             &times;
           </button>
 
-          <div className="px-4 pt-4 text-center">
-            <h3 className="text-lg font-medium">Add Manta</h3>
-            <div className="text-[11px] text-gray-500 mt-1">sighting: {sightingId.slice(0, 8)}</div>
+          <div className="px-4 pt-3">
+            <h3 className="text-base font-semibold">{ordinalLabel} - Add Photos</h3>
+            <div className="mt-1 text-[11px] text-slate-500">
+              Manta {name || defaultName || "-"} · sighting {sightingId.slice(0, 8)} · {photos.length} photo{photos.length === 1 ? "" : "s"}
+            </div>
           </div>
 
-          <div className="px-4 pb-4">
-            <div className="grid md:grid-cols-12 gap-3">
-              <div className="md:col-span-5 col-span-12">
-                <label className="text-sm block mb-1">Temp Name</label>
+          <div className="px-4 pb-4 pt-3">
+            <div className="grid items-end gap-2 md:grid-cols-[2fr_170px_120px_140px_minmax(280px,1.5fr)]">
+              <div>
+                <label className="text-xs block mb-1">Temp Name</label>
                 <input
-                  className="w-full border rounded px-3 py-2"
+                  className="h-9 w-full border rounded px-3 text-sm"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., A, B, C"
                 />
-                {!name.trim() && <div className="text-xs text-red-500 mt-1">Please provide a temporary name</div>}
+                {!name.trim() && <div className="mt-1 text-[11px] text-red-500">Please provide a temporary name</div>}
               </div>
 
-              <div className="md:col-span-2 col-span-12">
-                <label className="text-sm block mb-1">Gender</label>
+              <div>
+                <label className="text-xs block mb-1">Species</label>
+                <div className="grid h-9 grid-cols-2 overflow-hidden rounded border bg-white text-xs">
+                  <button
+                    type="button"
+                    className={species === "alfredi" ? "bg-sky-600 font-medium text-white" : "text-slate-700 hover:bg-slate-50"}
+                    onClick={() => setSpecies("alfredi")}
+                  >
+                    alfredi
+                  </button>
+                  <button
+                    type="button"
+                    className={species === "birostris" ? "bg-sky-600 font-medium text-white" : "border-l text-slate-700 hover:bg-slate-50"}
+                    onClick={() => setSpecies("birostris")}
+                  >
+                    birostris
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs block mb-1">Gender</label>
                 <select
-                  className={"border rounded px-2 py-2 " + (((gender ?? "") === "") ? "text-slate-400" : "text-slate-900")}
+                  className={"h-9 w-full border rounded px-2 text-sm " + (((gender ?? "") === "") ? "text-slate-400" : "text-slate-900")}
                   value={gender ?? ""}
                   onChange={(e) => setGender(e.target.value || null)}
                 >
@@ -367,10 +517,10 @@ export default function UnifiedMantaModal({
                 </select>
               </div>
 
-              <div className="md:col-span-3 col-span-12">
-                <label className="text-sm block mb-1">Age Class</label>
+              <div>
+                <label className="text-xs block mb-1">Age Class</label>
                 <select
-                  className={"border rounded px-2 py-2 " + (((ageClass ?? "") === "") ? "text-slate-400" : "text-slate-900")}
+                  className={"h-9 w-full border rounded px-2 text-sm " + (((ageClass ?? "") === "") ? "text-slate-400" : "text-slate-900")}
                   value={ageClass ?? ""}
                   onChange={(e) => setAgeClass(e.target.value || null)}
                 >
@@ -382,33 +532,20 @@ export default function UnifiedMantaModal({
                 </select>
               </div>
 
-              <div className="md:col-span-2 col-span-12">
-                <label className="text-sm block mb-1">Mean Size (m)</label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-3 py-2"
-                  value={size ?? ""}
-                  onChange={(e) => setSize(e.target.value || null)}
-                  placeholder="m"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
               <div
-                className="border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
+                className="h-16 border-dashed border-2 rounded px-3 text-sm text-gray-600 flex items-center justify-center gap-3"
                 onDrop={onDrop}
                 onDragOver={(e) => e.preventDefault()}
               >
-                <div>Drag &amp; drop photos here</div>
-                <div className="my-2">or</div>
+                <span>Drop photos here</span>
+                <span className="text-slate-400">or</span>
                 <button
                   type="button"
                   onClick={() => inputRef.current?.click()}
-                  className="px-3 py-1 border rounded"
+                  className="px-3 py-1 border rounded bg-white"
                   disabled={busy}
                 >
-                  Browse…
+                  Browse
                 </button>
                 <input
                   ref={inputRef}
@@ -418,41 +555,94 @@ export default function UnifiedMantaModal({
                   className="hidden"
                   onChange={onBrowse}
                 />
+                <input
+                  ref={replaceInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  className="hidden"
+                  onChange={onReplaceBrowse}
+                />
               </div>
-
-              {photos.length === 0 && (
-                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" checked={noPhotos} onChange={(e) => setNoPhotos(e.target.checked)} />
-                  No photos taken (allow save without photos)
-                </label>
-              )}
             </div>
 
-            <div className="mt-4 space-y-3">
+            {size ? (
+              <div className="mt-2 text-xs text-slate-600">Mean size: {size} m</div>
+            ) : null}
+
+            {photos.length === 0 && (
+              <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                <input type="checkbox" checked={noPhotos} onChange={(e) => setNoPhotos(e.target.checked)} />
+                No photos taken
+              </label>
+            )}
+
+            {localExifPromptOpen && localExifMeta ? (
+              <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm">
+                <div className="font-medium text-sky-900">Photo metadata found</div>
+                <div className="mt-1 text-xs text-sky-800">
+                  Select one option before saving this manta.
+                </div>
+                <div className="mt-2 grid gap-1 text-xs text-slate-700 sm:grid-cols-2">
+                  {localExifMeta.date ? <div>Date: {localExifMeta.date}</div> : null}
+                  {localExifMeta.time ? <div>Start time: {localExifMeta.time}</div> : null}
+                  {(typeof localExifMeta.lat === "number" && typeof localExifMeta.lon === "number") ? (
+                    <div className="sm:col-span-2">Coordinates: {localExifMeta.lat}, {localExifMeta.lon}</div>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <label className={`flex cursor-pointer items-center gap-2 rounded border bg-white px-3 py-2 ${localExifDecision === "use" ? "border-sky-600 ring-1 ring-sky-600" : "border-slate-200"}`}>
+                    <input
+                      type="radio"
+                      name={`exif-choice-${mantaId}`}
+                      checked={localExifDecision === "use"}
+                      onChange={() => {
+                        if (onApplyExifMetadata) onApplyExifMetadata(localExifMeta);
+                        setLocalExifDecision("use");
+                      }}
+                    />
+                    <span className="font-medium text-slate-800">Use photo metadata</span>
+                  </label>
+                  <label className={`flex cursor-pointer items-center gap-2 rounded border bg-white px-3 py-2 ${localExifDecision === "manual" ? "border-slate-700 ring-1 ring-slate-700" : "border-slate-200"}`}>
+                    <input
+                      type="radio"
+                      name={`exif-choice-${mantaId}`}
+                      checked={localExifDecision === "manual"}
+                      onChange={() => setLocalExifDecision("manual")}
+                    />
+                    <span className="font-medium text-slate-800">Enter manually</span>
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-3 space-y-2">
               {photos.map((p) => {
                 const canSize = true;
                 const ventralDisabled = p.view !== "ventral";
                 const dorsalDisabled = p.view !== "dorsal";
 
                 return (
-                  <div key={p.id} className="border rounded p-3 grid grid-cols-[110px,1fr,auto] gap-3 items-center">
+                  <div key={p.id} className="border rounded p-2 grid grid-cols-[86px,1fr,auto] gap-3 items-center">
                     <div>
                       {p.isHeicLike ? (
-                        <div className="w-[110px] h-[80px] rounded border bg-slate-100 flex flex-col items-center justify-center text-center px-2">
+                        <div className="w-[86px] h-[60px] rounded border bg-slate-100 flex flex-col items-center justify-center text-center px-2">
                           <div className="text-[10px] font-semibold text-slate-700">HEIC</div>
                           <div className="text-[10px] text-slate-500 break-all">{p.name}</div>
                         </div>
                       ) : (
                         <img
-                          src={p.previewUrl || p.url}
+                          src={resolvePhotoUrl(p)}
                           alt={p.name}
-                          className="w-[110px] h-[80px] object-cover rounded border"
+                          className="w-[86px] h-[60px] cursor-zoom-in object-cover rounded border"
+                          title="Double-click to edit photo"
+                          onDoubleClick={() => setEditOpen(p)}
                         />
                       )}
+                      {p.edited ? <div className="mt-1 text-[10px] text-sky-700">edited</div> : null}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="text-sm">
+                      <div className="text-xs">
                         <div className="text-xs mb-1">View</div>
                         <label className="flex items-center gap-2 mb-1">
                           <input type="radio" name={`view-${p.id}`} checked={p.view === "ventral"} onChange={() => setView(p.id, "ventral")} />
@@ -468,7 +658,7 @@ export default function UnifiedMantaModal({
                         </label>
                       </div>
 
-                      <div className="text-sm">
+                      <div className="text-xs">
                         <div className="text-xs mb-1">Best</div>
                         <label className={`flex items-center gap-2 mb-1 ${ventralDisabled ? "text-slate-400" : ""}`}>
                           <input
@@ -503,14 +693,49 @@ export default function UnifiedMantaModal({
                     </div>
 
                     <div className="flex items-center gap-2 justify-self-end">
+                      {!p.isHeicLike ? (
+                        <button
+                          type="button"
+                          className="px-2 py-1 rounded border text-xs text-slate-700 hover:bg-slate-50"
+                          onClick={() => setEditOpen(p)}
+                        >
+                          Edit photo
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        className="px-2 py-1 rounded bg-sky-600 text-white"
-                        onClick={() => setMeasureOpen(p)}
+                        className="px-2 py-1 rounded border text-xs text-slate-700 hover:bg-slate-50"
+                        disabled={busy}
+                        onClick={() => {
+                          const ok = window.confirm(
+                            "Replace this photo? Any edits and size measurements for this photo will be lost."
+                          );
+                          if (!ok) return;
+                          setReplaceTarget(p);
+                          replaceInputRef.current?.click();
+                        }}
                       >
-                        Size
+                        Replace photo
                       </button>
-                      <button type="button" className="text-red-600" onClick={() => deletePhoto(p.id)}>Delete</button>
+                      {canMeasure ? (
+                        <button
+                          type="button"
+                          className="px-2 py-1 rounded bg-sky-600 text-xs text-white"
+                          onClick={() => setMeasureOpen(p)}
+                        >
+                          Size
+                        </button>
+                      ) : null}
+                      {p.view === "ventral" && p.isBestVentral ? (
+                        <button
+                          type="button"
+                          className="px-2 py-1 rounded border border-sky-200 bg-sky-50 text-xs font-medium text-sky-700"
+                          onClick={() => setMatchOpen(p)}
+                        >
+                          Match
+                        </button>
+                      ) : null}
+                      <button type="button" className="text-xs text-red-600" onClick={() => deletePhoto(p.id)}>Delete</button>
                     </div>
                   </div>
                 );
@@ -537,7 +762,7 @@ export default function UnifiedMantaModal({
       {measureOpen && (
         <MeasureModal
           open={true}
-          src={measureOpen.previewUrl || measureOpen.url}
+          src={resolvePhotoUrl(measureOpen)}
           onClose={() => setMeasureOpen(null)}
           onApply={(r) => {
             onMeasureApplied(measureOpen.id, r);
@@ -557,50 +782,22 @@ export default function UnifiedMantaModal({
         />
       )}
 
+      {editOpen && (
+        <PhotoEditModal
+          open={true}
+          src={resolvePhotoUrl(editOpen)}
+          fileName={editOpen.name}
+          onClose={() => setEditOpen(null)}
+          onSave={(blob) => saveEditedPhoto(editOpen, blob)}
+        />
+      )}
 
-      <Dialog open={localExifPromptOpen} onOpenChange={setLocalExifPromptOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Use photo metadata?</DialogTitle>
-            <DialogDescription>
-              This photo includes metadata that may help populate sighting date and location.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 text-sm">
-            {localExifMeta?.date ? <div>Date: {localExifMeta.date}</div> : null}
-            {(typeof localExifMeta?.lat === "number" && typeof localExifMeta?.lon === "number") ? (
-              <div>Coordinates: {localExifMeta.lat}, {localExifMeta.lon}</div>
-            ) : null}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="px-3 py-2 rounded border"
-              onClick={() => setLocalExifPromptOpen(false)}
-            >
-              No, I’ll enter manually
-            </button>
-            <button
-              type="button"
-              className="px-3 py-2 rounded bg-sky-600 text-white"
-              onClick={() => {
-                if (localExifMeta && onApplyExifMetadata) onApplyExifMetadata(localExifMeta);
-                setLocalExifPromptOpen(false);
-              }}
-            >
-              Yes, use metadata
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {matchOpen && (
         <MatchModal
           open={true}
           onClose={() => setMatchOpen(null)}
-          ventralUrl={matchOpen.previewUrl || matchOpen.url}
+          tempUrl={resolvePhotoUrl(matchOpen)}
           aMeta={{ name, gender, ageClass, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
             setPotentialCatalogId(id);

@@ -1,182 +1,218 @@
 import React from "react";
+import { Link2, Pencil } from "lucide-react";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
-
-type Photo = {
-  thumbnail_url?: string;
-  url?: string;
-  storage_path?: string;
-  view?: string;
-  photo_view?: string;
-  is_best_manta_ventral_photo?: boolean;
-  is_best_manta_dorsal_photo?: boolean;
-};
+import { resolvePhotoUrl } from "@/lib/photoUrl";
 
 type Props = {
   mantas: MantaDraft[];
   setMantas: React.Dispatch<React.SetStateAction<MantaDraft[]>>;
   onEdit: (m: MantaDraft) => void;
+  onEditPhoto?: (m: MantaDraft, photo: any) => void;
+  onReplacePhoto?: (m: MantaDraft, photo: any) => void;
   onRemove: (id: string) => void;
   openMatch: (m: MantaDraft, ventralUrl?: string) => void;
   totalPhotosAll: number;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string, checked: boolean) => void;
+  onToggleAll?: (checked: boolean) => void;
 };
 
-const TILE_W=128;
-const TILE_H=80;
-const CELL_H = 136; // tile row + meta row baseline
-
 function urlFor(p: any): string | undefined {
-  const c = [p?.thumbnail_url, p?.url, p?.storage_url, p?.path, p?.storage_path];
-  return c.find(v => typeof v === "string" && v.trim().length > 0);
+  return resolvePhotoUrl(p) || undefined;
 }
-function strictPhoto(photos: any[] | undefined, view: "ventral"|"dorsal"){
+
+function strictPhoto(photos: any[] | undefined, view: "ventral" | "dorsal") {
   const list = Array.isArray(photos) ? photos : [];
   const flagKey = view === "ventral" ? "is_best_manta_ventral_photo" : "is_best_manta_dorsal_photo";
-  const byFlag = list.find(p => (p as any)[flagKey]);
+  const localFlagKey = view === "ventral" ? "isBestVentral" : "isBestDorsal";
+  const byFlag = list.find((p) => (p as any)[flagKey] || (p as any)[localFlagKey]);
   if (byFlag) return byFlag;
-  const byView = list.find(p => (p?.photo_view ?? p?.view ?? p?.photoView ?? p?.view_label) === view);
-  return byView ?? undefined; // never mirror
-}
-function fmtSizeCm(v:any){ const n=Number(v); return Number.isFinite(n)&&n>0 ? n.toFixed(2)+" cm" : "0.00 cm"; }
-function tempName(m:any){
-  const v = m?.name ?? m?.tempName ?? m?.mantaName ?? m?.label ?? m?.temp_name ?? m?.mp_number;
-  const s = v!=null ? String(v).trim() : "";
-  return s || "—";
+  return list.find((p) => (p?.photo_view ?? p?.view ?? p?.photoView ?? p?.view_label) === view);
 }
 
-function ImgTile({url, placeholder}:{url?:string; placeholder:string}){
+function tempName(m: any) {
+  const v = m?.name ?? m?.tempName ?? m?.mantaName ?? m?.label ?? m?.temp_name ?? m?.mp_number;
+  const s = v != null ? String(v).trim() : "";
+  return s || "-";
+}
+
+function fmtMeters(v: any) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return "-";
+  const meters = n >= 10 ? n / 100 : n;
+  return `${meters.toFixed(2)} m`;
+}
+
+function Thumb({ url, label }: { url?: string; label: string }) {
   return (
-    <div className="overflow-hidden rounded border bg-white grid place-items-center" style={{width:TILE_W, height:TILE_H}}>
-      {url ? <img src={url} alt={placeholder} className="w-full h-full object-cover object-center"/> :
-        <div className="text-xs text-slate-400 select-none">{placeholder}</div>}
+    <div className="h-10 w-14 overflow-hidden rounded border bg-slate-50 grid place-items-center">
+      {url ? (
+        <img src={url} alt={label} className="h-full w-full object-cover object-center" />
+      ) : (
+        <span className="text-[10px] text-slate-400">{label}</span>
+      )}
     </div>
   );
 }
 
-
-function fmtMeters(v:any){
-  const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return "0.00 m";
-  const meters = n >= 10 ? (n/100) : n; // assume cm if >=10
-  return meters.toFixed(2) + " m";
+function PhotoCell({
+  url,
+  label,
+  onEdit,
+  onReplace,
+}: {
+  url?: string;
+  label: string;
+  onEdit?: () => void;
+  onReplace?: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Thumb url={url} label={label} />
+      {url ? (
+        <div className="flex flex-col gap-1">
+          {onEdit ? (
+            <button
+              type="button"
+              className="rounded border px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              onClick={onEdit}
+            >
+              Edit photo
+            </button>
+          ) : null}
+          {onReplace ? (
+            <button
+              type="button"
+              className="rounded border px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              onClick={onReplace}
+            >
+              Replace
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
-export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Props){
-  // compact grid that fits inside the card with no horizontal scroll in normal widths
-  // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
-  const GRID="grid grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3";
-  const TH="text-[12px] font-medium text-slate-600 whitespace-nowrap text-center leading-tight";
-  const TD = "text-[13px] text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis text-center";
+
+export default function MantasList({
+  mantas,
+  onEdit,
+  onEditPhoto,
+  onReplacePhoto,
+  openMatch,
+  selectedIds = [],
+  onToggleSelect,
+  onToggleAll,
+}: Props) {
+  const selected = new Set(selectedIds);
+  const allSelected = mantas.length > 0 && mantas.every((m: any) => selected.has(String(m?.id)));
+
+  if (mantas.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+        No mantas added yet.
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-lg border bg-white">
-      {/* Header */}
-      <div className={`${GRID} px-6 py-2 bg-slate-50 rounded-t-lg`}>
-        <div className={TH}>Best Ventral</div>
-        <div className={TH}>Best Dorsal</div>
-        <div className={TH}><div>Total</div><div className="-mt-1">Photos</div></div>
-        <div className={TH}>Temp Name</div>
-        <div className={TH}>Gender</div>
-        <div className={TH}>Age Class</div>
-        <div className={TH}>Size (m)</div>
-        <div className={TH}>Actions</div>
-      </div>
+    <div className="overflow-x-auto rounded-md border bg-white">
+      <table className="w-full min-w-[900px] text-sm">
+        <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600">
+          <tr>
+            <th className="w-10 px-3 py-2">
+              <input
+                type="checkbox"
+                aria-label="Select all mantas"
+                checked={allSelected}
+                onChange={(event) => onToggleAll?.(event.target.checked)}
+              />
+            </th>
+            <th className="px-3 py-2">Temp Name</th>
+            <th className="px-3 py-2">Species</th>
+            <th className="px-3 py-2">Photos</th>
+            <th className="px-3 py-2">Ventral</th>
+            <th className="px-3 py-2">Dorsal</th>
+            <th className="px-3 py-2">Gender</th>
+            <th className="px-3 py-2">Age</th>
+            <th className="px-3 py-2">Size</th>
+            <th className="px-3 py-2">Match</th>
+            <th className="w-16 px-3 py-2 text-right">Edit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {mantas.map((m: any, idx: number) => {
+            const id = String(m?.id ?? idx);
+            const photos = Array.isArray(m?.photos) ? m.photos : [];
+            const ventPhoto = strictPhoto(photos, "ventral");
+            const dorPhoto = strictPhoto(photos, "dorsal");
+            const ventUrl = urlFor(ventPhoto);
+            const dorUrl = urlFor(dorPhoto);
+            const matchedId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id) ?? null;
+            const noMatch = !!(m?.noMatch || m?.no_match);
 
-      {/* Rows */}
-      <div className="divide-y divide-slate-200">
-        {mantas.map((m:any, idx:number)=>{
-          const vent = strictPhoto(m?.photos,'ventral');
-          const dor  = strictPhoto(m?.photos,'dorsal');
-          const ventUrl = urlFor(vent);
-          const dorUrl  = urlFor(dor);
-          const count = Array.isArray(m?.photos) ? m.photos.length : 0;
-          const matchedId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id) ?? null;
-          const noMatch = !!(m?.noMatch || m?.no_match);
-
-          return (
-            <div key={String(m?.id ?? idx)} className={`${GRID} px-6 py-3 overflow-hidden pr-3`}>
-                              {/* Ventral column with baseline-aligned pill */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={ventUrl} placeholder="ventral" />
-                  {/* 3 compact rows below the tile */}
-                  <div className="mt-2 grid gap-1 w-[128px]">
-                    <div className="flex items-center justify-center">
-                      {matchedId !== null ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Matched</span>
-                      ) : noMatch ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-slate-100 text-slate-600">No matches</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
-                          onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        >
-                          Match
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-center text-slate-600 font-mono">{matchedId !== null ? `Catalog #${matchedId}` : ""}</div>
-                    <div className="flex items-center justify-center">
-                      <button
-                        type="button"
-                        aria-label="Change match"
-                        className="p-[3px] rounded hover:bg-slate-100 text-slate-600"
-                        onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        title="Edit match"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                          <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
-                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                
-                {/* Dorsal column – always dorsal or placeholder */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={dorUrl} placeholder="dorsal" />
-                  <div className="mt-2 min-h-[64px]" />
-                </div>
-
-
-              <div className={`${TD} text-center`}>{count}</div>
-              <div className={TD}>{tempName(m)}</div>
-              <div className={TD}>{m?.gender || "—"}</div>
-              <div className={TD}>{m?.ageClass || "—"}</div>
-              <div className={TD}>{fmtMeters(m?.size)}</div>
-
-              {/* Actions inside column */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  aria-label="Edit manta"
-                  className="p-1 rounded hover:bg-slate-100 text-slate-600"
-                  onClick={()=>onEdit(m)}
-                  title="Edit"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                    <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  aria-label="Remove manta"
-                  className="p-1 rounded hover:bg-rose-100 text-rose-600"
-                  onClick={()=>onRemove(String(m?.id ?? idx))}
-                  title="Remove"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                    <path d="M3 6h18" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 11v6M14 11v6" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            return (
+              <tr key={id} className="align-middle">
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select manta ${tempName(m)}`}
+                    checked={selected.has(id)}
+                    onChange={(event) => onToggleSelect?.(id, event.target.checked)}
+                  />
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-900">{tempName(m)}</td>
+                <td className="px-3 py-2 text-slate-700">{m?.species || "-"}</td>
+                <td className="px-3 py-2 text-slate-700">{photos.length}</td>
+                <td className="px-3 py-2"><PhotoCell url={ventUrl} label="ventral" onEdit={ventPhoto ? () => onEditPhoto?.(m, ventPhoto) : undefined} onReplace={ventPhoto ? () => onReplacePhoto?.(m, ventPhoto) : undefined} /></td>
+                <td className="px-3 py-2"><PhotoCell url={dorUrl} label="dorsal" onEdit={dorPhoto ? () => onEditPhoto?.(m, dorPhoto) : undefined} onReplace={dorPhoto ? () => onReplacePhoto?.(m, dorPhoto) : undefined} /></td>
+                <td className="px-3 py-2 text-slate-700">{m?.gender || "-"}</td>
+                <td className="px-3 py-2 text-slate-700">{m?.ageClass || "-"}</td>
+                <td className="px-3 py-2 text-slate-700">{fmtMeters(m?.size)}</td>
+                <td className="px-3 py-2">
+                  {matchedId != null ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700"
+                      onClick={() => openMatch(m, ventUrl)}
+                    >
+                      <Link2 size={12} /> Catalog #{matchedId}
+                    </button>
+                  ) : noMatch ? (
+                    <button
+                      type="button"
+                      className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700"
+                      onClick={() => openMatch(m, ventUrl)}
+                    >
+                      New
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-200"
+                      onClick={() => openMatch(m, ventUrl)}
+                    >
+                      Match
+                    </button>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    aria-label={`Edit manta ${tempName(m)}`}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded border text-slate-600 hover:bg-slate-50"
+                    onClick={() => onEdit(m)}
+                    title="Edit manta"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
