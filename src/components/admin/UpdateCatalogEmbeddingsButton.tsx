@@ -1,31 +1,57 @@
-// src/components/admin/UpdateCatalogEmbeddingsButton.tsx   ← FULL FILE — ADD THIS
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
-/**
- * Streams progress from the `embeddings-catalog` Edge Function.
- * Works even with verify_jwt = "true" by appending the user’s JWT
- * as ?authorization=Bearer+<token> to the EventSource URL.
- */
+type FunctionResult = {
+  processed?: number;
+  updated?: number;
+  skipped?: number;
+  error?: string;
+};
+
 export default function UpdateCatalogEmbeddingsButton() {
-  const [running, setRunning]   = useState(false);
+  const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
 
   async function handleClick() {
     setRunning(true);
-    setProgress(0);
+    setProgress(5);
+    setMessage("");
 
-    // ── 1 ▸ grab current JWT
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      console.error("[UpdateCatalog] no user session");
+    try {
+      const { data, error } = await supabase.functions.invoke<FunctionResult>("embeddings-catalog", {
+        body: { limit: 100 },
+      });
+
+      if (error) {
+        throw new Error(error.message || "embeddings-catalog function failed");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      setProgress(100);
+      setMessage(
+        `Done. Processed ${data?.processed ?? 0}, updated ${data?.updated ?? 0}, skipped ${data?.skipped ?? 0}.`,
+      );
+    } catch (error) {
+      setProgress(null);
+      setMessage(`Update failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
       setRunning(false);
-      return;
     }
+  }
 
-    // ── 2 ▸ build EventSource URL with token in query param
-    const fnUrl = supabase.functions.getUrl("embeddings
+  return (
+    <div className="space-y-2">
+      <Button onClick={handleClick} disabled={running}>
+        {running ? "Updating..." : "Update Catalog Embeddings"}
+      </Button>
+      {progress != null ? <Progress value={progress} /> : null}
+      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+    </div>
+  );
+}

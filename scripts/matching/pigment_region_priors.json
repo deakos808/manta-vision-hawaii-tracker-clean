@@ -1,0 +1,562 @@
+{
+  "prior_version": "same_catalog_region_stability_v1",
+  "source_csv": "scripts/matching/output/within_catalog_consistency_v5_top_groups_fresh/region_stability.csv",
+  "row_count": 515,
+  "min_bin_count": 6,
+  "default_multiplier": 1.0,
+  "bins": {
+    "zone=central_belly": {
+      "count": 223,
+      "mean_stability": 0.2986547085201794,
+      "stable_rate": 0.484304932735426,
+      "unstable_rate": 0.19282511210762332,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior": {
+      "count": 195,
+      "mean_stability": 0.31487179487179484,
+      "stable_rate": 0.517948717948718,
+      "unstable_rate": 0.1641025641025641,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=border": {
+      "count": 13,
+      "mean_stability": 0.24615384615384617,
+      "stable_rate": 0.38461538461538464,
+      "unstable_rate": 0.23076923076923078,
+      "multiplier": 1.1906410256410258
+    },
+    "zone=central_belly|margin=interior|border=border|aspect=oval": {
+      "count": 6,
+      "mean_stability": 0.20000000000000004,
+      "stable_rate": 0.16666666666666666,
+      "unstable_rate": 0.16666666666666666,
+      "multiplier": 1.105
+    },
+    "zone=central_belly|margin=interior|border=organic": {
+      "count": 182,
+      "mean_stability": 0.3197802197802198,
+      "stable_rate": 0.5274725274725275,
+      "unstable_rate": 0.15934065934065933,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact": {
+      "count": 131,
+      "mean_stability": 0.3282442748091603,
+      "stable_rate": 0.5419847328244275,
+      "unstable_rate": 0.16030534351145037,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=medium": {
+      "count": 16,
+      "mean_stability": 0.375,
+      "stable_rate": 0.5625,
+      "unstable_rate": 0.125,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=medium|contrast=low": {
+      "count": 7,
+      "mean_stability": 0.5142857142857143,
+      "stable_rate": 0.8571428571428571,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=medium|contrast=mid": {
+      "count": 8,
+      "mean_stability": 0.25,
+      "stable_rate": 0.25,
+      "unstable_rate": 0.25,
+      "multiplier": 1.0849999999999997
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=small": {
+      "count": 45,
+      "mean_stability": 0.4222222222222222,
+      "stable_rate": 0.7333333333333333,
+      "unstable_rate": 0.06666666666666667,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=small|contrast=low": {
+      "count": 14,
+      "mean_stability": 0.5,
+      "stable_rate": 0.7857142857142857,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=small|contrast=mid": {
+      "count": 26,
+      "mean_stability": 0.39230769230769236,
+      "stable_rate": 0.6923076923076923,
+      "unstable_rate": 0.07692307692307693,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=tiny": {
+      "count": 60,
+      "mean_stability": 0.26,
+      "stable_rate": 0.4166666666666667,
+      "unstable_rate": 0.23333333333333334,
+      "multiplier": 1.2469302325581395
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=tiny|contrast=low": {
+      "count": 35,
+      "mean_stability": 0.25142857142857145,
+      "stable_rate": 0.4,
+      "unstable_rate": 0.2857142857142857,
+      "multiplier": 1.153714285714286
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=compact|area=tiny|contrast=mid": {
+      "count": 22,
+      "mean_stability": 0.2818181818181818,
+      "stable_rate": 0.45454545454545453,
+      "unstable_rate": 0.13636363636363635,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval": {
+      "count": 47,
+      "mean_stability": 0.30638297872340425,
+      "stable_rate": 0.5106382978723404,
+      "unstable_rate": 0.14893617021276595,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=medium": {
+      "count": 7,
+      "mean_stability": 0.37142857142857144,
+      "stable_rate": 0.7142857142857143,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=small": {
+      "count": 23,
+      "mean_stability": 0.3391304347826087,
+      "stable_rate": 0.5652173913043478,
+      "unstable_rate": 0.13043478260869565,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=small|contrast=low": {
+      "count": 15,
+      "mean_stability": 0.37333333333333335,
+      "stable_rate": 0.6,
+      "unstable_rate": 0.06666666666666667,
+      "multiplier": 1.35
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=small|contrast=mid": {
+      "count": 6,
+      "mean_stability": 0.3,
+      "stable_rate": 0.5,
+      "unstable_rate": 0.16666666666666666,
+      "multiplier": 1.2874999999999999
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=tiny": {
+      "count": 12,
+      "mean_stability": 0.21666666666666667,
+      "stable_rate": 0.3333333333333333,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 1.0358333333333332
+    },
+    "zone=central_belly|margin=interior|border=organic|aspect=oval|area=tiny|contrast=low": {
+      "count": 8,
+      "mean_stability": 0.25,
+      "stable_rate": 0.375,
+      "unstable_rate": 0.25,
+      "multiplier": 1.1505555555555553
+    },
+    "zone=central_belly|margin=margin": {
+      "count": 28,
+      "mean_stability": 0.18571428571428572,
+      "stable_rate": 0.25,
+      "unstable_rate": 0.39285714285714285,
+      "multiplier": 0.8909415584415583
+    },
+    "zone=central_belly|margin=margin|border=organic": {
+      "count": 27,
+      "mean_stability": 0.1925925925925926,
+      "stable_rate": 0.25925925925925924,
+      "unstable_rate": 0.37037037037037035,
+      "multiplier": 0.9264550264550265
+    },
+    "zone=central_belly|margin=margin|border=organic|aspect=compact": {
+      "count": 16,
+      "mean_stability": 0.2,
+      "stable_rate": 0.25,
+      "unstable_rate": 0.3125,
+      "multiplier": 0.9939903846153847
+    },
+    "zone=central_belly|margin=margin|border=organic|aspect=compact|area=small": {
+      "count": 7,
+      "mean_stability": 0.2,
+      "stable_rate": 0.2857142857142857,
+      "unstable_rate": 0.2857142857142857,
+      "multiplier": 1.0514285714285714
+    },
+    "zone=central_belly|margin=margin|border=organic|aspect=compact|area=tiny": {
+      "count": 7,
+      "mean_stability": 0.19999999999999998,
+      "stable_rate": 0.2857142857142857,
+      "unstable_rate": 0.42857142857142855,
+      "multiplier": 0.9215873015873014
+    },
+    "zone=central_belly|margin=margin|border=organic|aspect=compact|area=tiny|contrast=low": {
+      "count": 6,
+      "mean_stability": 0.2333333333333333,
+      "stable_rate": 0.3333333333333333,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 1.0416666666666665
+    },
+    "zone=central_belly|margin=margin|border=organic|aspect=oval": {
+      "count": 9,
+      "mean_stability": 0.17777777777777778,
+      "stable_rate": 0.2222222222222222,
+      "unstable_rate": 0.4444444444444444,
+      "multiplier": 0.8542222222222222
+    },
+    "zone=gill_chest": {
+      "count": 159,
+      "mean_stability": 0.23396226415094343,
+      "stable_rate": 0.3710691823899371,
+      "unstable_rate": 0.3018867924528302,
+      "multiplier": 1.1145062043175251
+    },
+    "zone=gill_chest|margin=interior": {
+      "count": 136,
+      "mean_stability": 0.25,
+      "stable_rate": 0.40441176470588236,
+      "unstable_rate": 0.2647058823529412,
+      "multiplier": 1.1963823529411763
+    },
+    "zone=gill_chest|margin=interior|border=border": {
+      "count": 26,
+      "mean_stability": 0.2538461538461539,
+      "stable_rate": 0.4230769230769231,
+      "unstable_rate": 0.23076923076923078,
+      "multiplier": 1.2354761904761904
+    },
+    "zone=gill_chest|margin=interior|border=border|aspect=compact": {
+      "count": 7,
+      "mean_stability": 0.1142857142857143,
+      "stable_rate": 0.14285714285714285,
+      "unstable_rate": 0.5714285714285714,
+      "multiplier": 0.6961904761904762
+    },
+    "zone=gill_chest|margin=interior|border=border|aspect=elongated": {
+      "count": 10,
+      "mean_stability": 0.3,
+      "stable_rate": 0.5,
+      "unstable_rate": 0.1,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=border|aspect=oval": {
+      "count": 7,
+      "mean_stability": 0.2857142857142857,
+      "stable_rate": 0.42857142857142855,
+      "unstable_rate": 0.14285714285714285,
+      "multiplier": 1.2932142857142856
+    },
+    "zone=gill_chest|margin=interior|border=organic": {
+      "count": 110,
+      "mean_stability": 0.2490909090909091,
+      "stable_rate": 0.4,
+      "unstable_rate": 0.2727272727272727,
+      "multiplier": 1.1803519813519814
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact": {
+      "count": 76,
+      "mean_stability": 0.2605263157894737,
+      "stable_rate": 0.3815789473684211,
+      "unstable_rate": 0.2236842105263158,
+      "multiplier": 1.2421263157894735
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=huge": {
+      "count": 8,
+      "mean_stability": 0.4,
+      "stable_rate": 0.625,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=huge|contrast=low": {
+      "count": 6,
+      "mean_stability": 0.43333333333333335,
+      "stable_rate": 0.6666666666666666,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=medium": {
+      "count": 13,
+      "mean_stability": 0.3384615384615385,
+      "stable_rate": 0.5384615384615384,
+      "unstable_rate": 0.07692307692307693,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=medium|contrast=low": {
+      "count": 10,
+      "mean_stability": 0.36,
+      "stable_rate": 0.6,
+      "unstable_rate": 0.1,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=small": {
+      "count": 30,
+      "mean_stability": 0.24000000000000002,
+      "stable_rate": 0.36666666666666664,
+      "unstable_rate": 0.26666666666666666,
+      "multiplier": 1.1509565217391304
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=small|contrast=low": {
+      "count": 18,
+      "mean_stability": 0.24444444444444446,
+      "stable_rate": 0.3888888888888889,
+      "unstable_rate": 0.2777777777777778,
+      "multiplier": 1.1443055555555555
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=small|contrast=mid": {
+      "count": 9,
+      "mean_stability": 0.2,
+      "stable_rate": 0.2222222222222222,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 0.9644444444444442
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=tiny": {
+      "count": 22,
+      "mean_stability": 0.21818181818181817,
+      "stable_rate": 0.2727272727272727,
+      "unstable_rate": 0.2727272727272727,
+      "multiplier": 1.0636363636363635
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=tiny|contrast=low": {
+      "count": 14,
+      "mean_stability": 0.17142857142857143,
+      "stable_rate": 0.14285714285714285,
+      "unstable_rate": 0.35714285714285715,
+      "multiplier": 0.8483766233766235
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=compact|area=tiny|contrast=mid": {
+      "count": 7,
+      "mean_stability": 0.34285714285714286,
+      "stable_rate": 0.5714285714285714,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=elongated": {
+      "count": 6,
+      "mean_stability": 0.3666666666666667,
+      "stable_rate": 0.6666666666666666,
+      "unstable_rate": 0.16666666666666666,
+      "multiplier": 1.35
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=oval": {
+      "count": 28,
+      "mean_stability": 0.19285714285714287,
+      "stable_rate": 0.39285714285714285,
+      "unstable_rate": 0.42857142857142855,
+      "multiplier": 0.9627910052910053
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=oval|area=small": {
+      "count": 9,
+      "mean_stability": 0.13333333333333336,
+      "stable_rate": 0.2222222222222222,
+      "unstable_rate": 0.5555555555555556,
+      "multiplier": 0.7457575757575757
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=oval|area=small|contrast=low": {
+      "count": 6,
+      "mean_stability": 0.10000000000000002,
+      "stable_rate": 0.16666666666666666,
+      "unstable_rate": 0.6666666666666666,
+      "multiplier": 0.6483333333333333
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=oval|area=tiny": {
+      "count": 8,
+      "mean_stability": 0.1,
+      "stable_rate": 0.125,
+      "unstable_rate": 0.625,
+      "multiplier": 0.62775
+    },
+    "zone=gill_chest|margin=interior|border=organic|aspect=oval|area=tiny|contrast=low": {
+      "count": 7,
+      "mean_stability": 0.1142857142857143,
+      "stable_rate": 0.14285714285714285,
+      "unstable_rate": 0.5714285714285714,
+      "multiplier": 0.6961904761904762
+    },
+    "zone=gill_chest|margin=margin": {
+      "count": 23,
+      "mean_stability": 0.1391304347826087,
+      "stable_rate": 0.17391304347826086,
+      "unstable_rate": 0.5217391304347826,
+      "multiplier": 0.6879130434782609
+    },
+    "zone=gill_chest|margin=margin|border=organic": {
+      "count": 18,
+      "mean_stability": 0.1111111111111111,
+      "stable_rate": 0.1111111111111111,
+      "unstable_rate": 0.6111111111111112,
+      "multiplier": 0.5615359477124182
+    },
+    "zone=gill_chest|margin=margin|border=organic|aspect=compact": {
+      "count": 14,
+      "mean_stability": 0.1285714285714286,
+      "stable_rate": 0.14285714285714285,
+      "unstable_rate": 0.5714285714285714,
+      "multiplier": 0.6450000000000001
+    },
+    "zone=pelvic_belly": {
+      "count": 133,
+      "mean_stability": 0.22406015037593985,
+      "stable_rate": 0.3684210526315789,
+      "unstable_rate": 0.3082706766917293,
+      "multiplier": 1.0999120140777476
+    },
+    "zone=pelvic_belly|margin=interior": {
+      "count": 77,
+      "mean_stability": 0.24155844155844158,
+      "stable_rate": 0.4025974025974026,
+      "unstable_rate": 0.2597402597402597,
+      "multiplier": 1.1956623376623376
+    },
+    "zone=pelvic_belly|margin=interior|border=organic": {
+      "count": 72,
+      "mean_stability": 0.24444444444444446,
+      "stable_rate": 0.4027777777777778,
+      "unstable_rate": 0.25,
+      "multiplier": 1.21031045751634
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact": {
+      "count": 52,
+      "mean_stability": 0.24615384615384617,
+      "stable_rate": 0.40384615384615385,
+      "unstable_rate": 0.25,
+      "multiplier": 1.2078643724696356
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact|area=small": {
+      "count": 25,
+      "mean_stability": 0.29600000000000004,
+      "stable_rate": 0.48,
+      "unstable_rate": 0.12,
+      "multiplier": 1.35
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact|area=small|contrast=low": {
+      "count": 16,
+      "mean_stability": 0.3375,
+      "stable_rate": 0.5,
+      "unstable_rate": 0.0,
+      "multiplier": 1.35
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact|area=small|contrast=mid": {
+      "count": 6,
+      "mean_stability": 0.23333333333333336,
+      "stable_rate": 0.5,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 1.1072222222222223
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact|area=tiny": {
+      "count": 19,
+      "mean_stability": 0.17894736842105266,
+      "stable_rate": 0.3157894736842105,
+      "unstable_rate": 0.42105263157894735,
+      "multiplier": 0.9176023391812864
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=compact|area=tiny|contrast=low": {
+      "count": 16,
+      "mean_stability": 0.15000000000000002,
+      "stable_rate": 0.25,
+      "unstable_rate": 0.5,
+      "multiplier": 0.79
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=oval": {
+      "count": 19,
+      "mean_stability": 0.24210526315789477,
+      "stable_rate": 0.42105263157894735,
+      "unstable_rate": 0.2631578947368421,
+      "multiplier": 1.1804334365325078
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=oval|area=small": {
+      "count": 7,
+      "mean_stability": 0.2,
+      "stable_rate": 0.2857142857142857,
+      "unstable_rate": 0.2857142857142857,
+      "multiplier": 1.0514285714285714
+    },
+    "zone=pelvic_belly|margin=interior|border=organic|aspect=oval|area=tiny": {
+      "count": 8,
+      "mean_stability": 0.225,
+      "stable_rate": 0.375,
+      "unstable_rate": 0.375,
+      "multiplier": 1.02
+    },
+    "zone=pelvic_belly|margin=margin": {
+      "count": 56,
+      "mean_stability": 0.2,
+      "stable_rate": 0.32142857142857145,
+      "unstable_rate": 0.375,
+      "multiplier": 0.9700872093023255
+    },
+    "zone=pelvic_belly|margin=margin|border=border": {
+      "count": 6,
+      "mean_stability": 0.16666666666666666,
+      "stable_rate": 0.3333333333333333,
+      "unstable_rate": 0.5,
+      "multiplier": 0.8777777777777777
+    },
+    "zone=pelvic_belly|margin=margin|border=organic": {
+      "count": 50,
+      "mean_stability": 0.20400000000000001,
+      "stable_rate": 0.32,
+      "unstable_rate": 0.36,
+      "multiplier": 0.9883473684210526
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact": {
+      "count": 44,
+      "mean_stability": 0.20454545454545456,
+      "stable_rate": 0.3409090909090909,
+      "unstable_rate": 0.36363636363636365,
+      "multiplier": 1.0010974025974024
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=medium": {
+      "count": 8,
+      "mean_stability": 0.225,
+      "stable_rate": 0.25,
+      "unstable_rate": 0.25,
+      "multiplier": 1.07625
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=medium|contrast=low": {
+      "count": 6,
+      "mean_stability": 0.2333333333333333,
+      "stable_rate": 0.3333333333333333,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 1.0416666666666665
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=small": {
+      "count": 19,
+      "mean_stability": 0.21052631578947367,
+      "stable_rate": 0.3684210526315789,
+      "unstable_rate": 0.3684210526315789,
+      "multiplier": 1.0178947368421052
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=small|contrast=low": {
+      "count": 11,
+      "mean_stability": 0.2,
+      "stable_rate": 0.36363636363636365,
+      "unstable_rate": 0.45454545454545453,
+      "multiplier": 0.9300699300699301
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=small|contrast=mid": {
+      "count": 6,
+      "mean_stability": 0.20000000000000004,
+      "stable_rate": 0.3333333333333333,
+      "unstable_rate": 0.3333333333333333,
+      "multiplier": 1.0299999999999998
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=tiny": {
+      "count": 11,
+      "mean_stability": 0.16363636363636364,
+      "stable_rate": 0.2727272727272727,
+      "unstable_rate": 0.45454545454545453,
+      "multiplier": 0.8643939393939394
+    },
+    "zone=pelvic_belly|margin=margin|border=organic|aspect=compact|area=tiny|contrast=mid": {
+      "count": 6,
+      "mean_stability": 0.13333333333333333,
+      "stable_rate": 0.16666666666666666,
+      "unstable_rate": 0.5,
+      "multiplier": 0.7841666666666667
+    }
+  }
+}
