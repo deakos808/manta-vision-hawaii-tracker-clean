@@ -20,6 +20,7 @@ type Sighting = {
   end_time: string | null;
   island: string | null;
   sitelocation: string | null;
+  location: string | null;
   photographer: string | null;
   organization: string | null;
   notes?: string | null;
@@ -81,6 +82,7 @@ export default function CatalogSightingsModal(props: {
               "end_time",
               "island",
               "sitelocation",
+              "location",
               "photographer",
               "organization",
               "notes",
@@ -152,7 +154,7 @@ export default function CatalogSightingsModal(props: {
                   <div>
                     <div>
                       <span className="text-muted-foreground">Location:</span>{" "}
-                      {s.sitelocation || "—"}
+                      {s.sitelocation || s.location || "—"}
                     </div>
                     <div>
                       <span className="text-muted-foreground">Photographer:</span>{" "}

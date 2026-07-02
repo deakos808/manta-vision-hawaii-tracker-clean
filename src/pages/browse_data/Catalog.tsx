@@ -13,6 +13,7 @@ import SightingMantasQuickModal from "@/pages/browse_data/modals/SightingMantasQ
 import CatalogStatsModal from "@/pages/browse_data/modals/CatalogStatsModal";
 import CatalogSizesQuickModal from "@/pages/browse_data/modals/CatalogSizesQuickModal";
 import CatalogBiopsiesQuickModal from "@/pages/browse_data/modals/CatalogBiopsiesQuickModal";
+import CatalogEditModal from "@/pages/browse_data/modals/CatalogEditModal";
 
 type CatalogRow = {
   pk_catalog_id: number;
@@ -37,6 +38,9 @@ type CatalogRow = {
   total_biopsies?: number | null;
   last_size_m?: number | null;
   mprf?: "MPRF" | "HAMER" | null;
+  notes?: string | null;
+  is_retired?: boolean | null;
+  deceased?: boolean | null;
 };
 
 type SortField = "catalog_id" | "first_sighting" | "last_sighting" | "last_size";
@@ -51,6 +55,11 @@ const EMPTY_FILTERS: FiltersState = {
   species: [],
   mprf: [],
 };
+const MISSING_FILTER_VALUE = "__missing__";
+
+function filterLabel(value: string) {
+  return value === MISSING_FILTER_VALUE ? "(missing)" : value;
+}
 
 function fmt(d?: string | null) {
   if (!d) return "—";
@@ -220,13 +229,13 @@ export default function Catalog() {
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<"ventral" | "dorsal">("ventral");
   const [catalogIdPrefix, setCatalogIdPrefix] = useState("");
-  const [namePrefix, setNamePrefix] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const showHamrFilter = isAdmin;
   const [exportPreset, setExportPreset] = useState<ExportPreset>("filtered_catalog_current_view");
   const [exporting, setExporting] = useState(false);
 
   const [selectedCatalogId, setSelectedCatalogId] = useState<number | null>(null);
+  const [editingCatalog, setEditingCatalog] = useState<CatalogRow | null>(null);
   const [sightingsCatalogId, setSightingsCatalogId] = useState<number | null>(null);
   const [sizesCatalogId, setSizesCatalogId] = useState<number | null>(null);
   const [biopsiesCatalogId, setBiopsiesCatalogId] = useState<number | null>(null);
@@ -255,7 +264,9 @@ export default function Catalog() {
           .single();
 
         const role = (data as any)?.role ?? null;
-        setIsAdmin(role === "admin" || role === "database_manager");
+        const nextIsAdmin = role === "admin" || role === "database_manager";
+console.log("[Catalog] role =", role, "isAdmin =", nextIsAdmin);
+setIsAdmin(nextIsAdmin);
       } catch {
         setIsAdmin(false);
       }
@@ -285,7 +296,10 @@ export default function Catalog() {
         };
       });
 
-      setCatalog(merged);
+      console.log("[Catalog] loaded rows =", rows.length);
+console.log("[Catalog] filteredRows (admin logic) =", filteredRows.length);
+console.log("[Catalog] has 247 =", filteredRows.some(r => r.pk_catalog_id === 247));
+setCatalog(merged);
     } catch (error) {
       console.error("[Load Catalog]", error);
       setCatalog([]);
@@ -301,13 +315,14 @@ export default function Catalog() {
   const filtered = useMemo(() => {
     const term = (search || "").trim().toLowerCase();
     const cidPrefix = (catalogIdPrefix || "").trim();
-    const nPrefix = (namePrefix || "").trim().toLowerCase();
-
     const arrHasAny = (need: string[], have?: string[] | null) =>
       !need.length || (Array.isArray(have) && have.some((v) => need.includes(v)));
 
-    const valOK = (need: string[], v?: string | null) =>
-      !need.length || (v ? need.includes(v) : false);
+    const valOK = (need: string[], v?: string | null) => {
+      if (!need.length) return true;
+      const value = String(v ?? "").trim();
+      return value ? need.includes(value) : need.includes(MISSING_FILTER_VALUE);
+    };
 
     const rows = catalog.filter((c) => {
       const textOK =
@@ -316,19 +331,21 @@ export default function Catalog() {
         String(c.pk_catalog_id).includes(term);
 
       const catalogPrefixOK = !cidPrefix || String(c.pk_catalog_id).startsWith(cidPrefix);
-      const namePrefixOK = !nPrefix || String(c.name ?? "").toLowerCase().startsWith(nPrefix);
+      const sourceOK =
+        filters.mprf.length === 0 ||
+        filters.mprf.length === 2 ||
+        valOK(filters.mprf, c.mprf);
 
       return (
         textOK &&
         catalogPrefixOK &&
-        namePrefixOK &&
         arrHasAny(filters.population, c.populations) &&
         arrHasAny(filters.island, c.islands) &&
         valOK(filters.sitelocation, c.sitelocation) &&
         valOK(filters.gender, c.gender) &&
         valOK(filters.age_class, c.age_class) &&
-        valOK(filters.mprf, c.mprf) &&
-        (!filters.species.length || (c.species ? filters.species.includes(c.species) : false))
+        sourceOK &&
+        valOK(filters.species, c.species)
       );
     });
 
@@ -368,7 +385,7 @@ export default function Catalog() {
     });
 
     return rows;
-  }, [catalog, search, catalogIdPrefix, namePrefix, filters, sortField, sortAsc]);
+  }, [catalog, search, catalogIdPrefix, filters, sortField, sortAsc]);
 
   const clearAll = () => {
     setSearch("");
@@ -376,24 +393,23 @@ export default function Catalog() {
     setSortField("catalog_id");
     setSortAsc(true);
     setCatalogIdPrefix("");
-    setNamePrefix("");
     setSearchParams({});
   };
 
   const summary = useMemo(() => {
     const parts: string[] = [];
     if (catalogIdPrefix) parts.push(`Catalog ID starts with: ${catalogIdPrefix}`);
-    if (namePrefix) parts.push(`Name starts with: ${namePrefix}`);
     if (filters.population.length) parts.push(`Population: ${filters.population.join(", ")}`);
+    if (search.trim()) parts.push(`Search: ${search.trim()}`);
     if (filters.island.length) parts.push(`Island: ${filters.island.join(", ")}`);
-    if (filters.sitelocation.length) parts.push(`Location: ${filters.sitelocation.join(", ")}`);
-    if (filters.gender.length) parts.push(`Gender: ${filters.gender.join(", ")}`);
-    if (filters.age_class.length) parts.push(`Age: ${filters.age_class.join(", ")}`);
-    if (filters.species.length) parts.push(`Species: ${filters.species.join(", ")}`);
+    if (filters.sitelocation.length) parts.push(`Location: ${filters.sitelocation.map(filterLabel).join(", ")}`);
+    if (filters.gender.length) parts.push(`Gender: ${filters.gender.map(filterLabel).join(", ")}`);
+    if (filters.age_class.length) parts.push(`Age: ${filters.age_class.map(filterLabel).join(", ")}`);
+    if (filters.species.length) parts.push(`Species: ${filters.species.map(filterLabel).join(", ")}`);
     if (filters.mprf.length) parts.push(`Source: ${filters.mprf.join(", ")}`);
     if (viewMode) parts.push(`Photo View: ${viewMode}`);
     return parts.join("; ");
-  }, [catalogIdPrefix, namePrefix, filters, viewMode]);
+  }, [catalogIdPrefix, filters, viewMode, search]);
 
   const handleExportExcel = () => {
     try {
@@ -521,8 +537,6 @@ export default function Catalog() {
           setViewMode={setViewMode}
           catalogIdPrefix={catalogIdPrefix}
           setCatalogIdPrefix={setCatalogIdPrefix}
-          namePrefix={namePrefix}
-          setNamePrefix={setNamePrefix}
           onOpenStats={() => setStatsOpen(true)}
           isAdmin={isAdmin}
         
@@ -585,11 +599,21 @@ export default function Catalog() {
                   }}
                 />
                 {isAdmin && (
-                  <div
-                    className="mt-1 w-full text-center text-xs text-blue-500 underline cursor-pointer"
-                    onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
-                  >
-                    change best ventral
+                  <div className="mt-1 flex w-full justify-center gap-3 text-xs">
+                    <button
+                      type="button"
+                      className="text-blue-600 underline hover:text-blue-700"
+                      onClick={() => setSelectedCatalogId(e.pk_catalog_id)}
+                    >
+                      change best ventral
+                    </button>
+                    <button
+                      type="button"
+                      className="text-blue-600 underline hover:text-blue-700"
+                      onClick={() => setEditingCatalog(e)}
+                    >
+                      edit info
+                    </button>
                   </div>
                 )}
               </div>
@@ -699,6 +723,21 @@ export default function Catalog() {
         open={statsOpen}
         onOpenChange={setStatsOpen}
         rows={catalog}
+      />
+
+      <CatalogEditModal
+        open={!!editingCatalog}
+        catalog={editingCatalog}
+        onOpenChange={(open) => {
+          if (!open) setEditingCatalog(null);
+        }}
+        onSaved={(row) => {
+          setCatalog((prev) =>
+            prev.map((item) =>
+              item.pk_catalog_id === row.pk_catalog_id ? { ...item, ...row } : item
+            )
+          );
+        }}
       />
 
       <BackToTopButton />

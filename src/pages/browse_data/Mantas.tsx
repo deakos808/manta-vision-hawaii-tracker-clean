@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { deleteManta } from "@/lib/adminApi";
+import { fallbackLogoForRecord } from "@/lib/fallbackLogos";
 import Layout from "@/components/layout/Layout";
 import BackToTopButton from "@/components/browse/BackToTopButton";
 import { Button } from "@/components/ui/button";
@@ -24,12 +25,13 @@ import {
 import MantaFilterBox from "@/components/mantas/MantaFilterBox";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
+import CatalogEditModal from "@/pages/browse_data/modals/CatalogEditModal";
 
 import { useIsAdmin } from "@/lib/isAdmin";
 type MantaRow = {
   pk_manta_id: number;
-  fk_catalog_id: number;
-  fk_sighting_id: number;
+  fk_catalog_id: number | null;
+  fk_sighting_id: number | null;
   name: string | null;
   population: string | null;
   island: string | null;
@@ -59,6 +61,31 @@ type MantaStats = {
   females: number;
   adults: number;
   juveniles: number;
+};
+
+type CatalogEditable = {
+  pk_catalog_id: number;
+  name: string | null;
+  species?: string | null;
+  notes?: string | null;
+  is_retired?: boolean | null;
+  deceased?: boolean | null;
+};
+
+type SightingDetail = {
+  pk_sighting_id: number;
+  sighting_date: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  population?: string | null;
+  island?: string | null;
+  sitelocation?: string | null;
+  location?: string | null;
+  photographer?: string | null;
+  organization?: string | null;
+  total_mantas?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 const PAGE = 500;
@@ -172,7 +199,7 @@ export default function MantasPage() {
     const rowAgeClass = r?.age_class ?? null;
     const rowIsMprf = !!(r?.is_mprf ?? sight?.is_mprf);
 
-    if (mantaNeedle && !String(r?.pk_manta_id ?? "").startsWith(mantaNeedle)) return false;
+    if (mantaNeedle && String(r?.pk_manta_id ?? "") !== mantaNeedle) return false;
     if (nameNeedle && !rowName.startsWith(nameNeedle)) return false;
     if (catNeedle && !rowCatalogId.startsWith(catNeedle)) return false;
 
@@ -430,9 +457,11 @@ export default function MantasPage() {
       setFacetRows([]);
 
       const nameNeedle = namePrefix.trim().toLowerCase();
+      const mantaNeedle = mantaIdPrefix.trim();
       const pageSize = 1000;
       let from = 0;
       const matchedRows: any[] = [];
+      const exactMantaId = /^\d+$/.test(mantaNeedle) ? Number(mantaNeedle) : null;
 
       while (true) {
         let base = supabase
@@ -453,6 +482,7 @@ export default function MantasPage() {
           .order("pk_manta_id", { ascending: false })
           .range(from, from + pageSize - 1);
 
+        if (exactMantaId !== null) base = base.eq("pk_manta_id", exactMantaId);
         if (nameNeedle) base = base.ilike("name", `${nameNeedle}%`);
         if (sightingId) base = base.eq("fk_sighting_id", sightingId);
         if (crumbCatalogId) base = base.eq("fk_catalog_id", crumbCatalogId);
@@ -470,7 +500,7 @@ export default function MantasPage() {
         const chunk = (data ?? []) as any[];
         matchedRows.push(...chunk.filter(rawRowMatchesFilters));
 
-        if (chunk.length < pageSize) break;
+        if (exactMantaId !== null || chunk.length < pageSize) break;
         from += pageSize;
       }
 
@@ -528,7 +558,7 @@ export default function MantasPage() {
       const nameNeedle = namePrefix.trim().toLowerCase();
       const catNeedle = catalogPrefix.trim().toLowerCase();
 
-      const mantaIdOk = !mantaNeedle || String(m.pk_manta_id ?? "").startsWith(mantaNeedle);
+      const mantaIdOk = !mantaNeedle || String(m.pk_manta_id ?? "") === mantaNeedle;
 
       const nameOk =
         !nameNeedle ||
@@ -586,7 +616,7 @@ export default function MantasPage() {
   const activeFiltersText = useMemo(() => {
     const parts: string[] = [];
     if (q.trim()) parts.push(`Search: "${q.trim()}"`);
-    if (mantaIdPrefix.trim()) parts.push(`Manta ID starts with "${mantaIdPrefix.trim()}"`);
+    if (mantaIdPrefix.trim()) parts.push(`Manta ID is ${mantaIdPrefix.trim()}`);
     if (namePrefix.trim()) parts.push(`Name starts with "${namePrefix.trim()}"`);
     if (catalogPrefix.trim()) parts.push(`Catalog ID starts with "${catalogPrefix.trim()}"`);
     if (population.length) parts.push(`Population: ${population.join(", ")}`);
@@ -699,6 +729,26 @@ export default function MantasPage() {
   // Photos modal
   const [showPhotos, setShowPhotos] = useState(false);
   const [photosFor, setPhotosFor] = useState<{ mantaId: number; sightingId?: number } | null>(null);
+  const [sightingModalId, setSightingModalId] = useState<number | null>(null);
+  const [catalogModal, setCatalogModal] = useState<CatalogEditable | null>(null);
+  const [catalogModalOpen, setCatalogModalOpen] = useState(false);
+
+  async function openCatalogModal(catalogId: number | null) {
+    if (!catalogId) return;
+    const { data, error } = await supabase
+      .from("catalog")
+      .select("pk_catalog_id,name,species,notes,is_retired,deceased")
+      .eq("pk_catalog_id", catalogId)
+      .single();
+
+    if (error) {
+      alert(`Could not open catalog ${catalogId}: ${error.message}`);
+      return;
+    }
+
+    setCatalogModal(data as CatalogEditable);
+    setCatalogModalOpen(true);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -917,11 +967,11 @@ export default function MantasPage() {
                 >
                   <div className="w-full overflow-hidden rounded-lg border bg-gray-50">
                     <img
-                      src={m.best_thumb_url || "/manta-logo.svg"}
+                      src={m.best_thumb_url || fallbackLogoForRecord(m.is_mprf)}
                       alt={m.name ?? `Manta ${m.pk_manta_id}`}
                       className="w-full h-[140px] object-cover rounded"
                       onError={(e) =>
-                        ((e.target as HTMLImageElement).src = "/manta-logo.svg")
+                        ((e.target as HTMLImageElement).src = fallbackLogoForRecord(m.is_mprf))
                       }
                     />
                   </div>
@@ -934,13 +984,35 @@ export default function MantasPage() {
 
                       <div className="grid grid-cols-1 gap-1 text-xs">
                         <div>
-                          <span className="text-muted-foreground">Catalog ID:</span> {m.fk_catalog_id}
+                          <span className="text-muted-foreground">Catalog ID:</span>{" "}
+                          {m.fk_catalog_id ? (
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 underline underline-offset-2"
+                              onClick={() => openCatalogModal(m.fk_catalog_id)}
+                            >
+                              {m.fk_catalog_id}
+                            </button>
+                          ) : (
+                            <span title="This manta has a name stored on the manta row, but no linked catalog row. Mantas QC flags this as an error.">— missing —</span>
+                          )}
                         </div>
                         <div>
                           <span className="text-muted-foreground">Manta ID:</span> {m.pk_manta_id}
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Sighting ID:</span> {m.fk_sighting_id}
+                          <span className="text-muted-foreground">Sighting ID:</span>{" "}
+                          {m.fk_sighting_id ? (
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 underline underline-offset-2"
+                              onClick={() => setSightingModalId(m.fk_sighting_id)}
+                            >
+                              {m.fk_sighting_id}
+                            </button>
+                          ) : (
+                            "—"
+                          )}
                         </div>
                       </div>
 
@@ -1048,6 +1120,110 @@ export default function MantasPage() {
 
       {/* Photos modal */}
       <MantaPhotosViewer open={showPhotos} onOpenChange={setShowPhotos} mantaId={photosFor?.mantaId ?? null}  onCount={(id,n)=>setPhotoCounts(c=>({...c,[id]:n}))} />
+      <SightingDetailModal
+        open={sightingModalId != null}
+        onOpenChange={(open) => {
+          if (!open) setSightingModalId(null);
+        }}
+        sightingId={sightingModalId}
+      />
+      <CatalogEditModal
+        open={catalogModalOpen}
+        catalog={catalogModal}
+        onOpenChange={setCatalogModalOpen}
+        onSaved={(row) => setCatalogModal(row)}
+      />
     </Layout>
+  );
+}
+
+function SightingDetailModal({
+  open,
+  onOpenChange,
+  sightingId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sightingId: number | null;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [row, setRow] = useState<SightingDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      if (!open || !sightingId) return;
+      setLoading(true);
+      setError(null);
+      setRow(null);
+
+      const { data, error: fetchError } = await supabase
+        .from("sightings")
+        .select("pk_sighting_id,sighting_date,start_time,end_time,population,island,sitelocation,location,photographer,organization,total_mantas,latitude,longitude")
+        .eq("pk_sighting_id", sightingId)
+        .single();
+
+      if (!alive) return;
+      if (fetchError) {
+        setError(fetchError.message);
+      } else {
+        setRow(data as SightingDetail);
+      }
+      setLoading(false);
+    }
+
+    load();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, sightingId]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Sighting {sightingId ?? ""}</DialogTitle>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="text-sm text-slate-600">Loading sighting...</div>
+        ) : error ? (
+          <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        ) : row ? (
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <Detail label="Date" value={row.sighting_date} />
+            <Detail label="Time" value={[row.start_time, row.end_time].filter(Boolean).join(" - ") || null} />
+            <Detail label="Population" value={row.population} />
+            <Detail label="Island" value={row.island} />
+            <Detail label="Location" value={row.sitelocation ?? row.location} />
+            <Detail label="Photographer" value={row.photographer} />
+            <Detail label="Organization" value={row.organization} />
+            <Detail label="Total Mantas" value={row.total_mantas} />
+            <Detail label="Latitude" value={row.latitude} />
+            <Detail label="Longitude" value={row.longitude} />
+          </div>
+        ) : (
+          <div className="text-sm text-slate-600">No sighting loaded.</div>
+        )}
+
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="rounded border bg-slate-50 p-3">
+      <div className="text-xs font-medium uppercase text-slate-500">{label}</div>
+      <div className="mt-1 text-slate-900">{value ?? "—"}</div>
+    </div>
   );
 }

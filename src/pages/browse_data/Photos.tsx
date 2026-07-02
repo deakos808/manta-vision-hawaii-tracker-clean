@@ -6,8 +6,10 @@ import Layout from "@/components/layout/Layout";
 import BackToTopButton from "@/components/browse/BackToTopButton";
 import { ChevronUp } from "lucide-react";
 import PhotoFilterBox from "@/components/photos/PhotoFilterBox";
+import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, UploadCloud } from "lucide-react";
+import { logDataChange } from "@/lib/dataChangeAudit";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +56,35 @@ interface Photo {
 }
 
 const PAGE_SIZE = 80;
+
+function sanitizeStorageFileName(name: string) {
+  const clean = name
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .replace(/_+/g, "_");
+  return clean || "photo.jpg";
+}
+
+function messageFromError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const candidate = error as { message?: unknown; error_description?: unknown; details?: unknown };
+    for (const value of [candidate.message, candidate.error_description, candidate.details]) {
+      if (typeof value === "string" && value.trim()) return value;
+    }
+  }
+  return "Photo upload failed.";
+}
+
+function numericPrefixRange(prefix: string) {
+  const trimmed = prefix.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const lower = Number(trimmed);
+  const upper = Number(`${trimmed.slice(0, -1)}${Number(trimmed.slice(-1)) + 1}`);
+  if (!Number.isFinite(lower) || !Number.isFinite(upper)) return null;
+  return { lower, upper };
+}
 
 export default function PhotosPage() {
 const [searchParams] = useSearchParams();
@@ -114,6 +145,11 @@ const [photos, setPhotos] = useState<Photo[]>([]);
   const [pickerSelectedId, setPickerSelectedId] = useState<number | null>(null);
   const [pickerSaving, setPickerSaving] = useState(false);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [mantaPhotosOpen, setMantaPhotosOpen] = useState(false);
+  const [mantaPhotosMantaId, setMantaPhotosMantaId] = useState<number | null>(null);
+  const [dragPhotoId, setDragPhotoId] = useState<number | null>(null);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<number | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
   async function fetchPhotoIdsByFlags(selected: string[]) {
     if (!selected.length) return null;
@@ -256,6 +292,16 @@ const [photos, setPhotos] = useState<Photo[]>([]);
       query = query.ilike("catalog_name", `${namePrefix.trim()}%`);
     }
 
+    const photoRange = numericPrefixRange(photoIdPrefix);
+    if (photoRange) {
+      query = query.gte("pk_photo_id", photoRange.lower).lt("pk_photo_id", photoRange.upper);
+    }
+
+    const catalogRange = numericPrefixRange(catalogPrefix);
+    if (catalogRange) {
+      query = query.gte("fk_catalog_id", catalogRange.lower).lt("fk_catalog_id", catalogRange.upper);
+    }
+
     if (filters.view.length > 0) query = query.in("photo_view", filters.view);
     if (filters.population.length > 0) query = query.in("population", filters.population);
     if (filters.island.length > 0) query = query.in("island", filters.island);
@@ -321,12 +367,12 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
       let incoming = (data ?? []) as Photo[];
 
-      if (photoIdPrefix.trim()) {
+      if (photoIdPrefix.trim() && !numericPrefixRange(photoIdPrefix)) {
         const needle = photoIdPrefix.trim();
         incoming = incoming.filter((p) => String(p.pk_photo_id ?? "").startsWith(needle));
       }
 
-      if (catalogPrefix.trim()) {
+      if (catalogPrefix.trim() && !numericPrefixRange(catalogPrefix)) {
         const needle = catalogPrefix.trim();
         incoming = incoming.filter((p) => String(p.fk_catalog_id ?? "").startsWith(needle));
       }
@@ -575,6 +621,128 @@ const [photos, setPhotos] = useState<Photo[]>([]);
     setPickerOpen(false);
   }
 
+  async function uploadReplacementPhoto(photo: Photo, file: File) {
+    if (!isAdmin) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please drop an image file.");
+      return;
+    }
+
+    const reason = window.prompt(
+      `Reason for updating photo ${photo.pk_photo_id}?`,
+      photo.storage_path ? "Replacing missing/incorrect photo file." : "Adding missing photo file."
+    );
+    if (!reason?.trim()) return;
+
+    setUploadingPhotoId(photo.pk_photo_id);
+    setUploadMessage(null);
+
+    const safeName = sanitizeStorageFileName(file.name || `photo-${photo.pk_photo_id}.jpg`);
+    const storagePath = `photos/${photo.pk_photo_id}/${Date.now()}_${safeName}`;
+    const { data: publicData } = supabase.storage.from("manta-images").getPublicUrl(storagePath);
+
+    try {
+      await logDataChange({
+        action: "update",
+        tableName: "photos",
+        primaryKey: photo.pk_photo_id,
+        recordLabel: `photo ${photo.pk_photo_id}`,
+        reason: reason.trim(),
+        oldData: {
+          storage_path: photo.storage_path ?? null,
+          thumbnail_url: photo.thumbnail_url ?? null,
+          file_name2: photo.file_name2 ?? null,
+        },
+        newData: {
+          storage_path: storagePath,
+          thumbnail_url: publicData.publicUrl,
+          file_name2: file.name,
+        },
+        changedFields: ["storage_path", "thumbnail_url", "file_name2"],
+        metadata: {
+          editor: "photo_browser_drag_drop",
+          fk_sighting_id: photo.fk_sighting_id,
+          fk_manta_id: photo.fk_manta_id,
+          fk_catalog_id: photo.fk_catalog_id,
+          file_type: file.type,
+          file_size: file.size,
+        },
+      });
+
+      const { error: uploadError } = await supabase.storage
+        .from("manta-images")
+        .upload(storagePath, file, {
+          cacheControl: "3600",
+          contentType: file.type || "image/jpeg",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const { data, error: updateError } = await supabase
+        .from("photos")
+        .update({
+          storage_path: storagePath,
+          thumbnail_url: publicData.publicUrl,
+          file_name2: file.name,
+          uploaded_at: new Date().toISOString(),
+        })
+        .eq("pk_photo_id", photo.pk_photo_id)
+        .select()
+        .single();
+      if (updateError) throw updateError;
+
+      setPhotos((prev) =>
+        prev.map((item) =>
+          item.pk_photo_id === photo.pk_photo_id
+            ? {
+                ...item,
+                ...data,
+                thumbnail_url: publicData.publicUrl,
+                storage_path: storagePath,
+                file_name2: file.name,
+              }
+            : item
+        )
+      );
+      setUploadMessage(`Photo ${photo.pk_photo_id} updated.`);
+    } catch (error) {
+      console.error("[photos] drag/drop upload failed", error);
+      const message = messageFromError(error);
+      setUploadMessage(message);
+      alert(message);
+    } finally {
+      setUploadingPhotoId(null);
+      setDragPhotoId(null);
+    }
+  }
+
+  const openMantaPhotos = useCallback((mantaId: number) => {
+    setMantaPhotosMantaId(mantaId);
+    setMantaPhotosOpen(true);
+  }, []);
+
+  const syncMantaPhotoRows = useCallback((rows: Array<{
+    pk_photo_id: number | null;
+    photo_view: "ventral" | "dorsal" | "other" | null;
+    is_best_manta_ventral_photo: boolean | null;
+    is_best_manta_dorsal_photo: boolean | null;
+  }>) => {
+    if (!rows.length) return;
+    const byPhotoId = new Map(rows.filter((row) => row.pk_photo_id != null).map((row) => [row.pk_photo_id, row]));
+    setPhotos((prev) =>
+      prev.map((photo) => {
+        const updated = byPhotoId.get(photo.pk_photo_id);
+        if (!updated) return photo;
+        return {
+          ...photo,
+          photo_view: (updated.photo_view ?? photo.photo_view) as Photo["photo_view"],
+          is_best_manta_ventral_photo: updated.is_best_manta_ventral_photo,
+          is_best_manta_dorsal_photo: updated.is_best_manta_dorsal_photo,
+        };
+      }),
+    );
+  }, []);
+
   // Load distinct islands and locations from SIGHTINGS (for pill options)
   useEffect(() => {
     let alive = true;
@@ -768,29 +936,94 @@ const [photos, setPhotos] = useState<Photo[]>([]);
 
         {/* Sort row (Catalog style) */}
       </div>
-  <p className="mb-4 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-muted-foreground">
           Showing {photoRows.length} of {totalCount} total records{filterSummary() ? `, filtered by ${filterSummary()}` : ""}
         </p>
+        {isAdmin ? (
+          <p className="mb-3 text-xs text-slate-600">
+            Drag an image onto a photo card to add or replace that photo file. A change reason is required and stored in the audit log.
+          </p>
+        ) : null}
+        {uploadMessage ? (
+          <div className="mb-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            {uploadMessage}
+          </div>
+        ) : null}
 
         {photoRows.length === 0 ? (
           <p className="text-center text-gray-500">No results found.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
             {photoRows.map((photo, index) => (
-              <div key={photo.pk_photo_id} className="border rounded p-2">
-                <img
-                  src={photo.thumbnail_url || "/manta-logo.svg"}
-                  alt="manta thumbnail"
-                  className="w-full h-[140px] object-cover rounded"
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => ((e.target as HTMLImageElement).src = "/manta-logo.svg")}
-                />
+              <div
+                key={photo.pk_photo_id}
+                className={`relative border rounded p-2 transition ${
+                  isAdmin && dragPhotoId === photo.pk_photo_id ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : ""
+                }`}
+                onDragOver={(event) => {
+                  if (!isAdmin) return;
+                  event.preventDefault();
+                  setDragPhotoId(photo.pk_photo_id);
+                }}
+                onDragLeave={() => {
+                  if (dragPhotoId === photo.pk_photo_id) setDragPhotoId(null);
+                }}
+                onDrop={(event) => {
+                  if (!isAdmin) return;
+                  event.preventDefault();
+                  const file = event.dataTransfer.files?.[0];
+                  if (file) void uploadReplacementPhoto(photo, file);
+                }}
+              >
+                <div className="relative">
+                  <img
+                    src={photo.thumbnail_url || "/manta-logo.svg"}
+                    alt="manta thumbnail"
+                    className="w-full h-[140px] object-cover rounded"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => ((e.target as HTMLImageElement).src = "/manta-logo.svg")}
+                  />
+                  {isAdmin ? (
+                    <label
+                      className="absolute bottom-2 right-2 inline-flex cursor-pointer items-center gap-1 rounded bg-white/90 px-2 py-1 text-[11px] font-medium text-slate-700 shadow"
+                      title="Upload or replace this photo file"
+                    >
+                      <UploadCloud className="h-3 w-3" />
+                      {uploadingPhotoId === photo.pk_photo_id ? "Uploading" : "Drop"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        disabled={uploadingPhotoId === photo.pk_photo_id}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.currentTarget.value = "";
+                          if (file) void uploadReplacementPhoto(photo, file);
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                </div>
                 <div className="mt-2 text-xs leading-5">
                   <div className="font-semibold text-sky-700">{photo.catalog_name ?? "—"}</div>
                   <p><strong>Catalog ID:</strong> {photo.fk_catalog_id ?? "n/a"}</p>
                   <p><strong>Sighting ID:</strong> {photo.fk_sighting_id ?? "n/a"}</p>
-                  <p><strong>Manta ID:</strong> {photo.fk_manta_id ?? "n/a"}</p>
+                  <p>
+                    <strong>Manta ID:</strong>{" "}
+                    {photo.fk_manta_id ? (
+                      <button
+                        type="button"
+                        className="font-semibold text-sky-700 underline underline-offset-2"
+                        onClick={() => openMantaPhotos(photo.fk_manta_id!)}
+                        title="Open all photos for this manta"
+                      >
+                        {photo.fk_manta_id}
+                      </button>
+                    ) : (
+                      "n/a"
+                    )}
+                  </p>
                   <p><strong>Photo ID:</strong> {photo.pk_photo_id}</p>
                   <p><strong>Photographer:</strong> {photo.photographer ?? "n/a"}</p>
                   {isAdmin ? (
@@ -927,6 +1160,13 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MantaPhotosViewer
+        open={mantaPhotosOpen}
+        onOpenChange={setMantaPhotosOpen}
+        mantaId={mantaPhotosMantaId}
+        onRowsChanged={syncMantaPhotoRows}
+      />
     </Layout>
   );
 }

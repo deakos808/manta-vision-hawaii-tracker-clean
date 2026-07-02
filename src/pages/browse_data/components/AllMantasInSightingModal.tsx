@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { fallbackLogoForRecord } from "@/lib/fallbackLogos";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ type MantaRow = {
   gender: string | null;
   age_class: string | null;
   thumbnail_url: string | null;
+  is_mprf: boolean | null;
 };
 
 export default function AllMantasInSightingModal(props: {
@@ -40,7 +42,7 @@ export default function AllMantasInSightingModal(props: {
 
       const { data: mantaRows, error: mantaError } = await supabase
         .from("mantas")
-        .select("pk_manta_id,fk_catalog_id,fk_sighting_id")
+        .select("pk_manta_id,fk_catalog_id,fk_sighting_id,is_mprf")
         .eq("fk_sighting_id", sightingId)
         .order("pk_manta_id", { ascending: true });
 
@@ -60,6 +62,7 @@ export default function AllMantasInSightingModal(props: {
         gender: null,
         age_class: null,
         thumbnail_url: null,
+        is_mprf: r.is_mprf ?? null,
       })) as MantaRow[];
 
       if (baseRows.length === 0) {
@@ -219,11 +222,11 @@ export default function AllMantasInSightingModal(props: {
                     <td className="px-3 py-2">
                       <div className="h-14 w-14 overflow-hidden rounded border bg-gray-50">
                         <img
-                          src={row.thumbnail_url || "/manta-logo.svg"}
+                          src={row.thumbnail_url || fallbackLogoForRecord(row.is_mprf)}
                           alt={row.name || `Manta ${row.pk_manta_id}`}
                           className="h-full w-full object-cover"
                           onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
+                            (e.currentTarget as HTMLImageElement).src = fallbackLogoForRecord(row.is_mprf);
                           }}
                         />
                       </div>

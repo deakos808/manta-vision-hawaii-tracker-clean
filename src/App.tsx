@@ -27,6 +27,10 @@ import AdminExportsPage from "@/pages/admin/AdminExportsPage";
 import ReviewSightingDetailsPage from "@/pages/admin/ReviewSightingDetailsPage";
 
 import DataIntegrityPage from "@/pages/admin/DataIntegrityPage";
+import DataQualityControlPage from "@/pages/admin/DataQualityControlPage";
+import DuplicateCatalogReviewPage from "@/pages/admin/DuplicateCatalogReviewPage";
+import MantaCatalogLinkReviewPage from "@/pages/admin/MantaCatalogLinkReviewPage";
+import MissingSightingLocationsPage from "@/pages/admin/MissingSightingLocationsPage";
 import BestMantaImageDiagnostics from "@/pages/admin/BestMantaImageDiagnostics";
 import BestCatalogImageDiagnostics from "@/pages/admin/BestCatalogImageDiagnostics";
 import MissingCatalogPhotosPage from "@/pages/admin/MissingCatalogPhotosPage";
@@ -92,10 +96,16 @@ function App() {
       <Route path="/admin/import" element={<RequireAuth adminOnly><ImportPage /></RequireAuth>} />
       <Route path="/admin/exports" element={<RequireAuth adminOnly><AdminExportsPage /></RequireAuth>} />
       <Route path="/admin/data-integrity" element={<RequireAuth adminOnly><DataIntegrityPage /></RequireAuth>} />
+      <Route path="/admin/duplicate-catalog-review" element={<RequireAuth adminOnly><DuplicateCatalogReviewPage /></RequireAuth>} />
+      <Route path="/admin/manta-catalog-link-review" element={<RequireAuth adminOnly><MantaCatalogLinkReviewPage /></RequireAuth>} />
+      <Route path="/admin/qc" element={<RequireAuth adminOnly><DataQualityControlPage /></RequireAuth>} />
+      <Route path="/admin/qc/:domain" element={<RequireAuth adminOnly><DataQualityControlPage /></RequireAuth>} />
+      <Route path="/admin/qc/sightings/missing-locations" element={<RequireAuth adminOnly><MissingSightingLocationsPage /></RequireAuth>} />
       <Route path="/admin/best-images" element={<RequireAuth adminOnly><BestMantaImageDiagnostics /></RequireAuth>} />
       <Route path="/admin/best-manta" element={<RequireAuth adminOnly><BestMantaImageDiagnostics /></RequireAuth>} />
       <Route path="/admin/best-catalog" element={<RequireAuth adminOnly><BestCatalogImageDiagnostics /></RequireAuth>} />
       <Route path="/admin/matching" element={<RequireAuth adminOnly><MatchingPage /></RequireAuth>} />
+      <Route path="/admin/matching-performance" element={<Navigate to="/admin/matching" replace />} />
       <Route path="/admin/diagnostics" element={<RequireAuth adminOnly><DiagnosticsPage /></RequireAuth>} />
 
       <Route path="/admin/roles" element={<RequireAuth adminOnly><Layout><AdminRolesPage /></Layout></RequireAuth>} />

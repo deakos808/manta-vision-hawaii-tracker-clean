@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { fallbackLogoForRecord } from "@/lib/fallbackLogos";
 
 type MantaItem = {
   pk_catalog_id: number;
@@ -9,6 +10,7 @@ type MantaItem = {
   gender: string | null;
   age_class: string | null;
   thumbnail_url: string | null;
+  is_mprf: boolean | null;
 };
 
 type Props = {
@@ -39,7 +41,7 @@ export default function SightingMantasQuickModal({
       try {
         const { data: mantaRows, error: mantaErr } = await supabase
           .from("mantas")
-          .select("pk_manta_id,fk_catalog_id")
+          .select("pk_manta_id,fk_catalog_id,is_mprf")
           .eq("fk_sighting_id", pk_sighting_id)
           .order("fk_catalog_id", { ascending: true });
 
@@ -49,6 +51,7 @@ export default function SightingMantasQuickModal({
           .map((r: any) => ({
             pk_catalog_id: Number(r.fk_catalog_id ?? 0),
             pk_manta_id: r.pk_manta_id == null ? null : Number(r.pk_manta_id),
+            is_mprf: r.is_mprf ?? null,
           }))
           .filter((r) => Number.isFinite(r.pk_catalog_id) && r.pk_catalog_id > 0);
 
@@ -150,6 +153,7 @@ export default function SightingMantasQuickModal({
             age_class: cat?.age_class ?? null,
             thumbnail_url:
               r.pk_manta_id != null ? thumbByManta.get(r.pk_manta_id) ?? null : null,
+            is_mprf: r.is_mprf,
           };
         });
 
@@ -202,11 +206,11 @@ export default function SightingMantasQuickModal({
                   <tr key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="border-b last:border-0 align-top">
                     <td className="px-3 py-2">
                       <img
-                        src={r.thumbnail_url ?? "/manta-logo.svg"}
+                        src={r.thumbnail_url ?? fallbackLogoForRecord(r.is_mprf)}
                         alt={`Catalog ${r.pk_catalog_id}`}
                         className="h-20 w-20 object-cover rounded border bg-white"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/manta-logo.svg";
+                          (e.currentTarget as HTMLImageElement).src = fallbackLogoForRecord(r.is_mprf);
                         }}
                       />
                     </td>

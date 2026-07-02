@@ -6,6 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 type CountRow = { value: string; count: number };
+const LOCATION_UNKNOWN = "__location_unknown__";
+const LOCATION_NONE = "__location_none__";
 
 const POP_ISLANDS: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
@@ -63,7 +65,7 @@ type Filters = {
 function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>>): boolean {
   const pop = (r.population ?? "").toString();
   const isl = (r.island ?? "").toString();
-  const loc = (r.sitelocation ?? "").toString();
+  const loc = (r.sitelocation ?? r.location ?? "").toString().trim();
   const pho = (r.photographer ?? "").toString();
   const tm = Number(r.total_mantas ?? 0);
   const dt = (r.sighting_date ?? "").toString();
@@ -71,7 +73,9 @@ function rowMatch(r: any, f: Filters, speciesBySighting: Map<number, Set<string>
 
   if (f.population && !pop.toLowerCase().includes(f.population.toLowerCase())) return false;
   if (f.island && f.island !== "all" && !isl.toLowerCase().includes(f.island.toLowerCase())) return false;
-  if (f.location && loc !== f.location) return false;
+  if (f.location === LOCATION_UNKNOWN && loc) return false;
+  if (f.location === LOCATION_NONE && loc.toLowerCase() !== "none") return false;
+  if (f.location && ![LOCATION_UNKNOWN, LOCATION_NONE].includes(f.location) && loc !== f.location) return false;
   if (f.photographer && !pho.toLowerCase().includes(f.photographer.toLowerCase())) return false;
   if (f.minMantas !== "" && !(tm >= Number(f.minMantas))) return false;
   if (f.date && dt !== f.date) return false;
@@ -143,11 +147,17 @@ export default function SightingFilterBox(props: Props) {
     (async () => {
       let q = supabase
         .from("sightings")
-        .select("pk_sighting_id,population,island,sitelocation,photographer,total_mantas,sighting_date,is_mprf");
+        .select("pk_sighting_id,population,island,sitelocation,location,photographer,total_mantas,sighting_date,is_mprf");
 
       if (population) q = q.ilike("population", `%${population}%`);
       if (island && island !== "all") q = q.ilike("island", `%${island}%`);
-      if (location) q = q.eq("sitelocation", location);
+      if (location === LOCATION_UNKNOWN) {
+        q = q.or("and(sitelocation.is.null,location.is.null),and(sitelocation.eq.,location.eq.),and(sitelocation.is.null,location.eq.),and(sitelocation.eq.,location.is.null)");
+      } else if (location === LOCATION_NONE) {
+        q = q.or("sitelocation.ilike.none,location.ilike.none");
+      } else if (location) {
+        q = q.or(`sitelocation.eq.${location},and(sitelocation.is.null,location.eq.${location})`);
+      }
       if (photographer) q = q.ilike("photographer", `%${photographer}%`);
       if (minMantas !== "") q = q.gte("total_mantas", minMantas as any);
       if (date) q = q.eq("sighting_date", date);
@@ -232,7 +242,7 @@ export default function SightingFilterBox(props: Props) {
     for (const r of rows) {
       const p = (r.population ?? "").toString().trim();
       const i = (r.island ?? "").toString().trim();
-      const l = (r.sitelocation ?? "").toString().trim();
+      const l = (r.sitelocation ?? r.location ?? "").toString().trim();
       const h = (r.photographer ?? "").toString().trim();
 
       if (p) P.add(p);
@@ -252,6 +262,12 @@ export default function SightingFilterBox(props: Props) {
       species: [...S].sort((a, b) => a.localeCompare(b)),
     };
   }, [rows, speciesMap]);
+
+  function locationLabel(value: string) {
+    if (value === LOCATION_UNKNOWN) return "unknown";
+    if (value === LOCATION_NONE) return "none";
+    return value;
+  }
 
   const cascadedIslands = useMemo(() => {
     if (!population) return values.islands;
@@ -292,6 +308,17 @@ export default function SightingFilterBox(props: Props) {
     () => cascadedLocations.map((v) => ({ value: v, count: countIf({ location: v }) })),
     [cascadedLocations, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]
   );
+
+  const locationRows = useMemo(() => {
+    const base = locRows.filter((row) => row.value.toLowerCase() !== "none");
+    const unknownCount = countIf({ location: LOCATION_UNKNOWN });
+    const noneCount = countIf({ location: LOCATION_NONE });
+    return [
+      ...(unknownCount > 0 ? [{ value: LOCATION_UNKNOWN, count: unknownCount }] : []),
+      ...(noneCount > 0 ? [{ value: LOCATION_NONE, count: noneCount }] : []),
+      ...base,
+    ];
+  }, [locRows, rows, population, island, location, photographer, minMantas, date, dateKnown, dateUnknown, mprf, speciesMap, species]);
 
   const phoRows: CountRow[] = useMemo(
     () => values.photographers.map((v) => ({ value: v, count: countIf({ photographer: v }) })),
@@ -412,15 +439,15 @@ export default function SightingFilterBox(props: Props) {
           ))}
         </Pill>
 
-        <Pill label={`Location${location ? `: ${location}` : ""}`} active={!!location}>
-          {locRows.map((r) => (
+        <Pill label={`Location${location ? `: ${locationLabel(location)}` : ""}`} active={!!location}>
+          {locationRows.map((r) => (
             <label key={r.value} className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm cursor-pointer">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={location === r.value}
                   onCheckedChange={() => setLocation(location === r.value ? "" : r.value)}
                 />
-                {r.value}
+                {locationLabel(r.value)}
               </div>
               <span className="text-xs text-muted-foreground">{r.count}</span>
             </label>

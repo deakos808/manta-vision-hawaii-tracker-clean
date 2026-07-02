@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { fallbackLogoForRecord } from "@/lib/fallbackLogos";
 
 type Props = {
   open: boolean;
@@ -19,6 +20,7 @@ type MantaListRow = {
   gender: string | null;
   age_class: string | null;
   best_thumb_url: string | null;
+  is_mprf: boolean | null;
 };
 
 export default function MantasInSightingModal({ open, onOpenChange, sightingId }: Props) {
@@ -40,7 +42,7 @@ export default function MantasInSightingModal({ open, onOpenChange, sightingId }
       // 1) Pull mantas for the sighting with catalog name and traits
       const { data: mantaRows, error } = await supabase
         .from("mantas")
-        .select("pk_manta_id, fk_catalog_id, gender, age_class, catalog:fk_catalog_id ( name )")
+        .select("pk_manta_id, fk_catalog_id, gender, age_class, is_mprf, catalog:fk_catalog_id ( name )")
         .eq("fk_sighting_id", sightingId)
         .order("pk_manta_id", { ascending: true });
 
@@ -61,6 +63,7 @@ export default function MantasInSightingModal({ open, onOpenChange, sightingId }
           gender: r.gender ?? null,
           age_class: r.age_class ?? null,
           best_thumb_url: null,
+          is_mprf: r.is_mprf ?? null,
         })) ?? [];
 
       if (list.length === 0) {
@@ -144,10 +147,10 @@ export default function MantasInSightingModal({ open, onOpenChange, sightingId }
                         <div className="h-12 w-12 overflow-hidden rounded border bg-muted">
                           {/* eslint-disable-next-line jsx-a11y/alt-text */}
                           <img
-                            src={m.best_thumb_url || "/manta-logo.svg"}
+                            src={m.best_thumb_url || fallbackLogoForRecord(m.is_mprf)}
                             className="h-full w-full object-cover"
                             onError={(e) =>
-                              ((e.target as HTMLImageElement).src = "/manta-logo.svg")
+                              ((e.target as HTMLImageElement).src = fallbackLogoForRecord(m.is_mprf))
                             }
                           />
                         </div>

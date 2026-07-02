@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ChevronDown, Triangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,8 +43,6 @@ interface Props {
   setViewMode: (v: "ventral" | "dorsal") => void;
   catalogIdPrefix: string;
   setCatalogIdPrefix: (v: string) => void;
-  namePrefix: string;
-  setNamePrefix: (v: string) => void;
   onOpenStats: () => void;
   isAdmin?: boolean;
 }
@@ -51,6 +50,7 @@ interface Props {
 const GENDERS = ["Male", "Female", "Unknown"] as const;
 const AGES = ["Adult", "Juvenile", "Yearling", "Unknown"] as const;
 const MPRF_OPTIONS = ["MPRF", "HAMER"] as const;
+const MISSING_FILTER_VALUE = "__missing__";
 
 const populationIslandMap: Record<string, string[]> = {
   "Maui Nui": ["Maui", "Molokai", "Lanai", "Kahoolawe"],
@@ -63,12 +63,21 @@ const uniq = <T,>(arr: (T | null | undefined)[]) =>
 const countSingles = (rows: CatalogEntry[], field: keyof CatalogEntry) => {
   const map: Record<string, number> = {};
   rows.forEach((r) => {
-    const val = (r[field] ?? "") as string;
-    if (!val) return;
+    const val = String(r[field] ?? "").trim();
+    if (!val) {
+      map[MISSING_FILTER_VALUE] = (map[MISSING_FILTER_VALUE] || 0) + 1;
+      return;
+    }
     map[val] = (map[val] || 0) + 1;
   });
   return map;
 };
+
+const withMissingOption = (options: string[], counts: Record<string, number>) =>
+  counts[MISSING_FILTER_VALUE] ? [...options, MISSING_FILTER_VALUE] : options;
+
+const optionLabel = (value: string) =>
+  value === MISSING_FILTER_VALUE ? "(missing)" : value;
 
 const countFromArrays = (
   rows: CatalogEntry[],
@@ -97,8 +106,6 @@ export default function CatalogFilterBox({
   setViewMode,
   catalogIdPrefix,
   setCatalogIdPrefix,
-  namePrefix,
-  setNamePrefix,
   onOpenStats,
   isAdmin = false,
 }: Props) {
@@ -169,8 +176,8 @@ export default function CatalogFilterBox({
   );
 
   const siteOptions = useMemo(
-    () => uniq<string>(siteBase.map((c) => c.sitelocation ?? "")),
-    [siteBase],
+    () => withMissingOption(uniq<string>(siteBase.map((c) => c.sitelocation ?? "")), siteCounts),
+    [siteBase, siteCounts],
   );
 
   const speciesCounts = useMemo(
@@ -179,8 +186,8 @@ export default function CatalogFilterBox({
   );
 
   const speciesOptions = useMemo(
-    () => uniq<string>(siteBase.map((c) => c.species ?? "")),
-    [siteBase],
+    () => withMissingOption(uniq<string>(siteBase.map((c) => c.species ?? "")), speciesCounts),
+    [siteBase, speciesCounts],
   );
 
   const genderCounts = useMemo(
@@ -259,7 +266,7 @@ export default function CatalogFilterBox({
                 checked={Array.isArray(filters[key]) && filters[key].includes(opt)}
                 onCheckedChange={() => toggle(key, opt)}
               />
-              {opt}
+              {optionLabel(opt)}
             </div>
             <span className="text-xs text-muted-foreground">
               {counts[opt] ?? 0}
@@ -293,8 +300,8 @@ export default function CatalogFilterBox({
         {renderMenu("Population", "population", populationOptions, populationCounts)}
         {renderMenu("Island", "island", islandOptions, islandCounts)}
         {renderMenu("Location", "sitelocation", siteOptions, siteCounts)}
-        {renderMenu("Gender", "gender", [...GENDERS], genderCounts)}
-        {renderMenu("Age Class", "age_class", [...AGES], ageCounts)}
+        {renderMenu("Gender", "gender", withMissingOption([...GENDERS], genderCounts), genderCounts)}
+        {renderMenu("Age Class", "age_class", withMissingOption([...AGES], ageCounts), ageCounts)}
         {isAdmin && renderMenu("HAMER", "mprf", [...MPRF_OPTIONS], mprfCounts)}
 
         <Popover>
@@ -342,62 +349,96 @@ export default function CatalogFilterBox({
           />
         </div>
 
-        <div>
-          <div className="text-xs text-gray-600 mb-1">Name (starts with)</div>
-          <input
-            value={namePrefix}
-            onChange={(e) => setNamePrefix(e.target.value)}
-            placeholder="e.g., Ak..."
-            className="w-full rounded border px-3 py-2 text-sm bg-white"
-          />
-        </div>
       </div>
 
       <div className="mt-3 rounded-lg border bg-white p-3">
         <div className="mb-2 text-sm font-medium text-gray-700">Sort Catalog Cards</div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex flex-col gap-1">
-            <div className="text-xs text-gray-600">Sort field</div>
-            <select
-              value={sortField}
-              onChange={(e) =>
-                setSortField(
-                  e.target.value as "catalog_id" | "first_sighting" | "last_sighting" | "last_size"
-                )
-              }
-              className="min-w-[220px] rounded border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm"
+        <div className="flex flex-wrap items-center gap-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full px-4 py-2 text-sm"
+              >
+                {sortField === "catalog_id" && "Sorted by Catalog ID"}
+                {sortField === "first_sighting" && "Sorted by First Sighting"}
+                {sortField === "last_sighting" && "Sorted by Last Sighting"}
+                {sortField === "last_size" && "Sorted by Last Size"}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+
+            <PopoverContent className="w-56 p-2 space-y-1">
+              <div className="px-1 pb-1 text-sm font-medium text-gray-700">Sort By</div>
+
+              <Button
+                type="button"
+                variant={sortField === "catalog_id" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setSortField("catalog_id")}
+              >
+                Catalog ID
+              </Button>
+
+              <Button
+                type="button"
+                variant={sortField === "first_sighting" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setSortField("first_sighting")}
+              >
+                First Sighting
+              </Button>
+
+              <Button
+                type="button"
+                variant={sortField === "last_sighting" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setSortField("last_sighting")}
+              >
+                Last Sighting
+              </Button>
+
+              <Button
+                type="button"
+                variant={sortField === "last_size" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setSortField("last_size")}
+              >
+                Last Size
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              title={sortDirectionLabels.asc}
+              aria-label={sortDirectionLabels.asc}
+              onClick={() => setSortAsc(true)}
+              className="p-1"
             >
-              <option value="catalog_id">Catalog ID</option>
-              <option value="first_sighting">First Sighting</option>
-              <option value="last_sighting">Last Sighting</option>
-              <option value="last_size">Last Size</option>
-            </select>
-          </div>
+              <Triangle
+                className={`h-3 w-3 ${
+                  sortAsc ? "text-blue-600 fill-blue-600" : "text-gray-400"
+                }`}
+              />
+            </button>
 
-          <div className="flex flex-col gap-1">
-            <div className="text-xs text-gray-600">Direction</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant={sortAsc ? "default" : "outline"}
-                title={sortDirectionLabels.asc}
-                aria-label={sortDirectionLabels.asc}
-                onClick={() => setSortAsc(true)}
-              >
-                {sortDirectionLabels.asc}
-              </Button>
-
-              <Button
-                type="button"
-                variant={!sortAsc ? "default" : "outline"}
-                title={sortDirectionLabels.desc}
-                aria-label={sortDirectionLabels.desc}
-                onClick={() => setSortAsc(false)}
-              >
-                {sortDirectionLabels.desc}
-              </Button>
-            </div>
+            <button
+              type="button"
+              title={sortDirectionLabels.desc}
+              aria-label={sortDirectionLabels.desc}
+              onClick={() => setSortAsc(false)}
+              className="p-1"
+            >
+              <Triangle
+                className={`h-3 w-3 rotate-180 ${
+                  !sortAsc ? "text-blue-600 fill-blue-600" : "text-gray-400"
+                }`}
+              />
+            </button>
           </div>
         </div>
       </div>

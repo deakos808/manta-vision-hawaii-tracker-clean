@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export type LocRec = { name: string; island: string; latitude?: number|null; longitude?: number|null };
@@ -9,6 +9,7 @@ export function useIslandsLocations(selectedIsland: string) {
   const [loadingIsl, setLoadingIsl] = useState(false);
   const [loadingLoc, setLoadingLoc] = useState(false);
   const [err, setErr] = useState<string|null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -75,7 +76,11 @@ export function useIslandsLocations(selectedIsland: string) {
     })();
 
     return () => { alive = false; };
-  }, [selectedIsland]);
+  }, [selectedIsland, reloadKey]);
 
-  return { islands, locations, loadingIsl, loadingLoc, err };
+  const reloadLocations = useCallback(() => {
+    setReloadKey((key) => key + 1);
+  }, []);
+
+  return { islands, locations, loadingIsl, loadingLoc, err, reloadLocations };
 }
