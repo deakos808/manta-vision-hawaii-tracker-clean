@@ -37,6 +37,16 @@ backups/_checkpoint/
 backups/_inventory_reports/
 **/*.bak*
 
+# Manta recovery / local generated artifacts
+export/
+scripts/matching/output/
+scripts/matching/cache/
+scripts/qc/output/
+public/qc/
+patch_backups/
+supabase/.temp/
+generated/version.ts
+
 backups/
 backups/_checkpoint/
 backups/_inventory_reports/
