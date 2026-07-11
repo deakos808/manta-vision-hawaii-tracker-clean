@@ -336,6 +336,19 @@ export default function AdminDashboardPage() {
           <CalibrationTile />
         </Section>
 
+        <Section title="Research Exploration">
+          <AdminCard
+            title="Biopsy Age Rankings"
+            desc="Explore biopsy age-ranking assumptions, size evidence, sighting history, and rank reshuffling."
+            btn={{ label: "Open Workbench", onClick: () => navigate("/admin/research/biopsy-age-rankings") }}
+          />
+          <AdminCard
+            title="Age-growth Exploration"
+            desc="Explore observed size histories, terminal-size hints, and pre-terminal growth intervals."
+            btn={{ label: "Open Growth Tool", onClick: () => navigate("/admin/research/age-growth-exploration") }}
+          />
+        </Section>
+
         <Section title="Admin & Access">
           <AdminCard
             title="👥 Manage Admin Roles"

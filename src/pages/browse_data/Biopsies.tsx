@@ -406,6 +406,12 @@ export default function Biopsies() {
                   >
                     Biopsy Stats
                   </button>
+                  <Link
+                    to="/admin/research/biopsy-age-rankings"
+                    className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"
+                  >
+                    Research Workbench
+                  </Link>
                   {role === "admin" && (
                     <button
                       className="px-3 py-1 rounded border bg-white shadow-sm text-xs text-blue-700 hover:bg-blue-50"

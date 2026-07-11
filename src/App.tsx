@@ -25,6 +25,9 @@ import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminRolesPage from "@/pages/admin/AdminRolesPage";
 import AdminExportsPage from "@/pages/admin/AdminExportsPage";
 import ReviewSightingDetailsPage from "@/pages/admin/ReviewSightingDetailsPage";
+import ResearchDashboardPage from "@/pages/admin/research/ResearchDashboardPage";
+import BiopsyAgeRankingsPage from "@/pages/admin/research/BiopsyAgeRankingsPage";
+import AgeGrowthExplorationPage from "@/pages/admin/research/AgeGrowthExplorationPage";
 
 import DataIntegrityPage from "@/pages/admin/DataIntegrityPage";
 import DataQualityControlPage from "@/pages/admin/DataQualityControlPage";
@@ -92,6 +95,9 @@ function App() {
       <Route path="/drone/add" element={<RequireAuth><AddDroneSightingPage /></RequireAuth>} />
 
       <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>} />
+      <Route path="/admin/research" element={<RequireAuth adminOnly><ResearchDashboardPage /></RequireAuth>} />
+      <Route path="/admin/research/biopsy-age-rankings" element={<RequireAuth adminOnly><BiopsyAgeRankingsPage /></RequireAuth>} />
+      <Route path="/admin/research/age-growth-exploration" element={<RequireAuth adminOnly><AgeGrowthExplorationPage /></RequireAuth>} />
 
       <Route path="/admin/import" element={<RequireAuth adminOnly><ImportPage /></RequireAuth>} />
       <Route path="/admin/exports" element={<RequireAuth adminOnly><AdminExportsPage /></RequireAuth>} />
