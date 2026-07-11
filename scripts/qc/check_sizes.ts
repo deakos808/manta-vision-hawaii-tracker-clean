@@ -19,7 +19,8 @@ const SIZE_VIEW_NAMES = [
 ];
 
 const SIZE_MEASUREMENT_TABLE = "manta_sizes";
-const MEAN_TOLERANCE_M = 0.02;
+const MEAN_TOLERANCE_M = 0.4;
+const DW_FROM_DL_RATIO = 2.3;
 
 async function tryLoadRows(ctx: QcContext, relation: string, wantedColumns?: string[]) {
   if (!ctx.supabase) {
@@ -66,6 +67,82 @@ function mean(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function parseCalibration(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function calibrationNumber(calibration: Record<string, unknown> | null, keys: string[]) {
+  if (!calibration) return null;
+  for (const key of keys) {
+    const value = plausibleSize(calibration[key]);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function legacySizeExport(calibration: Record<string, unknown> | null) {
+  const legacy = calibration?.legacy_size_export;
+  return legacy && typeof legacy === "object" && !Array.isArray(legacy) ? legacy as Record<string, unknown> : null;
+}
+
+function normalizedShotType(calibration: Record<string, unknown> | null) {
+  const shot = String(legacySizeExport(calibration)?.shot_type ?? "").trim().toLowerCase();
+  if (["v", "ventral", "vert"].includes(shot)) return "ventral";
+  if (["d", "dorsal"].includes(shot)) return "dorsal";
+  if (["length", "l", "dl", "lv", "vl"].includes(shot)) return "length";
+  if (["width", "w", "dw"].includes(shot)) return "width";
+  return shot || null;
+}
+
+function measurementCandidate(row: Record<string, unknown>, fallbackSize: number) {
+  const calibration = parseCalibration(row.calibration_params);
+  if (!legacySizeExport(calibration)) return null;
+  if (calibration?.usable === false) return null;
+  if (calibration?.include_in_mean === false) return null;
+
+  const basis = String(calibration?.measurement_basis ?? row.measurement_type ?? "").trim().toLowerCase();
+  const shotType = normalizedShotType(calibration);
+  const dwFromDl = calibrationNumber(calibration, ["dw_from_dl_m", "dwFromDlM"]);
+  const dlM = calibrationNumber(calibration, ["dl_m", "dlM"]);
+  const dwM = calibrationNumber(calibration, ["dw_m", "dwM"]);
+
+  if (basis === "dl" || basis === "length" || basis === "disc_length" || basis === "disc length") {
+    return {
+      value: dwFromDl ?? (dlM == null ? fallbackSize * DW_FROM_DL_RATIO : dlM * DW_FROM_DL_RATIO),
+      basis: "dl" as const,
+      shotType,
+    };
+  }
+
+  if (basis === "dw" || basis === "width" || basis === "disc_width" || basis === "disc width") {
+    return {
+      value: dwM ?? fallbackSize,
+      basis: "dw" as const,
+      shotType,
+    };
+  }
+
+  if (dwFromDl != null || dlM != null) {
+    return {
+      value: dwFromDl ?? dlM! * DW_FROM_DL_RATIO,
+      basis: "dl" as const,
+      shotType,
+    };
+  }
+  if (dwM != null) return { value: dwM, basis: "dw" as const, shotType };
+  return null;
+}
+
 export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
   const domain = "sizes";
   const checked_at = new Date().toISOString();
@@ -76,6 +153,7 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
   const mantas = hasTable(ctx, "mantas") ? await loadRows(ctx, "mantas") : [];
   const mantaById = indexBy(mantas, "pk_manta_id");
   const catalog = hasTable(ctx, "catalog") ? indexBy(await loadRows(ctx, "catalog", ["pk_catalog_id"]), "pk_catalog_id") : new Map();
+  const sightings = hasTable(ctx, "sightings") ? indexBy(await loadRows(ctx, "sightings", ["pk_sighting_id"]), "pk_sighting_id") : new Map();
   const sizeMeasurements = await tryLoadRows(ctx, SIZE_MEASUREMENT_TABLE);
 
   if (!sizeMeasurements.available) {
@@ -91,9 +169,25 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
     });
   }
 
-  const lengthSizesByManta = new Map<string, number[]>();
+  const sizeCandidatesByManta = new Map<string, Array<{ value: number; basis: "dl" | "dw"; shotType: string | null }>>();
+  let spreadsheetBackedSizeRows = 0;
+  let nonSpreadsheetSizeRows = 0;
+  let duplicateSpreadsheetSizeRows = 0;
+  let usableSpreadsheetSizeRows = 0;
+  let meanIncludedSpreadsheetSizeRows = 0;
   if (sizeMeasurements.available) {
     for (const row of sizeMeasurements.rows) {
+      const calibration = parseCalibration(row.calibration_params);
+      const legacyExport = legacySizeExport(calibration);
+      if (legacyExport) {
+        spreadsheetBackedSizeRows += 1;
+        if (calibration?.duplicate_legacy_import === true) duplicateSpreadsheetSizeRows += 1;
+        if (calibration?.usable !== false) usableSpreadsheetSizeRows += 1;
+        if (calibration?.usable !== false && calibration?.include_in_mean !== false) meanIncludedSpreadsheetSizeRows += 1;
+      } else {
+        nonSpreadsheetSizeRows += 1;
+      }
+
       if (row.pk_manta_size_id == null || row.pk_manta_size_id === "") {
         findings.push({
           domain,
@@ -127,6 +221,31 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
             message: `Size measurement ${row.pk_manta_size_id} links to missing manta ${row.fk_manta_id}.`,
           });
         } else if (manta) {
+          if (manta.fk_sighting_id == null || manta.fk_sighting_id === "") {
+            findings.push({
+              domain,
+              severity: "error",
+              check_name: "size_measurement_manta_sighting_fk_present",
+              table_name: SIZE_MEASUREMENT_TABLE,
+              primary_key: row.pk_manta_size_id as string | number | null,
+              related_manta_id: row.fk_manta_id as string | number | null,
+              message: `Size measurement ${row.pk_manta_size_id} links to manta ${row.fk_manta_id}, but that manta has no fk_sighting_id.`,
+              suggested_action: "Review the manta encounter and link it to the correct sighting before using its size measurements.",
+            });
+          } else if (sightings.size > 0 && !sightings.has(String(manta.fk_sighting_id))) {
+            findings.push({
+              domain,
+              severity: "error",
+              check_name: "size_measurement_manta_sighting_fk_exists",
+              table_name: SIZE_MEASUREMENT_TABLE,
+              primary_key: row.pk_manta_size_id as string | number | null,
+              related_manta_id: row.fk_manta_id as string | number | null,
+              related_sighting_id: manta.fk_sighting_id as string | number | null,
+              message: `Size measurement ${row.pk_manta_size_id} links to manta ${row.fk_manta_id}, whose fk_sighting_id ${manta.fk_sighting_id} is missing from sightings.`,
+              suggested_action: "Repair the manta sighting link or restore the missing sighting row before using its size measurements.",
+            });
+          }
+
           if ((manta.fk_catalog_id == null || manta.fk_catalog_id === "") && !truthy(manta.catalog_unknown)) {
             findings.push({
               domain,
@@ -150,32 +269,74 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
               message: `Size measurement ${row.pk_manta_size_id} links to manta ${row.fk_manta_id}, whose fk_catalog_id ${manta.fk_catalog_id} is missing from catalog.`,
             });
           }
+
+          if (manta.fk_catalog_id != null && manta.fk_catalog_id !== "") {
+            if (row.fk_catalog_id == null || row.fk_catalog_id === "") {
+              findings.push({
+                domain,
+                severity: "error",
+                check_name: "size_measurement_catalog_fk_present",
+                table_name: SIZE_MEASUREMENT_TABLE,
+                primary_key: row.pk_manta_size_id as string | number | null,
+                related_manta_id: row.fk_manta_id as string | number | null,
+                related_catalog_id: manta.fk_catalog_id as string | number | null,
+                message: `Size measurement ${row.pk_manta_size_id} links to manta ${row.fk_manta_id}, but the size row has no fk_catalog_id.`,
+                suggested_action: "Backfill manta_sizes.fk_catalog_id from the linked manta encounter.",
+              });
+            } else if (String(row.fk_catalog_id) !== String(manta.fk_catalog_id)) {
+              findings.push({
+                domain,
+                severity: "error",
+                check_name: "size_measurement_catalog_fk_matches_manta",
+                table_name: SIZE_MEASUREMENT_TABLE,
+                primary_key: row.pk_manta_size_id as string | number | null,
+                related_manta_id: row.fk_manta_id as string | number | null,
+                related_catalog_id: row.fk_catalog_id as string | number | null,
+                message: `Size measurement ${row.pk_manta_size_id} has fk_catalog_id ${row.fk_catalog_id}, but linked manta ${row.fk_manta_id} has fk_catalog_id ${manta.fk_catalog_id}.`,
+                suggested_action: "Keep manta_sizes.fk_catalog_id synchronized with mantas.fk_catalog_id.",
+              });
+            } else if (catalog.size > 0 && !catalog.has(String(row.fk_catalog_id))) {
+              findings.push({
+                domain,
+                severity: "error",
+                check_name: "size_measurement_catalog_fk_exists",
+                table_name: SIZE_MEASUREMENT_TABLE,
+                primary_key: row.pk_manta_size_id as string | number | null,
+                related_manta_id: row.fk_manta_id as string | number | null,
+                related_catalog_id: row.fk_catalog_id as string | number | null,
+                message: `Size measurement ${row.pk_manta_size_id} links directly to missing catalog ${row.fk_catalog_id}.`,
+              });
+            }
+          }
         }
       }
 
+      const explicitlyUnusable = calibration?.usable === false;
       const sizeValue = plausibleSize(row.size_m);
       if (sizeValue == null) {
-        findings.push({
-          domain,
-          severity: "warning",
-          check_name: "size_measurement_value_present",
-          table_name: SIZE_MEASUREMENT_TABLE,
-          primary_key: row.pk_manta_size_id as string | number | null,
-          related_manta_id: row.fk_manta_id as string | number | null,
-          message: `Size measurement ${row.pk_manta_size_id} has no numeric size_m value.`,
-        });
+        if (!explicitlyUnusable) {
+          findings.push({
+            domain,
+            severity: "warning",
+            check_name: "size_measurement_value_present",
+            table_name: SIZE_MEASUREMENT_TABLE,
+            primary_key: row.pk_manta_size_id as string | number | null,
+            related_manta_id: row.fk_manta_id as string | number | null,
+            message: `Size measurement ${row.pk_manta_size_id} has no numeric size_m value.`,
+          });
+        }
       } else {
         if (row.fk_manta_id != null && row.fk_manta_id !== "") {
           const mantaId = String(row.fk_manta_id);
-          const measurementType = String(row.measurement_type ?? "").trim().toLowerCase();
-          if (measurementType === "length") {
-            const list = lengthSizesByManta.get(mantaId) ?? [];
-            list.push(sizeValue);
-            lengthSizesByManta.set(mantaId, list);
+          const candidate = measurementCandidate(row, sizeValue);
+          if (candidate) {
+            const list = sizeCandidatesByManta.get(mantaId) ?? [];
+            list.push(candidate);
+            sizeCandidatesByManta.set(mantaId, list);
           }
         }
 
-        if (sizeValue <= 0 || sizeValue > 8) {
+        if (!explicitlyUnusable && (sizeValue <= 0 || sizeValue > 8)) {
           findings.push({
             domain,
             severity: "warning",
@@ -201,7 +362,15 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
     }
   }
 
-  for (const [mantaId, childSizes] of lengthSizesByManta.entries()) {
+  const meanSizesByManta = new Map<string, number[]>();
+  for (const [mantaId, candidates] of sizeCandidatesByManta.entries()) {
+    const nonVentralCandidates = candidates.filter((candidate) => candidate.shotType !== "ventral");
+    const shotPreferredCandidates = nonVentralCandidates.length ? nonVentralCandidates : candidates;
+    const dlCandidates = shotPreferredCandidates.filter((candidate) => candidate.basis === "dl");
+    meanSizesByManta.set(mantaId, (dlCandidates.length ? dlCandidates : shotPreferredCandidates).map((candidate) => candidate.value));
+  }
+
+  for (const [mantaId, childSizes] of meanSizesByManta.entries()) {
     const manta = mantaById.get(mantaId);
     const childMean = mean(childSizes);
     const storedMean = plausibleSize(manta?.size_m);
@@ -215,15 +384,15 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
         table_name: "mantas",
         primary_key: mantaId,
         related_manta_id: mantaId,
-        message: `Manta ${mantaId} stores size_m=${storedMean.toFixed(3)} but child measurements average ${childMean.toFixed(3)} across ${childSizes.length} rows.`,
-        suggested_action: "Review the child measurements and confirm whether the manta encounter mean should be updated.",
+        message: `Manta ${mantaId} stores size_m=${storedMean.toFixed(3)} but preferred independent measurements average DW ${childMean.toFixed(3)} across ${childSizes.length} rows.`,
+        suggested_action: "Review the independent measurements and confirm whether the manta encounter mean should be updated.",
       });
     }
   }
 
   for (const row of mantas) {
     const mantaId = row.pk_manta_id == null ? "" : String(row.pk_manta_id);
-    const hasChildSizes = lengthSizesByManta.has(mantaId);
+    const hasChildSizes = meanSizesByManta.has(mantaId);
     if (!hasChildSizes) continue;
 
     if (row.pk_manta_id == null || row.pk_manta_id === "") {
@@ -359,7 +528,12 @@ export async function checkSizes(ctx: QcContext): Promise<DomainResult> {
     summary: {
       manta_rows_checked: mantas.length,
       size_measurement_rows: sizeMeasurements.available ? sizeMeasurements.rows.length : 0,
-      mantas_with_length_measurements: lengthSizesByManta.size,
+      spreadsheet_backed_size_rows: spreadsheetBackedSizeRows,
+      non_spreadsheet_size_rows: nonSpreadsheetSizeRows,
+      duplicate_spreadsheet_size_rows: duplicateSpreadsheetSizeRows,
+      usable_spreadsheet_size_rows: usableSpreadsheetSizeRows,
+      mean_included_spreadsheet_size_rows: meanIncludedSpreadsheetSizeRows,
+      mantas_with_mean_size_measurements: meanSizesByManta.size,
       browser_views_checked: Object.keys(browserViews).length,
       browser_view_rows: browserViews,
     },

@@ -28,6 +28,26 @@ import { logDataChange } from "@/lib/dataChangeAudit";
 import { SightingDetailModal } from "@/pages/browse_data/Sightings";
 import { resolvePhotoUrl } from "@/lib/photoUrl";
 import MatchModal from "@/components/mantas/MatchModal";
+import {
+  dlM,
+  dlPx,
+  dwDlRatio,
+  dwM,
+  dwPx,
+  formatCalibration,
+  formatMeters,
+  formatPx,
+  formatRatio,
+  hasLegacySizeExport,
+  isDuplicateLegacyImport,
+  legacyShotType,
+  legacySizeId,
+  photoCodeId,
+  scalePx,
+  scaleCorrectedPx,
+  sizeMeasurementIncludedInMean,
+  sizeMeasurementLabel,
+} from "@/utils/sizeMeasurements";
 
 type Severity = "error" | "warning" | "info";
 
@@ -171,8 +191,8 @@ const QC_AREAS: QcArea[] = [
     domain: "biopsies",
     tableLabel: "Biopsies",
     browsePath: "/browse/biopsies",
-    cleanMeaning: "Biopsy rows have IDs, sample identifiers, and valid related records.",
-    maintainWhen: "Review missing sample IDs, duplicate sample identifiers, or orphan links.",
+    cleanMeaning: "Biopsy rows have primary keys, valid manta anchors, synchronized sighting/catalog links, and child photos on the sampled manta encounter.",
+    maintainWhen: "Review orphan links, mismatched manta/sighting/catalog relationships, missing child photos, duplicate sample identifiers, or no-ventral catalog exceptions.",
   },
   {
     slug: "photo-storage",
@@ -200,6 +220,7 @@ export default function DataQualityControlPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
+  const [sizeReviewMantaId, setSizeReviewMantaId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -279,6 +300,15 @@ export default function DataQualityControlPage() {
         current
       );
     });
+  }
+
+  function openRecordFromQc(target: RecordTarget) {
+    if (selected?.domain === "sizes" && target.type === "manta") {
+      setSizeReviewMantaId(target.id);
+      setRecordTarget(null);
+      return;
+    }
+    setRecordTarget(target);
   }
 
   function markSightingRelatedFindingsResolved(sightingId: number) {
@@ -376,7 +406,7 @@ export default function DataQualityControlPage() {
             area={selected}
             summaryRow={selectedSummary}
             snapshot={domainSnapshot}
-            onOpenRecord={setRecordTarget}
+            onOpenRecord={openRecordFromQc}
             onFindingsResolved={markFindingsResolved}
             actionMessage={actionMessage}
           />
@@ -389,7 +419,7 @@ export default function DataQualityControlPage() {
             onOpenChange={(open) => !open && setRecordTarget(null)}
             sightingId={recordTarget.id}
             onOpenMantas={() => undefined}
-            onOpenRecord={setRecordTarget}
+            onOpenRecord={openRecordFromQc}
             isAdmin={true}
             onSaved={(event) => {
               if (event?.type === "sighting_updated") {
@@ -416,11 +446,18 @@ export default function DataQualityControlPage() {
         <QcRecordModal
           target={recordTarget}
           onOpenChange={(open) => !open && setRecordTarget(null)}
-          onOpenRecord={setRecordTarget}
+          onOpenRecord={openRecordFromQc}
+          qcFindings={domainSnapshot?.findings ?? []}
           onMantaNoVentralUpdated={markMantaNoVentralPhotoFindingsResolved}
           onPhotoDeleted={markPhotoRelatedFindingsResolved}
         />
       )}
+        <SizeQcReviewModal
+          mantaId={sizeReviewMantaId}
+          findings={domainSnapshot?.findings ?? []}
+          onOpenChange={(open) => !open && setSizeReviewMantaId(null)}
+          onFindingsResolved={markFindingsResolved}
+        />
       </div>
     </Layout>
   );
@@ -3020,22 +3057,325 @@ function parsePositiveIdList(value: unknown) {
     .filter((id) => Number.isFinite(id) && id > 0);
 }
 
+function mean(values: Array<number | null | undefined>) {
+  const usable = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (usable.length === 0) return null;
+  return usable.reduce((sum, value) => sum + value, 0) / usable.length;
+}
+
+function finiteNumber(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function SizeQcReviewModal({
+  mantaId,
+  findings,
+  onOpenChange,
+  onFindingsResolved,
+}: {
+  mantaId: number | null;
+  findings: QcFinding[];
+  onOpenChange: (open: boolean) => void;
+  onFindingsResolved: (findings: QcFinding[]) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [manta, setManta] = useState<Record<string, unknown> | null>(null);
+  const [sizeRows, setSizeRows] = useState<Array<Record<string, unknown>>>([]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [deletingSizeId, setDeletingSizeId] = useState<number | null>(null);
+  const open = mantaId != null;
+
+  const sizeFindings = useMemo(() => {
+    if (!mantaId) return [] as QcFinding[];
+    return findings.filter((finding) => {
+      if (finding.domain !== "sizes") return false;
+      if (numericId(finding.related_manta_id) === mantaId) return true;
+      if (finding.table_name === "mantas" && numericId(finding.primary_key) === mantaId) return true;
+      return false;
+    });
+  }, [findings, mantaId]);
+
+  const directSizeFindingsById = useMemo(() => {
+    const map = new Map<number, QcFinding[]>();
+    for (const finding of sizeFindings) {
+      if (finding.table_name !== "manta_sizes") continue;
+      const sizeId = numericId(finding.primary_key);
+      if (!sizeId) continue;
+      map.set(sizeId, [...(map.get(sizeId) ?? []), finding]);
+    }
+    return map;
+  }, [sizeFindings]);
+
+  const storedMeanFindings = useMemo(
+    () => sizeFindings.filter((finding) => finding.table_name === "mantas"),
+    [sizeFindings]
+  );
+  const includedDwValues = useMemo(
+    () => sizeRows.map((row) => (sizeMeasurementIncludedInMean(row) ? dwM(row) : null)).filter((value): value is number => value != null),
+    [sizeRows]
+  );
+  const calculatedMeanDw = useMemo(
+    () => mean(includedDwValues),
+    [includedDwValues]
+  );
+  const includedSizeCount = includedDwValues.length;
+  const minIncludedDw = includedDwValues.length ? Math.min(...includedDwValues) : null;
+  const maxIncludedDw = includedDwValues.length ? Math.max(...includedDwValues) : null;
+  const visibleSizeRows = useMemo(
+    () => sizeRows.filter((row) => hasLegacySizeExport(row) && !isDuplicateLegacyImport(row)),
+    [sizeRows]
+  );
+  const hiddenDuplicateCount = sizeRows.length - visibleSizeRows.length;
+  const hiddenDuplicateImportCount = sizeRows.filter((row) => isDuplicateLegacyImport(row)).length;
+  const hiddenNotInExportCount = sizeRows.filter((row) => !hasLegacySizeExport(row)).length;
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      if (!mantaId) return;
+      setLoading(true);
+      setManta(null);
+      setSizeRows([]);
+      setMessage(null);
+      setDeletingSizeId(null);
+      try {
+        const [{ data: mantaRow, error: mantaError }, { data: sizes, error: sizeError }] = await Promise.all([
+          supabase
+            .from("mantas")
+            .select("pk_manta_id,fk_catalog_id,fk_sighting_id,name,gender,age_class,size_m")
+            .eq("pk_manta_id", mantaId)
+            .maybeSingle(),
+          supabase.from("manta_sizes").select("*").eq("fk_manta_id", mantaId).order("pk_manta_size_id", { ascending: true }),
+        ]);
+        if (mantaError) throw mantaError;
+        if (sizeError) throw sizeError;
+        if (!alive) return;
+        setManta((mantaRow ?? null) as Record<string, unknown> | null);
+        setSizeRows((sizes ?? []) as Array<Record<string, unknown>>);
+      } catch (error) {
+        if (alive) setMessage(formatUnknownError(error, "Could not load size measurements."));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, [mantaId]);
+
+  async function deleteSizeRow(row: Record<string, unknown>) {
+    const sizeId = numericId(row.pk_manta_size_id);
+    if (!sizeId || !mantaId) return;
+    const rowFindings = directSizeFindingsById.get(sizeId) ?? [];
+    const reason = window.prompt(
+      `Reason for removing unusable size measurement ${sizeId}?\n\nUse this when scale pixels, DL pixels, or other required measurement inputs were not measurable, so no reliable size can be produced. The reason will be written to the audit ledger.`
+    )?.trim();
+    if (!reason) {
+      setMessage("Size delete canceled: an audit reason is required.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete size measurement ${sizeId} from manta ${mantaId}?\n\n` +
+        `Scale px: ${formatPx(scalePx(row))}\n` +
+        `DL: ${formatMeters(dlM(row))}\n` +
+        `DW: ${formatMeters(dwM(row))}\n` +
+        `Photo code: ${formatPlainValue(row.photo_code)}\n\n` +
+        `This deletes only the unusable manta_sizes row and records the old row in the audit ledger.`
+    );
+    if (!confirmed) {
+      setMessage("Size delete canceled.");
+      return;
+    }
+
+    setDeletingSizeId(sizeId);
+    setMessage(null);
+    try {
+      const currentRow = await loadSingleRow("manta_sizes", "pk_manta_size_id", sizeId);
+      if (!currentRow) {
+        setSizeRows((current) => current.filter((candidate) => numericId(candidate.pk_manta_size_id) !== sizeId));
+        if (rowFindings.length) onFindingsResolved(rowFindings);
+        setMessage(`Size measurement ${sizeId} was already deleted.`);
+        return;
+      }
+
+      await logDataChange({
+        action: "delete",
+        tableName: "manta_sizes",
+        primaryKey: sizeId,
+        recordLabel: `manta size ${sizeId}`,
+        reason,
+        oldData: currentRow,
+        newData: {},
+        changedFields: Object.keys(currentRow),
+        metadata: {
+          qc_action: "delete_unusable_size_measurement_from_qc",
+          manta_id: mantaId,
+          size_id: sizeId,
+          scale_px: scalePx(currentRow),
+          dl_m: dlM(currentRow),
+          dw_m: dwM(currentRow),
+          related_qc_findings: rowFindings.map(findingKey),
+        },
+      });
+
+      const { error } = await supabase.from("manta_sizes").delete().eq("pk_manta_size_id", sizeId);
+      if (error) throw error;
+      setSizeRows((current) => current.filter((candidate) => numericId(candidate.pk_manta_size_id) !== sizeId));
+      if (rowFindings.length) onFindingsResolved(rowFindings);
+      setMessage(`Unusable size measurement ${sizeId} deleted and audited. Run QC again to refresh stored mean warnings.`);
+    } catch (error) {
+      setMessage(formatUnknownError(error, `Could not delete size measurement ${sizeId}.`));
+    } finally {
+      setDeletingSizeId(null);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>Manta {mantaId ?? ""} Size QC</DialogTitle>
+          <DialogDescription>
+            Review independent size measurements linked to this manta encounter.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="text-sm text-slate-600">Loading size measurements...</div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded border bg-slate-50 p-3 text-sm sm:grid-cols-6">
+              <DetailMini label="Manta mean DW" value={formatMeters(finiteNumber(manta?.size_m), 3)} />
+              <DetailMini label="Independent mean DW" value={formatMeters(calculatedMeanDw, 3)} />
+              <DetailMini label="Sizes used" value={includedSizeCount} />
+              <DetailMini label="Min DW used" value={formatMeters(minIncludedDw, 3)} />
+              <DetailMini label="Max DW used" value={formatMeters(maxIncludedDw, 3)} />
+              <DetailMini label="Manta name" value={manta?.name ?? "—"} />
+            </div>
+
+            {storedMeanFindings.length > 0 ? (
+              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                {storedMeanFindings.map((finding, index) => (
+                  <div key={`${findingKey(finding)}-${index}`}>{finding.message}</div>
+                ))}
+              </div>
+            ) : null}
+            {message ? <div className="rounded border bg-slate-50 p-3 text-sm text-slate-700">{message}</div> : null}
+            {hiddenDuplicateCount > 0 ? (
+              <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                {hiddenDuplicateImportCount > 0
+                  ? `${hiddenDuplicateImportCount} duplicate app row${hiddenDuplicateImportCount === 1 ? "" : "s"} matched to an already-shown legacy Size ID and are hidden. `
+                  : ""}
+                {hiddenNotInExportCount > 0
+                  ? `${hiddenNotInExportCount} app row${hiddenNotInExportCount === 1 ? "" : "s"} did not match Sizes_Exported.xlsx and are hidden. `
+                  : ""}
+                Hidden rows are excluded from the QC mean.
+              </div>
+            ) : null}
+
+            {visibleSizeRows.length === 0 ? (
+              <div className="text-sm text-slate-600">No independent size measurements are linked to this manta.</div>
+            ) : (
+              <div className="max-h-[65vh] overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-slate-50 text-left">
+                    <tr>
+                      <th className="px-3 py-2">Size ID</th>
+                      <th className="px-3 py-2">App Row</th>
+                      <th className="px-3 py-2">Shot</th>
+                      <th className="px-3 py-2">Type</th>
+                      <th className="px-3 py-2">Scale Pixels</th>
+                      <th className="px-3 py-2">Scale corr px</th>
+                      <th className="px-3 py-2">DL px</th>
+                      <th className="px-3 py-2">DW px</th>
+                      <th className="px-3 py-2">DL m</th>
+                      <th className="px-3 py-2">DW m</th>
+                      <th className="px-3 py-2">Mean</th>
+                      <th className="px-3 py-2">Photo Code</th>
+                      <th className="px-3 py-2">QC Finding</th>
+                      <th className="px-3 py-2 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleSizeRows.map((row) => {
+                      const sizeId = numericId(row.pk_manta_size_id);
+                      const rowFindings = sizeId ? directSizeFindingsById.get(sizeId) ?? [] : [];
+                      const hasIssue = rowFindings.length > 0;
+                      const imported = hasLegacySizeExport(row);
+                      return (
+                        <tr
+                          key={String(row.pk_manta_size_id)}
+                          className={`border-b align-top ${hasIssue ? "bg-red-50 text-red-800" : ""}`}
+                        >
+                          <td className="px-3 py-2 font-medium">{formatPlainValue(legacySizeId(row))}</td>
+                          <td className="px-3 py-2 text-xs text-slate-500">{formatPlainValue(row.pk_manta_size_id)}</td>
+                          <td className="px-3 py-2">{formatPlainValue(legacyShotType(row))}</td>
+                          <td className="px-3 py-2">{imported ? sizeMeasurementLabel(row) : "Not in export"}</td>
+                          <td className="px-3 py-2">{formatPx(scalePx(row))}</td>
+                          <td className="px-3 py-2">{formatPx(scaleCorrectedPx(row))}</td>
+                          <td className="px-3 py-2">{formatPx(dlPx(row))}</td>
+                          <td className="px-3 py-2">{formatPx(dwPx(row))}</td>
+                          <td className="px-3 py-2">{formatMeters(dlM(row), 3)}</td>
+                          <td className="px-3 py-2">{formatMeters(dwM(row), 3)}</td>
+                          <td className="px-3 py-2">{sizeMeasurementIncludedInMean(row) && dwM(row) != null ? "yes" : "no"}</td>
+                          <td className="px-3 py-2">{formatPlainValue(row.photo_code)}</td>
+                          <td className="px-3 py-2 text-xs">
+                            {rowFindings.length ? rowFindings.map((finding) => finding.message).join(" ") : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {hasIssue ? (
+                              <button
+                                type="button"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded text-red-600 hover:bg-red-100 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => deleteSizeRow(row)}
+                                disabled={!sizeId || deletingSizeId === sizeId}
+                                title={`Delete size measurement ${formatPlainValue(row.pk_manta_size_id)}`}
+                                aria-label={`Delete size measurement ${formatPlainValue(row.pk_manta_size_id)}`}
+                              >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              </button>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function QcRecordModal({
   target,
   onOpenChange,
   onOpenRecord,
+  qcFindings,
   onMantaNoVentralUpdated,
+  onPhotoDeleted,
 }: {
   target: RecordTarget | null;
   onOpenChange: (open: boolean) => void;
   onOpenRecord: (target: RecordTarget) => void;
+  qcFindings: QcFinding[];
   onMantaNoVentralUpdated?: (mantaId: number) => void;
+  onPhotoDeleted?: (photoId: number) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [row, setRow] = useState<Record<string, unknown> | null>(null);
   const [linkedMantas, setLinkedMantas] = useState<Array<Record<string, unknown>>>([]);
   const [linkedPhotos, setLinkedPhotos] = useState<Array<Record<string, unknown>>>([]);
   const [linkedSizes, setLinkedSizes] = useState<Array<Record<string, unknown>>>([]);
+  const [linkedSizePhotos, setLinkedSizePhotos] = useState<Map<number, Record<string, unknown>>>(new Map());
   const [linkedBiopsies, setLinkedBiopsies] = useState<Array<Record<string, unknown>>>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Record<string, unknown> | null>(null);
   const [matchingPhoto, setMatchingPhoto] = useState<Record<string, unknown> | null>(null);
@@ -3045,6 +3385,11 @@ function QcRecordModal({
   const [movingMantaLink, setMovingMantaLink] = useState<"sighting" | "catalog" | "no-ventral" | null>(null);
   const [repairMessage, setRepairMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const mantaSizeFindings = useMemo(() => {
+    const mantaId = target?.type === "manta" ? target.id : null;
+    if (!mantaId) return [] as QcFinding[];
+    return qcFindings.filter((finding) => finding.domain === "sizes" && numericId(finding.related_manta_id) === mantaId);
+  }, [qcFindings, target]);
 
   useEffect(() => {
     let alive = true;
@@ -3057,6 +3402,7 @@ function QcRecordModal({
       setLinkedMantas([]);
       setLinkedPhotos([]);
       setLinkedSizes([]);
+      setLinkedSizePhotos(new Map());
       setLinkedBiopsies([]);
       setSelectedPhoto(null);
       setMatchingPhoto(null);
@@ -3114,8 +3460,17 @@ function QcRecordModal({
           if (alive) {
             setRow((data ?? null) as Record<string, unknown> | null);
             setLinkedPhotos((photos ?? []) as Array<Record<string, unknown>>);
-            setLinkedSizes((sizes ?? []) as Array<Record<string, unknown>>);
+            const nextSizes = (sizes ?? []) as Array<Record<string, unknown>>;
+            setLinkedSizes(nextSizes);
             setLinkedBiopsies((biopsies ?? []) as Array<Record<string, unknown>>);
+            const photoIds = Array.from(new Set(nextSizes.map(photoCodeId).filter((id): id is number => id != null)));
+            if (photoIds.length) {
+              const { data: sizePhotos } = await supabase
+                .from("photos")
+                .select("pk_photo_id,file_name2,storage_path,thumbnail_url,photo_view")
+                .in("pk_photo_id", photoIds);
+              if (alive) setLinkedSizePhotos(new Map(((sizePhotos ?? []) as Array<Record<string, unknown>>).map((photo) => [Number(photo.pk_photo_id), photo])));
+            }
           }
         } else if (target.type === "catalog") {
           const catalog = await loadSingleRow("catalog", "pk_catalog_id", target.id);
@@ -3286,6 +3641,7 @@ function QcRecordModal({
       setLinkedPhotos((current) => current.filter((row) => numericId(row.pk_photo_id) !== photoId));
       setSelectedPhoto((current) => (numericId(current?.pk_photo_id) === photoId ? null : current));
       if (target?.type === "photo") setRow(null);
+      onPhotoDeleted?.(photoId);
       setRepairMessage(`Photo ${photoId} deleted and audited. The storage file was not deleted.`);
     } catch (deleteError) {
       setRepairMessage(formatUnknownError(deleteError, `Could not delete photo ${photoId}.`));
@@ -4150,6 +4506,8 @@ function QcRecordModal({
                   primaryKey="pk_manta_size_id"
                   targetType="size"
                   emptyMessage="No size rows link to this manta."
+                  findings={mantaSizeFindings}
+                  photoMap={linkedSizePhotos}
                   onOpenRecord={onOpenRecord}
                 />
                 <LinkedChildRowsPanel
@@ -4326,6 +4684,8 @@ function LinkedChildRowsPanel({
   primaryKey,
   targetType,
   emptyMessage,
+  findings = [],
+  photoMap = new Map(),
   onOpenRecord,
 }: {
   title: string;
@@ -4334,8 +4694,14 @@ function LinkedChildRowsPanel({
   primaryKey: string;
   targetType: RecordTarget["type"];
   emptyMessage: string;
+  findings?: QcFinding[];
+  photoMap?: Map<number, Record<string, unknown>>;
   onOpenRecord: (target: RecordTarget) => void;
 }) {
+  const storedMeanFindings = primaryKey === "pk_manta_size_id"
+    ? findings.filter((finding) => finding.table_name === "mantas")
+    : [];
+
   return (
     <div className="rounded border bg-white p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -4345,40 +4711,85 @@ function LinkedChildRowsPanel({
           {rows.length === 1 ? "" : "s"}
         </div>
       </div>
+      {storedMeanFindings.length > 0 ? (
+        <div className="mb-3 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          {storedMeanFindings.map((finding, index) => (
+            <div key={`${finding.check_name}-${index}`}>{finding.message}</div>
+          ))}
+        </div>
+      ) : null}
       {rows.length === 0 ? (
         <div className="text-sm text-slate-600">{emptyMessage}</div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((row) => {
             const rowId = numericId(row[primaryKey]);
+            const photo = primaryKey === "pk_manta_size_id" ? photoMap.get(photoCodeId(row) ?? -1) : null;
+            const rowFindings = findings.filter((finding) => {
+              if (finding.table_name !== "manta_sizes") return false;
+              return numericId(finding.primary_key) === rowId;
+            });
+            const hasIssue = rowFindings.length > 0;
             const displayEntries = Object.entries(row).filter(
               ([key]) => ![primaryKey, "fk_manta_id", "fk_catalog_id", "fk_sighting_id"].includes(key)
             );
             return (
-              <div key={`${primaryKey}-${String(row[primaryKey])}`} className="rounded border bg-slate-50 p-3 text-sm">
+              <div
+                key={`${primaryKey}-${String(row[primaryKey])}`}
+                className={`rounded border p-3 text-sm ${hasIssue ? "border-red-300 bg-red-50" : "bg-slate-50"}`}
+              >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    className="font-medium text-blue-700 underline hover:text-blue-800 disabled:text-slate-500 disabled:no-underline"
+                    className={`font-medium underline hover:text-blue-800 disabled:text-slate-500 disabled:no-underline ${hasIssue ? "text-red-700" : "text-blue-700"}`}
                     onClick={() => rowId && onOpenRecord({ type: targetType, id: rowId })}
                     disabled={!rowId}
                   >
                     {humanizeKey(primaryKey)} {formatPlainValue(row[primaryKey])}
                   </button>
+                  {primaryKey === "pk_manta_size_id" ? <PhotoFlagPill tone={hasIssue ? "red" : "slate"}>{sizeRowMeasurementLabel(row)}</PhotoFlagPill> : null}
                 </div>
+                {rowFindings.length > 0 ? (
+                  <div className="mb-2 rounded border border-red-200 bg-white p-2 text-xs text-red-800">
+                    {rowFindings.map((finding, index) => (
+                      <div key={`${finding.check_name}-${index}`}>{finding.message}</div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="mb-2 grid gap-1 text-xs text-slate-600">
                   <RecordLinkLine label="Manta" type="manta" value={row.fk_manta_id} onOpenRecord={onOpenRecord} />
                   <RecordLinkLine label="Catalog" type="catalog" value={row.fk_catalog_id} onOpenRecord={onOpenRecord} />
                   <RecordLinkLine label="Sighting" type="sighting" value={row.fk_sighting_id} onOpenRecord={onOpenRecord} />
                 </div>
-                <dl className="grid gap-1 text-xs">
-                  {displayEntries.slice(0, 12).map(([key, value]) => (
-                    <div key={key} className="grid grid-cols-[9rem_1fr] gap-2">
-                      <dt className="text-slate-500">{humanizeKey(key)}</dt>
-                      <dd className="break-words text-slate-800">{formatPlainValue(value)}</dd>
+                {primaryKey === "pk_manta_size_id" ? (
+                  <div className="grid gap-2 text-xs">
+                    {photo?.thumbnail_url ? (
+                      <img src={String(photo.thumbnail_url)} alt={`photo ${photo.pk_photo_id}`} className="h-32 w-full rounded border bg-white object-contain" />
+                    ) : null}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <DetailMini label="Scale px" value={formatPx(scalePx(row))} />
+                      <DetailMini label="DL px" value={formatPx(dlPx(row))} />
+                      <DetailMini label="DW px" value={formatPx(dwPx(row))} />
+                      <DetailMini label="DL m" value={formatMeters(dlM(row))} />
+                      <DetailMini label="DW m" value={formatMeters(dwM(row))} />
+                      <DetailMini label="DW/DL ratio" value={formatRatio(dwDlRatio(row))} />
+                      <DetailMini label="Photo code" value={row.photo_code} />
+                      <DetailMini label="Photo file" value={photo?.file_name2 ?? photo?.storage_path ?? "—"} />
                     </div>
-                  ))}
-                </dl>
+                    <div className="break-words text-slate-700">
+                      <span className="text-slate-500">Calibration:</span> {formatCalibration(row.calibration_params)}
+                    </div>
+                  </div>
+                ) : (
+                  <dl className="grid gap-1 text-xs">
+                    {displayEntries.slice(0, 12).map(([key, value]) => (
+                      <div key={key} className="grid grid-cols-[9rem_1fr] gap-2">
+                        <dt className="text-slate-500">{humanizeKey(key)}</dt>
+                        <dd className="break-words text-slate-800">{formatPlainValue(value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </div>
             );
           })}
@@ -4386,6 +4797,18 @@ function LinkedChildRowsPanel({
       )}
     </div>
   );
+}
+
+function DetailMini({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div>
+      <span className="text-slate-500">{label}:</span> <span className="text-slate-800">{formatPlainValue(value)}</span>
+    </div>
+  );
+}
+
+function sizeRowMeasurementLabel(row: Record<string, unknown>) {
+  return sizeMeasurementLabel(row);
 }
 
 function PhotoPreviewButton({
@@ -4459,14 +4882,16 @@ function PhotoFlagPill({
   tone = "slate",
 }: {
   children: ReactNode;
-  tone?: "slate" | "amber" | "blue";
+  tone?: "slate" | "amber" | "blue" | "red";
 }) {
   const classes =
     tone === "amber"
       ? "border-amber-200 bg-amber-50 text-amber-800"
       : tone === "blue"
         ? "border-blue-200 bg-blue-50 text-blue-800"
-        : "border-slate-200 bg-white text-slate-700";
+        : tone === "red"
+          ? "border-red-200 bg-red-50 text-red-800"
+          : "border-slate-200 bg-white text-slate-700";
   return <span className={`rounded-full border px-2 py-0.5 text-[11px] ${classes}`}>{children}</span>;
 }
 

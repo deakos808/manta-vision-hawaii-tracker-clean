@@ -35,6 +35,8 @@
     "qc:fix-manta-catalog-by-name": "tsx scripts/qc/fix_manta_catalog_ids_by_name.ts",
     "qc:apply-manta-catalog-reviewed": "tsx scripts/qc/apply_manta_catalog_reviewed_unknowns.ts",
     "qc:apply-manta-no-photos": "tsx scripts/qc/apply_manta_no_photos_expected.ts",
+    "qc:import-size-pixels": "tsx scripts/qc/import_size_pixels_from_export.ts",
+    "qc:dedupe-size-pixels": "tsx scripts/qc/dedupe_legacy_size_imports.ts",
     "qc:export-missing-sighting-coordinates": "tsx scripts/qc/export_missing_sighting_coordinates.ts",
     "qc:fix-missing-sighting-coordinates": "tsx scripts/qc/fix_missing_sighting_coordinates.ts",
     "qc:delete-target-duplicate-mprf-sightings": "tsx scripts/qc/delete_target_duplicate_mprf_sightings.ts",
