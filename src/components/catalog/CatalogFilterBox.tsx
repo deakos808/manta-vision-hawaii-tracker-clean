@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ChevronDown, Triangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverTrigger,
@@ -28,6 +29,9 @@ interface CatalogEntry {
   mprf?: string | null;
   best_catalog_ventral_thumb_url?: string | null;
   best_catalog_dorsal_thumb_url?: string | null;
+  total_sizes?: number | null;
+  total_biopsies?: number | null;
+  total_tags?: number | null;
 }
 
 interface Props {
@@ -43,6 +47,12 @@ interface Props {
   setViewMode: (v: "ventral" | "dorsal") => void;
   catalogIdPrefix: string;
   setCatalogIdPrefix: (v: string) => void;
+  onlySized: boolean;
+  setOnlySized: (v: boolean) => void;
+  onlyBiopsied: boolean;
+  setOnlyBiopsied: (v: boolean) => void;
+  onlyTagged: boolean;
+  setOnlyTagged: (v: boolean) => void;
   onOpenStats: () => void;
   isAdmin?: boolean;
 }
@@ -106,6 +116,12 @@ export default function CatalogFilterBox({
   setViewMode,
   catalogIdPrefix,
   setCatalogIdPrefix,
+  onlySized,
+  setOnlySized,
+  onlyBiopsied,
+  setOnlyBiopsied,
+  onlyTagged,
+  setOnlyTagged,
   onOpenStats,
   isAdmin = false,
 }: Props) {
@@ -222,6 +238,20 @@ export default function CatalogFilterBox({
     return { ventral, dorsal };
   }, [catalog]);
 
+  const evidenceCounts = useMemo(() => {
+    let sized = 0;
+    let biopsied = 0;
+    let tagged = 0;
+
+    for (const row of catalog) {
+      if (Number(row.total_sizes ?? 0) > 0) sized += 1;
+      if (Number(row.total_biopsies ?? 0) > 0) biopsied += 1;
+      if (Number(row.total_tags ?? 0) > 0) tagged += 1;
+    }
+
+    return { sized, biopsied, tagged };
+  }, [catalog]);
+
   const sortDirectionLabels =
     sortField === "catalog_id" || sortField === "last_size"
       ? { asc: "Small → Large", desc: "Large → Small" }
@@ -281,6 +311,19 @@ export default function CatalogFilterBox({
     </Popover>
   );
 
+  const renderDataToggle = (
+    label: string,
+    checked: boolean,
+    onCheckedChange: (checked: boolean) => void,
+    count: number,
+  ) => (
+    <label className="flex min-h-10 items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm">
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <span className="font-medium">{label}</span>
+      <span className="text-xs text-muted-foreground">{count}</span>
+    </label>
+  );
+
   return (
     <div className="bg-white shadow p-4 rounded border mb-4">
       <div className="flex justify-between items-center mb-3">
@@ -336,6 +379,12 @@ export default function CatalogFilterBox({
             </label>
           </PopoverContent>
         </Popover>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {renderDataToggle("Sized", onlySized, setOnlySized, evidenceCounts.sized)}
+        {renderDataToggle("Biopsied", onlyBiopsied, setOnlyBiopsied, evidenceCounts.biopsied)}
+        {renderDataToggle("Tagged", onlyTagged, setOnlyTagged, evidenceCounts.tagged)}
       </div>
 
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">

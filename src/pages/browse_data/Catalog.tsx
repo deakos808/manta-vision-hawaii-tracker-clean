@@ -36,6 +36,7 @@ type CatalogRow = {
   islands?: string[] | null;
   total_sizes?: number | null;
   total_biopsies?: number | null;
+  total_tags?: number | null;
   last_size_m?: number | null;
   mprf?: "MPRF" | "HAMER" | null;
   notes?: string | null;
@@ -163,6 +164,34 @@ async function fetchBiopsyCounts(): Promise<Map<number, number>> {
   return out;
 }
 
+async function fetchTagCounts(): Promise<Map<number, number>> {
+  const out = new Map<number, number>();
+  const pageSize = 1000;
+
+  for (let from = 0; from < 500000; from += pageSize) {
+    const { data, error } = await supabase
+      .from("v_catalog_computed")
+      .select("pk_catalog_id,total_tags")
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error("[Catalog] tag counts error:", error);
+      break;
+    }
+
+    const chunk = data ?? [];
+    for (const row of chunk as any[]) {
+      const id = Number(row?.pk_catalog_id ?? 0);
+      if (!id) continue;
+      out.set(id, Number(row?.total_tags ?? 0) || 0);
+    }
+
+    if (chunk.length < pageSize) break;
+  }
+
+  return out;
+}
+
 async function fetchCatalogMprfMap(): Promise<Map<number, "MPRF" | "HAMER">> {
   const out = new Map<number, "MPRF" | "HAMER">();
   const sightingMprf = new Map<number, boolean>();
@@ -229,6 +258,9 @@ export default function Catalog() {
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<"ventral" | "dorsal">("ventral");
   const [catalogIdPrefix, setCatalogIdPrefix] = useState("");
+  const [onlySized, setOnlySized] = useState(false);
+  const [onlyBiopsied, setOnlyBiopsied] = useState(false);
+  const [onlyTagged, setOnlyTagged] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const showHamrFilter = isAdmin;
   const [exportPreset, setExportPreset] = useState<ExportPreset>("filtered_catalog_current_view");
@@ -276,10 +308,11 @@ setIsAdmin(nextIsAdmin);
   async function load() {
     setLoading(true);
     try {
-      const [rows, sizeCounts, biopsyCounts, mprfMap] = await Promise.all([
+      const [rows, sizeCounts, biopsyCounts, tagCounts, mprfMap] = await Promise.all([
         fetchPagedCatalogRows(catalogIdParam),
         fetchSizeCounts(),
         fetchBiopsyCounts(),
+        fetchTagCounts(),
         fetchCatalogMprfMap(),
       ]);
 
@@ -292,6 +325,7 @@ setIsAdmin(nextIsAdmin);
           total_sizes: sizeInfo.total_sizes,
           last_size_m: sizeInfo.last_size_m,
           total_biopsies: biopsyCounts.get(row.pk_catalog_id) ?? 0,
+          total_tags: tagCounts.get(row.pk_catalog_id) ?? (Number(row.total_tags ?? 0) || 0),
           mprf: mprfMap.get(row.pk_catalog_id) ?? null,
         };
       });
@@ -331,6 +365,9 @@ setCatalog(merged);
         String(c.pk_catalog_id).includes(term);
 
       const catalogPrefixOK = !cidPrefix || String(c.pk_catalog_id).startsWith(cidPrefix);
+      const sizedOK = !onlySized || Number(c.total_sizes ?? 0) > 0;
+      const biopsiedOK = !onlyBiopsied || Number(c.total_biopsies ?? 0) > 0;
+      const taggedOK = !onlyTagged || Number(c.total_tags ?? 0) > 0;
       const sourceOK =
         filters.mprf.length === 0 ||
         filters.mprf.length === 2 ||
@@ -339,6 +376,9 @@ setCatalog(merged);
       return (
         textOK &&
         catalogPrefixOK &&
+        sizedOK &&
+        biopsiedOK &&
+        taggedOK &&
         arrHasAny(filters.population, c.populations) &&
         arrHasAny(filters.island, c.islands) &&
         valOK(filters.sitelocation, c.sitelocation) &&
@@ -385,7 +425,7 @@ setCatalog(merged);
     });
 
     return rows;
-  }, [catalog, search, catalogIdPrefix, filters, sortField, sortAsc]);
+  }, [catalog, search, catalogIdPrefix, onlySized, onlyBiopsied, onlyTagged, filters, sortField, sortAsc]);
 
   const clearAll = () => {
     setSearch("");
@@ -393,6 +433,9 @@ setCatalog(merged);
     setSortField("catalog_id");
     setSortAsc(true);
     setCatalogIdPrefix("");
+    setOnlySized(false);
+    setOnlyBiopsied(false);
+    setOnlyTagged(false);
     setSearchParams({});
   };
 
@@ -407,9 +450,12 @@ setCatalog(merged);
     if (filters.age_class.length) parts.push(`Age: ${filters.age_class.map(filterLabel).join(", ")}`);
     if (filters.species.length) parts.push(`Species: ${filters.species.map(filterLabel).join(", ")}`);
     if (filters.mprf.length) parts.push(`Source: ${filters.mprf.join(", ")}`);
+    if (onlySized) parts.push("Sized");
+    if (onlyBiopsied) parts.push("Biopsied");
+    if (onlyTagged) parts.push("Tagged");
     if (viewMode) parts.push(`Photo View: ${viewMode}`);
     return parts.join("; ");
-  }, [catalogIdPrefix, filters, viewMode, search]);
+  }, [catalogIdPrefix, filters, onlySized, onlyBiopsied, onlyTagged, viewMode, search]);
 
   const handleExportExcel = () => {
     try {
@@ -438,6 +484,7 @@ setCatalog(merged);
           total_sightings: row.total_sightings ?? 0,
           total_sizes: row.total_sizes ?? 0,
           total_biopsies: row.total_biopsies ?? 0,
+          total_tags: row.total_tags ?? 0,
           mprf: row.mprf ?? "",
           populations: Array.isArray(row.populations) ? row.populations.join(", ") : "",
           islands: Array.isArray(row.islands) ? row.islands.join(", ") : "",
@@ -537,6 +584,12 @@ setCatalog(merged);
           setViewMode={setViewMode}
           catalogIdPrefix={catalogIdPrefix}
           setCatalogIdPrefix={setCatalogIdPrefix}
+          onlySized={onlySized}
+          setOnlySized={setOnlySized}
+          onlyBiopsied={onlyBiopsied}
+          setOnlyBiopsied={setOnlyBiopsied}
+          onlyTagged={onlyTagged}
+          setOnlyTagged={setOnlyTagged}
           onOpenStats={() => setStatsOpen(true)}
           isAdmin={isAdmin}
         
@@ -669,6 +722,8 @@ setCatalog(merged);
                     {e.total_biopsies ?? 0}
                   </button>
                 </div>
+
+                <div className="text-gray-700">Total Tags: {e.total_tags ?? 0}</div>
               </div>
             </Card>
           );

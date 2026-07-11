@@ -7,6 +7,21 @@ import { Card } from "@/components/ui/card";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/lib/supabase";
+import {
+  dlM,
+  dwDlRatio,
+  dwM,
+  formatCalibration,
+  formatMeters,
+  formatRatio,
+  hasLegacySizeExport,
+  isDuplicateLegacyImport,
+  legacyShotType,
+  legacySizeId,
+  photoCodeId,
+  scalePx,
+  sizeMeasurementLabel,
+} from "@/utils/sizeMeasurements";
 
 type Summary = {
   total_mantas: number | null;
@@ -42,27 +57,55 @@ type MantaSizeRow = {
   total_sizes?: number | null;
 };
 
-type CatalogCountRow = {
-  pk_catalog_id: number;
-  total_sizes: number | null;
+type SizeMeasurementRow = {
+  pk_manta_size_id: number;
+  fk_manta_id: number | null;
+  fk_catalog_id?: number | null;
+  fk_sighting_id?: number | null;
+  measurement_type?: string | null;
+  size_m: number | null;
+  measured_on?: string | null;
+  photo_code?: string | null;
+  quality_note?: string | null;
+  calibration_params?: unknown;
+  src_file?: string | null;
 };
 
-type HistRow = {
-  fk_catalog_id: number;
-  measured_on: string;
-  mean_m: number | null;
-  min_m: number | null;
-  max_m: number | null;
-  n: number | null;
-  prev_m: number | null;
-  delta_m: number | null;
-  years_between: number | null;
-  growth_cm_per_year: number | null;
+type SizePhotoRow = {
+  pk_photo_id: number;
+  file_name2?: string | null;
+  storage_path?: string | null;
+  thumbnail_url?: string | null;
 };
 
 const fmtN = (n: number | null | undefined) => (n == null ? "—" : n.toString());
 const fmtM = (m: number | null | undefined, d = 2) => (m == null ? "—" : `${Number(m).toFixed(d)} m`);
 const uniq = <T,>(arr: (T | null | undefined)[]) => [...new Set(arr.filter(Boolean) as T[])];
+
+function calibrationSummaries(rows: Array<{ calibration_params?: unknown }>) {
+  return Array.from(
+    new Set(rows.map((row) => formatCalibration(row.calibration_params)).filter((value) => value !== "—"))
+  );
+}
+
+function isTrustedIndependentSize(row: { calibration_params?: unknown }) {
+  return hasLegacySizeExport(row) && !isDuplicateLegacyImport(row);
+}
+
+async function loadAllRows<T extends Record<string, unknown>>(table: string, columns: string) {
+  const rows: T[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as T[]));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
 
 function Modal({
   open,
@@ -108,8 +151,9 @@ export default function Sizes() {
   const [onlyMultiple, setOnlyMultiple] = useState<boolean>(false);
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
-  const [openHistFor, setOpenHistFor] = useState<number | null>(null);
-  const [histRows, setHistRows] = useState<HistRow[] | null>(null);
+  const [openSizesFor, setOpenSizesFor] = useState<MantaSizeRow | null>(null);
+  const [sizeRows, setSizeRows] = useState<SizeMeasurementRow[] | null>(null);
+  const [sizePhotos, setSizePhotos] = useState<Map<number, SizePhotoRow>>(new Map());
 
   const [openStats, setOpenStats] = useState(false);
 
@@ -119,11 +163,11 @@ export default function Sizes() {
     (async () => {
       setLoading(true);
 
-      const [s1, s2, s3, s4] = await Promise.all([
+      const [s1, s2, s3, allSizeRows] = await Promise.all([
         supabase.from("v_sizes_summary_stats_v3").select("*").single(),
         supabase.from("v_sizes_quadrant_stats_v3").select("*"),
         supabase.from("v_sizes_manta_rows_v1").select("*").order("pk_manta_id", { ascending: true }),
-        supabase.from("v_sizes_card_rows_v3").select("pk_catalog_id,total_sizes"),
+        loadAllRows<SizeMeasurementRow>("manta_sizes", "pk_manta_size_id,fk_manta_id,calibration_params"),
       ]);
 
       if (!alive) return;
@@ -131,16 +175,15 @@ export default function Sizes() {
       if (s1.error) console.error("[Sizes] summary load error", s1.error);
       if (s2.error) console.error("[Sizes] quadrant load error", s2.error);
       if (s3.error) console.error("[Sizes] manta rows load error", s3.error);
-      if (s4.error) console.error("[Sizes] catalog count load error", s4.error);
-
       const countMap = new Map<number, number>();
-      ((s4.data as CatalogCountRow[] | null) ?? []).forEach((r) => {
-        countMap.set(Number(r.pk_catalog_id), Number(r.total_sizes ?? 0));
+      allSizeRows.filter(isTrustedIndependentSize).forEach((r) => {
+        const mantaId = Number(r.fk_manta_id);
+        if (Number.isFinite(mantaId)) countMap.set(mantaId, (countMap.get(mantaId) ?? 0) + 1);
       });
 
       const merged = (((s3.data as MantaSizeRow[] | null) ?? []).map((r) => ({
         ...r,
-        total_sizes: countMap.get(Number(r.fk_catalog_id)) ?? 0,
+        total_sizes: countMap.get(Number(r.pk_manta_id)) ?? 0,
       })));
 
       setSummary((s1.data as Summary) ?? null);
@@ -155,32 +198,50 @@ export default function Sizes() {
   }, []);
 
   useEffect(() => {
-    if (openHistFor == null) return;
+    if (!openSizesFor) return;
 
     let alive = true;
+    setSizeRows(null);
+    setSizePhotos(new Map());
 
     (async () => {
       const { data, error } = await supabase
-        .from("v_catalog_size_history")
+        .from("manta_sizes")
         .select("*")
-        .eq("fk_catalog_id", openHistFor)
-        .order("measured_on", { ascending: true });
+        .eq("fk_manta_id", openSizesFor.pk_manta_id)
+        .order("pk_manta_size_id", { ascending: true });
 
       if (!alive) return;
 
       if (error) {
-        console.error("[Sizes] history load error", error);
-        setHistRows([]);
+        console.error("[Sizes] independent sizes load error", error);
+        setSizeRows([]);
         return;
       }
 
-      setHistRows((data as HistRow[]) ?? []);
+      const nextRows = (data as SizeMeasurementRow[]) ?? [];
+      setSizeRows(nextRows);
+
+      const photoIds = Array.from(new Set(nextRows.map(photoCodeId).filter((id): id is number => id != null)));
+      if (photoIds.length) {
+        const { data: photos, error: photoError } = await supabase
+          .from("photos")
+          .select("pk_photo_id,file_name2,storage_path,thumbnail_url")
+          .in("pk_photo_id", photoIds);
+        if (!alive) return;
+        if (photoError) {
+          console.warn("[Sizes] size photo lookup error", photoError);
+          setSizePhotos(new Map());
+        } else {
+          setSizePhotos(new Map(((photos ?? []) as SizePhotoRow[]).map((photo) => [photo.pk_photo_id, photo])));
+        }
+      }
     })();
 
     return () => {
       alive = false;
     };
-  }, [openHistFor]);
+  }, [openSizesFor]);
 
   const speciesOptions = useMemo(() => uniq(rows.map((r) => r.species)).sort(), [rows]);
   const genderOptions = useMemo(() => uniq(rows.map((r) => r.gender ?? "Unknown")).sort(), [rows]);
@@ -190,6 +251,15 @@ export default function Sizes() {
     () => rows.filter((r) => Number(r.total_sizes ?? 0) > 1).length,
     [rows]
   );
+  const openSizeCalibrationSummaries = useMemo(
+    () => calibrationSummaries((sizeRows ?? []).filter(isTrustedIndependentSize)),
+    [sizeRows]
+  );
+  const visibleSizeRows = useMemo(
+    () => (sizeRows ?? []).filter(isTrustedIndependentSize),
+    [sizeRows]
+  );
+  const hiddenRawSizeCount = (sizeRows?.length ?? 0) - visibleSizeRows.length;
 
   const speciesCounts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -291,7 +361,7 @@ export default function Sizes() {
     if (filterSpecies.length) parts.push(`Species: ${filterSpecies.join(", ")}`);
     if (filterGender.length) parts.push(`Gender: ${filterGender.join(", ")}`);
     if (filterAge.length) parts.push(`Age: ${filterAge.join(", ")}`);
-    if (onlyMultiple) parts.push("Total Sizes > 1");
+    if (onlyMultiple) parts.push("Independent Sizes > 1");
     return parts.join("; ");
   }, [mantaIdPrefix, namePrefix, catalogPrefix, filterSpecies, filterGender, filterAge, onlyMultiple]);
 
@@ -405,9 +475,9 @@ export default function Sizes() {
               variant={onlyMultiple ? "default" : "outline"}
               className="text-sm"
               onClick={() => setOnlyMultiple((v) => !v)}
-              title="Show only catalogs with more than one size record"
+              title="Show only manta encounters with more than one independent size measurement"
             >
-              Total Sizes &gt; 1 {onlyMultiple ? "✓" : ""}{" "}
+              Independent Sizes &gt; 1 {onlyMultiple ? "✓" : ""}{" "}
               <span className="ml-1 text-xs text-muted-foreground">({gt1Count})</span>
             </Button>
           </div>
@@ -497,11 +567,11 @@ export default function Sizes() {
                 <div>Gender: {r.gender || "—"}</div>
                 <div>Age: {r.age_class || "—"}</div>
                 <div>
-                  Total Sizes:{" "}
+                  Independent Sizes:{" "}
                   {Number(r.total_sizes ?? 0) > 1 ? (
                     <button
                       className="text-blue-600 underline"
-                      onClick={() => setOpenHistFor(r.fk_catalog_id)}
+                      onClick={() => setOpenSizesFor(r)}
                     >
                       {fmtN(r.total_sizes)}
                     </button>
@@ -516,51 +586,79 @@ export default function Sizes() {
       </div>
 
       <Modal
-        open={openHistFor != null}
-        title={openHistFor != null ? `Catalog ${openHistFor} Size History` : "Size History"}
+        open={openSizesFor != null}
+        title={openSizesFor ? `Manta ${openSizesFor.pk_manta_id} Independent Sizes` : "Independent Sizes"}
         onClose={() => {
-          setOpenHistFor(null);
-          setHistRows(null);
+          setOpenSizesFor(null);
+          setSizeRows(null);
         }}
       >
-        {!histRows ? (
-          <div className="text-sm text-gray-500">Loading…</div>
-        ) : histRows.length === 0 ? (
-          <div className="text-sm text-gray-500">No size history found.</div>
+        {!sizeRows ? (
+          <div className="text-sm text-gray-500">Loading...</div>
+        ) : visibleSizeRows.length === 0 ? (
+          <div className="text-sm text-gray-500">No independent size measurements found for this manta encounter.</div>
         ) : (
-          <div className="overflow-auto">
-            <table className="min-w-full text-sm border-collapse">
+          <div className="space-y-3">
+            {hiddenRawSizeCount > 0 ? (
+              <div className="rounded border bg-slate-50 p-3 text-xs text-slate-600">
+                {hiddenRawSizeCount} raw size row{hiddenRawSizeCount === 1 ? "" : "s"} without trusted legacy Size ID data are hidden from this independent measurement list.
+              </div>
+            ) : null}
+            {openSizeCalibrationSummaries.length > 0 ? (
+              <div className="rounded border bg-slate-50 p-3 text-xs text-slate-700">
+                <span className="font-semibold text-slate-900">Calibration / scale:</span>{" "}
+                {openSizeCalibrationSummaries.length === 1
+                  ? openSizeCalibrationSummaries[0]
+                  : `${openSizeCalibrationSummaries.length} calibration scales used`}
+              </div>
+            ) : null}
+            <div className="overflow-auto">
+              <table className="min-w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b text-left">
+                  <th className="py-2 pr-4">Size ID</th>
+                  <th className="py-2 pr-4">Photo</th>
+                  <th className="py-2 pr-4">Type</th>
+                  <th className="py-2 pr-4">Shot</th>
+                  <th className="py-2 pr-4">Scale px</th>
+                  <th className="py-2 pr-4">DL m</th>
+                  <th className="py-2 pr-4">DW m</th>
+                  <th className="py-2 pr-4">DW/DL</th>
                   <th className="py-2 pr-4">Measured On</th>
-                  <th className="py-2 pr-4">Mean</th>
-                  <th className="py-2 pr-4">Min</th>
-                  <th className="py-2 pr-4">Max</th>
-                  <th className="py-2 pr-4">N</th>
-                  <th className="py-2 pr-4">Prev</th>
-                  <th className="py-2 pr-4">Delta</th>
-                  <th className="py-2 pr-4">Years</th>
-                  <th className="py-2 pr-4">Growth cm/yr</th>
+                  <th className="py-2 pr-4">Sighting</th>
+                  <th className="py-2 pr-4">Photo Code</th>
+                  <th className="py-2 pr-4">Note</th>
                 </tr>
               </thead>
               <tbody>
-                {histRows.map((h, idx) => (
-                  <tr key={`${h.fk_catalog_id}-${h.measured_on}-${idx}`} className="border-b">
-                    <td className="py-2 pr-4">{h.measured_on || "—"}</td>
-                    <td className="py-2 pr-4">{fmtM(h.mean_m)}</td>
-                    <td className="py-2 pr-4">{fmtM(h.min_m)}</td>
-                    <td className="py-2 pr-4">{fmtM(h.max_m)}</td>
-                    <td className="py-2 pr-4">{fmtN(h.n)}</td>
-                    <td className="py-2 pr-4">{fmtM(h.prev_m)}</td>
-                    <td className="py-2 pr-4">{fmtM(h.delta_m)}</td>
-                    <td className="py-2 pr-4">{h.years_between == null ? "—" : Number(h.years_between).toFixed(2)}</td>
-                    <td className="py-2 pr-4">
-                      {h.growth_cm_per_year == null ? "—" : Number(h.growth_cm_per_year).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
+                {visibleSizeRows.map((row) => {
+                  const photo = sizePhotos.get(photoCodeId(row) ?? -1);
+                  return (
+                    <tr key={row.pk_manta_size_id} className="border-b align-top">
+                      <td className="py-2 pr-4">{fmtN(legacySizeId(row))}</td>
+                      <td className="py-2 pr-4">
+                        {photo?.thumbnail_url ? (
+                          <img src={photo.thumbnail_url} alt={`photo ${photo.pk_photo_id}`} className="h-14 w-14 rounded border object-cover" />
+                        ) : (
+                          "—"
+                        )}
+	                      </td>
+	                      <td className="py-2 pr-4">{sizeMeasurementLabel(row)}</td>
+                        <td className="py-2 pr-4">{legacyShotType(row) || "—"}</td>
+                        <td className="py-2 pr-4">{scalePx(row) == null ? "—" : scalePx(row)?.toFixed(1)}</td>
+	                      <td className="py-2 pr-4">{formatMeters(dlM(row))}</td>
+	                      <td className="py-2 pr-4">{formatMeters(dwM(row))}</td>
+	                      <td className="py-2 pr-4">{formatRatio(dwDlRatio(row))}</td>
+	                      <td className="py-2 pr-4">{row.measured_on || "—"}</td>
+	                      <td className="py-2 pr-4">{fmtN(row.fk_sighting_id)}</td>
+	                      <td className="py-2 pr-4">{row.photo_code || "—"}</td>
+	                      <td className="py-2 pr-4">{row.quality_note || row.src_file || photo?.file_name2 || "—"}</td>
+	                    </tr>
+	                  );
+                })}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </Modal>

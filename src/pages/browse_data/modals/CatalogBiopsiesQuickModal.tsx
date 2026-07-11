@@ -43,17 +43,17 @@ export default function CatalogBiopsiesQuickModal({
   onOpenChange,
   pk_catalog_id,
 }: Props) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<BiopsyRow[]>([]);
 
   useEffect(() => {
     if (!open) return;
 
     let alive = true;
+    setLoading(true);
+    setRows([]);
 
     (async () => {
-      setLoading(true);
-
       const { data, error } = await supabase
         .from("biopsies")
         .select(

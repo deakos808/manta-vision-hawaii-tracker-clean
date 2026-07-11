@@ -36,20 +36,20 @@ export default function CatalogSizesQuickModal({
   onOpenChange,
   pk_catalog_id,
 }: Props) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SizeRow[]>([]);
 
   useEffect(() => {
     if (!open) return;
 
     let alive = true;
+    setLoading(true);
+    setRows([]);
 
     (async () => {
-      setLoading(true);
-
       const { data, error } = await supabase
         .from("v_catalog_size_history")
-        .select("*")
+        .select("fk_catalog_id,measured_on,mean_m,min_m,max_m,n,prev_m,delta_m,years_between,growth_cm_per_year")
         .eq("fk_catalog_id", pk_catalog_id)
         .order("measured_on", { ascending: false });
 

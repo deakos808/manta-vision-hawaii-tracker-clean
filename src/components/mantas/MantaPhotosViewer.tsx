@@ -7,7 +7,9 @@ type View = "ventral" | "dorsal" | "other";
 type PhotoRow = {
   pk_photo_id: number | null;
   fk_manta_id: number | null;
+  file_name2?: string | null;
   storage_path: string | null;
+  thumbnail_url?: string | null;
   photo_view: View | null; // use this column from your schema
   is_best_manta_ventral_photo: boolean | null;
   is_best_manta_dorsal_photo: boolean | null;
@@ -45,7 +47,7 @@ export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount
       setLoading(true);
       const { data, error } = await supabase
         .from("photos")
-        .select("pk_photo_id, fk_manta_id, storage_path, photo_view, is_best_manta_ventral_photo, is_best_manta_dorsal_photo")
+        .select("pk_photo_id, fk_manta_id, file_name2, storage_path, thumbnail_url, photo_view, is_best_manta_ventral_photo, is_best_manta_dorsal_photo")
         .eq("fk_manta_id", mantaId)
         .order("photo_view", { ascending: true })
         .order("pk_photo_id", { ascending: true });
@@ -97,6 +99,7 @@ export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount
   if (!open) return null;
 
   const urlFor = (r: PhotoRow) => {
+    if (r.thumbnail_url) return r.thumbnail_url;
     if (!r.storage_path) return "";
     const { data } = supabase.storage.from("manta-images").getPublicUrl(r.storage_path);
     return data?.publicUrl || "";
@@ -264,6 +267,9 @@ export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount
                 <div className="text-[11px] text-muted-foreground flex items-center justify-between">
                   <span>id: {String(r.pk_photo_id ?? "")}</span>
                   {isBest && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">Best</span>}
+                </div>
+                <div className="mt-1 break-all text-[11px] text-slate-600">
+                  {r.file_name2 || r.storage_path || "filename unavailable"}
                 </div>
                 {canEdit && <ViewToggle row={r} />}
                 {canEdit && (view === "ventral" || view === "dorsal") && (

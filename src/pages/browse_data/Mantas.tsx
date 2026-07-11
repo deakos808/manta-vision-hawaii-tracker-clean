@@ -26,6 +26,21 @@ import MantaFilterBox from "@/components/mantas/MantaFilterBox";
 import MantaPhotosModal from "@/components/mantas/MantaPhotosModal";
 import MantaPhotosViewer from "@/components/mantas/MantaPhotosViewer";
 import CatalogEditModal from "@/pages/browse_data/modals/CatalogEditModal";
+import {
+  dlM,
+  dwDlRatio,
+  dwM,
+  formatCalibration,
+  formatMeters,
+  formatRatio,
+  hasLegacySizeExport,
+  isDuplicateLegacyImport,
+  legacyShotType,
+  legacySizeId,
+  photoCodeId,
+  scalePx,
+  sizeMeasurementLabel,
+} from "@/utils/sizeMeasurements";
 
 import { useIsAdmin } from "@/lib/isAdmin";
 type MantaRow = {
@@ -41,6 +56,8 @@ type MantaRow = {
   age_class: string | null;
   is_mprf: boolean;
   photo_count?: number;
+  size_count?: number;
+  biopsy_count?: number;
   best_thumb_url?: string | null;
 };
 
@@ -88,7 +105,60 @@ type SightingDetail = {
   longitude?: number | null;
 };
 
+type ChildRecordModalState = {
+  type: "sizes" | "biopsies";
+  mantaId: number;
+  title: string;
+} | null;
+
 const PAGE = 500;
+
+function numericId(value: unknown) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function formatChildValue(value: unknown) {
+  if (value == null || value === "") return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function calibrationSummaries(rows: Array<Record<string, unknown>>) {
+  return Array.from(
+    new Set(rows.map((row) => formatCalibration(row.calibration_params)).filter((value) => value !== "—"))
+  );
+}
+
+function isTrustedIndependentSize(row: { calibration_params?: unknown }) {
+  return hasLegacySizeExport(row) && !isDuplicateLegacyImport(row);
+}
+
+async function loadChildRowsForMantas(table: "manta_sizes" | "biopsies", mantaIds: number[]) {
+  if (mantaIds.length === 0) return [] as Array<Record<string, unknown>>;
+  const rows: Array<Record<string, unknown>> = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(table === "manta_sizes" ? "pk_manta_size_id,fk_manta_id,calibration_params" : "pk_biopsy_id,fk_manta_id")
+      .in("fk_manta_id", mantaIds)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as Array<Record<string, unknown>>));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+function countByManta(rows: Array<Record<string, unknown>>) {
+  const counts: Record<number, number> = {};
+  rows.forEach((row) => {
+    const mantaId = numericId(row.fk_manta_id);
+    if (mantaId) counts[mantaId] = (counts[mantaId] ?? 0) + 1;
+  });
+  return counts;
+}
 
 function getJoinedSighting(row: any) {
   if (Array.isArray(row?.sightings)) return row.sightings[0] ?? null;
@@ -262,6 +332,8 @@ export default function MantasPage() {
         age_class: r.age_class ?? null,
         is_mprf: isMprf,
         photo_count: undefined,
+        size_count: 0,
+        biopsy_count: 0,
         best_thumb_url: null,
       };
       mantas.push(m);
@@ -275,6 +347,23 @@ export default function MantasPage() {
         age_class: m.age_class,
         mprf: isMprf ? "MPRF" : "HAMER",
       });
+    }
+
+    try {
+      if (mantaIds.length) {
+        const [sizeRows, biopsyRows] = await Promise.all([
+          loadChildRowsForMantas("manta_sizes", mantaIds),
+          loadChildRowsForMantas("biopsies", mantaIds),
+        ]);
+        const sizeCounts = countByManta(sizeRows.filter(isTrustedIndependentSize));
+        const biopsyCounts = countByManta(biopsyRows);
+        for (const m of mantas) {
+          m.size_count = sizeCounts[m.pk_manta_id] ?? 0;
+          m.biopsy_count = biopsyCounts[m.pk_manta_id] ?? 0;
+        }
+      }
+    } catch (e: any) {
+      console.warn("[Mantas] child record count fetch failed", (e && e.message) || e);
     }
 
     try {
@@ -732,6 +821,7 @@ export default function MantasPage() {
   const [sightingModalId, setSightingModalId] = useState<number | null>(null);
   const [catalogModal, setCatalogModal] = useState<CatalogEditable | null>(null);
   const [catalogModalOpen, setCatalogModalOpen] = useState(false);
+  const [childRecordModal, setChildRecordModal] = useState<ChildRecordModalState>(null);
 
   async function openCatalogModal(catalogId: number | null) {
     if (!catalogId) return;
@@ -933,7 +1023,6 @@ export default function MantasPage() {
           <div className="mt-3 text-sm text-gray-700">
             {resultsLine}
           </div>
-        </div>
 
         {/* Results */}
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
@@ -958,7 +1047,13 @@ export default function MantasPage() {
           {!loading &&
             !error &&
             visibleMantas.map((m) => {
-                const photoCount = photoCounts[m.pk_manta_id as number] ?? null;
+              const loadedPhotoCount = photoCounts[m.pk_manta_id as number];
+              const photoTotal =
+                typeof loadedPhotoCount === "number"
+                  ? loadedPhotoCount
+                  : typeof m.photo_count === "number"
+                    ? m.photo_count
+                    : 0;
               return (
                 <div
                   id={`m${m.pk_manta_id}`}
@@ -1013,8 +1108,61 @@ export default function MantasPage() {
                           ) : (
                             "—"
                           )}
+	                        </div>
+                        {m.size_count ? (
+                          <div>
+                            <span className="text-muted-foreground">Size ID:</span>{" "}
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 underline underline-offset-2"
+                              onClick={() =>
+                                setChildRecordModal({
+                                  type: "sizes",
+                                  mantaId: m.pk_manta_id,
+                                  title: `Manta ${m.pk_manta_id} Independent Sizes`,
+                                })
+                              }
+                            >
+                              {m.size_count} size{m.size_count === 1 ? "" : "s"}
+                            </button>
+                          </div>
+                        ) : null}
+                        {m.biopsy_count ? (
+                          <div>
+                            <span className="text-muted-foreground">Biopsy ID:</span>{" "}
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 underline underline-offset-2"
+                              onClick={() =>
+                                setChildRecordModal({
+                                  type: "biopsies",
+                                  mantaId: m.pk_manta_id,
+                                  title: `Manta ${m.pk_manta_id} Biopsies`,
+                                })
+                              }
+                            >
+                              {m.biopsy_count} biops{m.biopsy_count === 1 ? "y" : "ies"}
+                            </button>
+                          </div>
+                        ) : null}
+                        <div>
+                          <span className="text-muted-foreground">Photos:</span>{" "}
+                          {photoTotal > 0 ? (
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 underline underline-offset-2"
+                              onClick={() => {
+                                setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
+                                setShowPhotos(true);
+                              }}
+                            >
+                              {photoTotal}
+                            </button>
+                          ) : (
+                            <span>0</span>
+                          )}
                         </div>
-                      </div>
+	                      </div>
 
                       <div className="grid grid-cols-1 gap-1 text-xs">
                         <div>
@@ -1042,9 +1190,9 @@ export default function MantasPage() {
                         <span className="text-muted-foreground">Photographer:</span>{" "}
                         {m.photographer ?? "—"}
                       </div>
-                    </div>
+	                    </div>
 
-                    <div className="mt-3 flex items-center gap-2">
+	                    <div className="mt-3 flex items-center gap-2">
       {isAdmin && (
         <button
           className="text-red-600 text-xs underline flex items-center gap-1"
@@ -1057,16 +1205,7 @@ export default function MantasPage() {
         >
           <Trash2 className="h-4 w-4" /></button>
       )}
-                      <Button
-                        onClick={() => {
-                          setPhotosFor({ mantaId: m.pk_manta_id, sightingId });
-                          setShowPhotos(true);
-                        }}
-                      >
-                        View All Photos
-                        {typeof m.photo_count === "number" ? ` (${m.photo_count})` : ""}
-                      </Button>
-                    </div>
+	                    </div>
                   </div>
                 </div>
               );
@@ -1133,7 +1272,177 @@ export default function MantasPage() {
         onOpenChange={setCatalogModalOpen}
         onSaved={(row) => setCatalogModal(row)}
       />
+      <MantaChildRecordsModal
+        state={childRecordModal}
+        onOpenChange={(open) => !open && setChildRecordModal(null)}
+      />
+      </div>
     </Layout>
+  );
+}
+
+function MantaChildRecordsModal({
+  state,
+  onOpenChange,
+}: {
+  state: ChildRecordModalState;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
+  const [photoMap, setPhotoMap] = useState<Map<number, Record<string, unknown>>>(new Map());
+  const [error, setError] = useState<string | null>(null);
+  const open = Boolean(state);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      if (!state) return;
+      setLoading(true);
+      setError(null);
+      setRows([]);
+      setPhotoMap(new Map());
+      const table = state.type === "sizes" ? "manta_sizes" : "biopsies";
+      const orderKey = state.type === "sizes" ? "pk_manta_size_id" : "pk_biopsy_id";
+      const { data, error: fetchError } = await supabase
+        .from(table)
+        .select("*")
+        .eq("fk_manta_id", state.mantaId)
+        .order(orderKey, { ascending: true });
+      if (!alive) return;
+      if (fetchError) setError(fetchError.message);
+      else {
+        const nextRows = (data ?? []) as Array<Record<string, unknown>>;
+        setRows(nextRows);
+        if (state.type === "sizes") {
+          const photoIds = Array.from(new Set(nextRows.map(photoCodeId).filter((id): id is number => id != null)));
+          if (photoIds.length) {
+            const { data: photos, error: photoError } = await supabase
+              .from("photos")
+              .select("pk_photo_id,file_name2,storage_path,thumbnail_url")
+              .in("pk_photo_id", photoIds);
+            if (!alive) return;
+            if (!photoError) setPhotoMap(new Map(((photos ?? []) as Array<Record<string, unknown>>).map((photo) => [Number(photo.pk_photo_id), photo])));
+          }
+        }
+      }
+      setLoading(false);
+    }
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, [state]);
+
+  const primaryKey = state?.type === "sizes" ? "pk_manta_size_id" : state?.type === "biopsies" ? "pk_biopsy_id" : "id";
+  const visibleSizeRows = state?.type === "sizes" ? rows.filter(isTrustedIndependentSize) : rows;
+  const hiddenRawSizeCount = state?.type === "sizes" ? rows.length - visibleSizeRows.length : 0;
+  const sizeCalibrationSummaries = state?.type === "sizes" ? calibrationSummaries(visibleSizeRows) : [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{state?.title ?? "Child Records"}</DialogTitle>
+        </DialogHeader>
+        {loading ? (
+          <div className="text-sm text-slate-600">Loading records...</div>
+        ) : error ? (
+          <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        ) : rows.length === 0 ? (
+          <div className="text-sm text-slate-600">No child records found.</div>
+        ) : state?.type === "sizes" && visibleSizeRows.length === 0 ? (
+          <div className="rounded border bg-slate-50 p-3 text-sm text-slate-600">
+            No trusted spreadsheet-backed independent size measurements were found for this manta encounter.
+            {hiddenRawSizeCount > 0 ? ` ${hiddenRawSizeCount} raw size row${hiddenRawSizeCount === 1 ? "" : "s"} are hidden because they do not carry legacy Size ID/raw pixel data.` : ""}
+          </div>
+        ) : state?.type === "sizes" ? (
+          <div className="space-y-3">
+            {hiddenRawSizeCount > 0 ? (
+              <div className="rounded border bg-slate-50 p-3 text-xs text-slate-600">
+                {hiddenRawSizeCount} raw size row{hiddenRawSizeCount === 1 ? "" : "s"} without trusted legacy Size ID data are hidden from this independent measurement list.
+              </div>
+            ) : null}
+            {sizeCalibrationSummaries.length > 0 ? (
+              <div className="rounded border bg-slate-50 p-3 text-xs text-slate-700">
+                <span className="font-semibold text-slate-900">Calibration / scale:</span>{" "}
+                {sizeCalibrationSummaries.length === 1
+                  ? sizeCalibrationSummaries[0]
+                  : `${sizeCalibrationSummaries.length} calibration scales used`}
+              </div>
+            ) : null}
+            <div className="max-h-[70vh] overflow-auto">
+              <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="px-3 py-2">Size ID</th>
+                  <th className="px-3 py-2">Photo</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">Shot</th>
+                  <th className="px-3 py-2">Scale px</th>
+                  <th className="px-3 py-2">DL m</th>
+                  <th className="px-3 py-2">DW m</th>
+                  <th className="px-3 py-2">DW/DL</th>
+                  <th className="px-3 py-2">Sighting</th>
+                  <th className="px-3 py-2">Measured On</th>
+                  <th className="px-3 py-2">Photo Code</th>
+                  <th className="px-3 py-2">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleSizeRows.map((row) => {
+                  const photo = photoMap.get(photoCodeId(row) ?? -1);
+                  return (
+                    <tr key={String(row[primaryKey])} className="border-b align-top">
+                      <td className="px-3 py-2">{formatChildValue(legacySizeId(row))}</td>
+                      <td className="px-3 py-2">
+                        {photo?.thumbnail_url ? (
+                          <img src={String(photo.thumbnail_url)} alt={`photo ${photo.pk_photo_id}`} className="h-14 w-14 rounded border object-cover" />
+                        ) : (
+                          "—"
+                        )}
+	                      </td>
+	                      <td className="px-3 py-2">{sizeMeasurementLabel(row)}</td>
+	                      <td className="px-3 py-2">{formatChildValue(legacyShotType(row))}</td>
+	                      <td className="px-3 py-2">{scalePx(row) == null ? "—" : scalePx(row)?.toFixed(1)}</td>
+	                      <td className="px-3 py-2">{formatMeters(dlM(row))}</td>
+	                      <td className="px-3 py-2">{formatMeters(dwM(row))}</td>
+	                      <td className="px-3 py-2">{formatRatio(dwDlRatio(row))}</td>
+	                      <td className="px-3 py-2">{formatChildValue(row.fk_sighting_id)}</td>
+	                      <td className="px-3 py-2">{formatChildValue(row.measured_on)}</td>
+	                      <td className="px-3 py-2">{formatChildValue(row.photo_code)}</td>
+	                      <td className="px-3 py-2">{formatChildValue(row.quality_note ?? row.src_file ?? photo?.file_name2)}</td>
+	                    </tr>
+	                  );
+                })}
+              </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="grid max-h-[70vh] gap-3 overflow-auto md:grid-cols-2">
+            {rows.map((row) => (
+              <div key={String(row[primaryKey])} className="rounded border bg-slate-50 p-3 text-sm">
+                <div className="mb-2 font-semibold">Biopsy {formatChildValue(row.pk_biopsy_id)}</div>
+                <dl className="grid gap-1 text-xs">
+                  {Object.entries(row).map(([key, value]) => (
+                    <div key={key} className="grid grid-cols-[8rem_1fr] gap-2">
+                      <dt className="text-slate-500">{key}</dt>
+                      <dd className="break-words">{formatChildValue(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
