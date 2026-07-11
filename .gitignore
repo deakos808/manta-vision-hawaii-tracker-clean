@@ -43,6 +43,8 @@ scripts/matching/output/
 scripts/matching/cache/
 scripts/qc/output/
 public/qc/
+reports/
+tmp_*.sql
 patch_backups/
 supabase/.temp/
 generated/version.ts
