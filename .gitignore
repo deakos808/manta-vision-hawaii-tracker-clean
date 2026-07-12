@@ -48,6 +48,7 @@ tmp_*.sql
 patch_backups/
 supabase/.temp/
 generated/version.ts
+logs/
 
 backups/
 backups/_checkpoint/
