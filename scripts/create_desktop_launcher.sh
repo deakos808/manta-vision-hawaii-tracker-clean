@@ -6,6 +6,7 @@ PROJECT_DIR="/Users/littlemac/dev/GitHub/manta-vision-hawaii-tracker-clean"
 APPS_DIR="/Users/littlemac/Desktop/Codex APPs"
 BACKUP_DIR="/Users/littlemac/Desktop/Codex Launcher Backups"
 MANTA_APP="$APPS_DIR/mantatracker.app"
+CHROME_APP="$APPS_DIR/Manta Tracker Chrome.app"
 QUIT_APP="$APPS_DIR/Quit Manta Tracker.app"
 TIMESTAMP="$(/bin/date '+%Y%m%d-%H%M%S')"
 TEMP_ROOT="$(/usr/bin/mktemp -d /tmp/manta-desktop-launchers.XXXXXX)"
@@ -33,12 +34,15 @@ backup_bundle() {
 }
 
 backup_bundle "$MANTA_APP" "mantatracker"
+backup_bundle "$CHROME_APP" "Manta-Tracker-Chrome"
 backup_bundle "$QUIT_APP" "Quit-Manta-Tracker"
 
 MANTA_TEMP="$TEMP_ROOT/mantatracker.app"
+CHROME_TEMP="$TEMP_ROOT/Manta Tracker Chrome.app"
 QUIT_TEMP="$TEMP_ROOT/Quit Manta Tracker.app"
 
 /bin/mkdir -p "$MANTA_TEMP/Contents/MacOS" "$MANTA_TEMP/Contents/Resources"
+/bin/mkdir -p "$CHROME_TEMP/Contents/MacOS" "$CHROME_TEMP/Contents/Resources"
 /bin/mkdir -p "$QUIT_TEMP/Contents/MacOS" "$QUIT_TEMP/Contents/Resources"
 
 # Preserve the installed custom icon resources when updating an existing launcher.
@@ -49,6 +53,7 @@ elif [[ -f "$PROJECT_DIR/public/manta-pacific-logo.png" ]]; then
 fi
 
 if [[ -d "$MANTA_TEMP/Contents/Resources" ]]; then
+  /usr/bin/ditto "$MANTA_TEMP/Contents/Resources" "$CHROME_TEMP/Contents/Resources"
   /usr/bin/ditto "$MANTA_TEMP/Contents/Resources" "$QUIT_TEMP/Contents/Resources"
 fi
 
@@ -77,6 +82,54 @@ set -u
 export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 PROJECT_DIR="/Users/littlemac/dev/GitHub/manta-vision-hawaii-tracker-clean"
+ELECTRON_BIN="$PROJECT_DIR/desktop/node_modules/.bin/electron"
+MAIN_FILE="$PROJECT_DIR/desktop/manta-tracker-main.cjs"
+LOG_DIR="$PROJECT_DIR/logs"
+LOG_FILE="$LOG_DIR/launcher.log"
+SCRIPT_DIR="${0:A:h}"
+ICON_FILE="$SCRIPT_DIR/../Resources/mantatracker-base.png"
+
+/bin/mkdir -p "$LOG_DIR"
+/usr/bin/touch "$LOG_FILE"
+
+if [[ ! -x "$ELECTRON_BIN" || ! -f "$MAIN_FILE" ]]; then
+  /bin/echo "[$(/bin/date '+%Y-%m-%d %H:%M:%S')] Electron wrapper dependency is missing. Run npm --prefix desktop install." >> "$LOG_FILE"
+  /usr/bin/open "$LOG_DIR" >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display dialog "The local Electron dependency is missing. Run npm --prefix desktop install, then recreate the launcher. The logs folder has been opened." with title "Manta Tracker Electron Missing" buttons {"OK"} default button "OK" with icon stop' >/dev/null 2>&1 || true
+  exit 1
+fi
+
+export MANTA_PROJECT_DIR="$PROJECT_DIR"
+export MANTA_ICON="$ICON_FILE"
+cd "$PROJECT_DIR" || exit 1
+exec /usr/bin/arch -arm64 /bin/zsh -lic "exec '$ELECTRON_BIN' '$MAIN_FILE'" >> "$LOG_FILE" 2>&1
+LAUNCHER
+
+/bin/cat > "$CHROME_TEMP/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDisplayName</key><string>Manta Tracker Chrome (Fallback)</string>
+  <key>CFBundleExecutable</key><string>manta-tracker-chrome</string>
+  <key>CFBundleIconFile</key><string>mantatracker</string>
+  <key>CFBundleIdentifier</key><string>com.local.mantatracker.chrome-fallback</string>
+  <key>CFBundleName</key><string>Manta Tracker Chrome</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSMinimumSystemVersion</key><string>10.13</string>
+</dict>
+</plist>
+PLIST
+
+/bin/cat > "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome" <<'CHROME_LAUNCHER'
+#!/bin/zsh
+
+set -u
+
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+PROJECT_DIR="/Users/littlemac/dev/GitHub/manta-vision-hawaii-tracker-clean"
 FRONTEND_PORT="8080"
 MATCHER_PORT="8766"
 URL="http://127.0.0.1:8080/"
@@ -87,7 +140,7 @@ LOG_FILE="$LOG_DIR/launcher.log"
 /usr/bin/touch "$LOG_FILE"
 
 log_message() {
-  /bin/echo "[$(/bin/date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+  /bin/echo "[$(/bin/date '+%Y-%m-%d %H:%M:%S')] [chrome-fallback] $*" >> "$LOG_FILE"
 }
 
 port_is_listening() {
@@ -97,10 +150,10 @@ port_is_listening() {
 show_startup_error() {
   log_message "ERROR: Local Manta Ray App did not become available at $URL."
   /usr/bin/open "$LOG_DIR" >/dev/null 2>&1 || true
-  /usr/bin/osascript -e 'display dialog "Manta Ray App could not start on port 8080. The launcher logs folder has been opened. Review launcher.log for details." with title "Manta Ray App Startup Failed" buttons {"OK"} default button "OK" with icon stop' >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display dialog "Manta Ray App could not start on port 8080. The launcher logs folder has been opened. Review launcher.log for details." with title "Manta Tracker Chrome Fallback Failed" buttons {"OK"} default button "OK" with icon stop' >/dev/null 2>&1 || true
 }
 
-log_message "Launcher invoked."
+log_message "Chrome fallback launcher invoked."
 
 if port_is_listening "$FRONTEND_PORT"; then
   log_message "Detected an existing listener on frontend port $FRONTEND_PORT; not starting a second Vite process."
@@ -136,28 +189,14 @@ if [[ "$frontend_ready" != "true" ]]; then
   exit 1
 fi
 
-log_message "Frontend is responding at $URL."
-
-if /usr/bin/open -Ra "Google Chrome" >/dev/null 2>&1; then
-  if /usr/bin/open -na "Google Chrome" --args --app="$URL"; then
-    log_message "Opened $URL in Google Chrome app mode."
-    exit 0
-  fi
-  log_message "Chrome app-mode launch failed; falling back to the default browser."
-else
-  log_message "Google Chrome is unavailable; falling back to the default browser."
-fi
-
-if /usr/bin/open "$URL"; then
-  log_message "Opened $URL in the default browser."
+if /usr/bin/open -Ra "Google Chrome" >/dev/null 2>&1 && /usr/bin/open -na "Google Chrome" --args --app="$URL"; then
+  log_message "Opened $URL in Google Chrome app mode."
   exit 0
 fi
 
-log_message "ERROR: Frontend started, but no browser could be opened."
-/usr/bin/open "$LOG_DIR" >/dev/null 2>&1 || true
-/usr/bin/osascript -e 'display dialog "Manta Ray App started, but the browser could not be opened. The launcher logs folder has been opened." with title "Manta Ray App Browser Error" buttons {"OK"} default button "OK" with icon stop' >/dev/null 2>&1 || true
-exit 1
-LAUNCHER
+log_message "Chrome app-mode launch failed or Chrome is unavailable; falling back to the default browser."
+/usr/bin/open "$URL"
+CHROME_LAUNCHER
 
 /bin/cat > "$QUIT_TEMP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -193,17 +232,22 @@ exit 1
 QUITTER
 
 /bin/chmod 755 "$MANTA_TEMP/Contents/MacOS/mantatracker"
+/bin/chmod 755 "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
 /bin/chmod 755 "$QUIT_TEMP/Contents/MacOS/quit-manta-tracker"
 
 /usr/bin/plutil -lint "$MANTA_TEMP/Contents/Info.plist" >/dev/null
+/usr/bin/plutil -lint "$CHROME_TEMP/Contents/Info.plist" >/dev/null
 /usr/bin/plutil -lint "$QUIT_TEMP/Contents/Info.plist" >/dev/null
 /bin/zsh -n "$MANTA_TEMP/Contents/MacOS/mantatracker"
+/bin/zsh -n "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
 /bin/zsh -n "$QUIT_TEMP/Contents/MacOS/quit-manta-tracker"
 
 /usr/bin/ditto "$MANTA_TEMP" "$MANTA_APP"
+/usr/bin/ditto "$CHROME_TEMP" "$CHROME_APP"
 /usr/bin/ditto "$QUIT_TEMP" "$QUIT_APP"
-/usr/bin/touch "$MANTA_APP" "$QUIT_APP"
+/usr/bin/touch "$MANTA_APP" "$CHROME_APP" "$QUIT_APP"
 
 /bin/echo "Created or updated: $MANTA_APP"
+/bin/echo "Created or updated: $CHROME_APP"
 /bin/echo "Created or updated: $QUIT_APP"
 /bin/echo "Launcher backups: $BACKUP_DIR"

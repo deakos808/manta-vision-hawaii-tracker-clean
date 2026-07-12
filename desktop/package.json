@@ -1,0 +1,10 @@
+{
+  "name": "manta-tracker-local-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-only Electron wrapper for the Manta Tracker development servers",
+  "main": "manta-tracker-main.cjs",
+  "devDependencies": {
+    "electron": "43.1.0"
+  }
+}

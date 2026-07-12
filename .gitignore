@@ -49,6 +49,7 @@ patch_backups/
 supabase/.temp/
 generated/version.ts
 logs/
+desktop/.cache/
 
 backups/
 backups/_checkpoint/
