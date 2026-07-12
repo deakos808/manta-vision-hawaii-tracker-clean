@@ -8,6 +8,7 @@ BACKUP_DIR="/Users/littlemac/Desktop/Codex Launcher Backups"
 MANTA_APP="$APPS_DIR/mantatracker.app"
 CHROME_APP="$APPS_DIR/Manta Tracker Chrome.app"
 QUIT_APP="$APPS_DIR/Quit Manta Tracker.app"
+CREATE_CHROME_FALLBACK="${CREATE_CHROME_FALLBACK:-0}"
 TIMESTAMP="$(/bin/date '+%Y%m%d-%H%M%S')"
 TEMP_ROOT="$(/usr/bin/mktemp -d /tmp/manta-desktop-launchers.XXXXXX)"
 
@@ -34,16 +35,20 @@ backup_bundle() {
 }
 
 backup_bundle "$MANTA_APP" "mantatracker"
-backup_bundle "$CHROME_APP" "Manta-Tracker-Chrome"
 backup_bundle "$QUIT_APP" "Quit-Manta-Tracker"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  backup_bundle "$CHROME_APP" "Manta-Tracker-Chrome"
+fi
 
 MANTA_TEMP="$TEMP_ROOT/mantatracker.app"
 CHROME_TEMP="$TEMP_ROOT/Manta Tracker Chrome.app"
 QUIT_TEMP="$TEMP_ROOT/Quit Manta Tracker.app"
 
 /bin/mkdir -p "$MANTA_TEMP/Contents/MacOS" "$MANTA_TEMP/Contents/Resources"
-/bin/mkdir -p "$CHROME_TEMP/Contents/MacOS" "$CHROME_TEMP/Contents/Resources"
 /bin/mkdir -p "$QUIT_TEMP/Contents/MacOS" "$QUIT_TEMP/Contents/Resources"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /bin/mkdir -p "$CHROME_TEMP/Contents/MacOS" "$CHROME_TEMP/Contents/Resources"
+fi
 
 # Preserve the installed custom icon resources when updating an existing launcher.
 if [[ -d "$MANTA_APP/Contents/Resources" ]]; then
@@ -53,8 +58,10 @@ elif [[ -f "$PROJECT_DIR/public/manta-pacific-logo.png" ]]; then
 fi
 
 if [[ -d "$MANTA_TEMP/Contents/Resources" ]]; then
-  /usr/bin/ditto "$MANTA_TEMP/Contents/Resources" "$CHROME_TEMP/Contents/Resources"
   /usr/bin/ditto "$MANTA_TEMP/Contents/Resources" "$QUIT_TEMP/Contents/Resources"
+  if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+    /usr/bin/ditto "$MANTA_TEMP/Contents/Resources" "$CHROME_TEMP/Contents/Resources"
+  fi
 fi
 
 /bin/cat > "$MANTA_TEMP/Contents/Info.plist" <<'PLIST'
@@ -105,7 +112,8 @@ cd "$PROJECT_DIR" || exit 1
 exec /usr/bin/arch -arm64 /bin/zsh -lic "exec '$ELECTRON_BIN' '$MAIN_FILE'" >> "$LOG_FILE" 2>&1
 LAUNCHER
 
-/bin/cat > "$CHROME_TEMP/Contents/Info.plist" <<'PLIST'
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /bin/cat > "$CHROME_TEMP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -197,6 +205,7 @@ fi
 log_message "Chrome app-mode launch failed or Chrome is unavailable; falling back to the default browser."
 /usr/bin/open "$URL"
 CHROME_LAUNCHER
+fi
 
 /bin/cat > "$QUIT_TEMP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -232,22 +241,33 @@ exit 1
 QUITTER
 
 /bin/chmod 755 "$MANTA_TEMP/Contents/MacOS/mantatracker"
-/bin/chmod 755 "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
 /bin/chmod 755 "$QUIT_TEMP/Contents/MacOS/quit-manta-tracker"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /bin/chmod 755 "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
+fi
 
 /usr/bin/plutil -lint "$MANTA_TEMP/Contents/Info.plist" >/dev/null
-/usr/bin/plutil -lint "$CHROME_TEMP/Contents/Info.plist" >/dev/null
 /usr/bin/plutil -lint "$QUIT_TEMP/Contents/Info.plist" >/dev/null
 /bin/zsh -n "$MANTA_TEMP/Contents/MacOS/mantatracker"
-/bin/zsh -n "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
 /bin/zsh -n "$QUIT_TEMP/Contents/MacOS/quit-manta-tracker"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /usr/bin/plutil -lint "$CHROME_TEMP/Contents/Info.plist" >/dev/null
+  /bin/zsh -n "$CHROME_TEMP/Contents/MacOS/manta-tracker-chrome"
+fi
 
 /usr/bin/ditto "$MANTA_TEMP" "$MANTA_APP"
-/usr/bin/ditto "$CHROME_TEMP" "$CHROME_APP"
 /usr/bin/ditto "$QUIT_TEMP" "$QUIT_APP"
-/usr/bin/touch "$MANTA_APP" "$CHROME_APP" "$QUIT_APP"
+/usr/bin/touch "$MANTA_APP" "$QUIT_APP"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /usr/bin/ditto "$CHROME_TEMP" "$CHROME_APP"
+  /usr/bin/touch "$CHROME_APP"
+fi
 
 /bin/echo "Created or updated: $MANTA_APP"
-/bin/echo "Created or updated: $CHROME_APP"
 /bin/echo "Created or updated: $QUIT_APP"
+if [[ "$CREATE_CHROME_FALLBACK" == "1" ]]; then
+  /bin/echo "Created or updated optional fallback: $CHROME_APP"
+else
+  /bin/echo "Skipped Chrome fallback (set CREATE_CHROME_FALLBACK=1 to create it)."
+fi
 /bin/echo "Launcher backups: $BACKUP_DIR"
