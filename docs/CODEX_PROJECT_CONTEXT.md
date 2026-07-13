@@ -74,9 +74,11 @@ The following tasks were associated with `/Users/littlemac/Documents/New project
 
 Extract useful history from these tasks, then keep or archive them as reference. Never code from their stale working directory.
 
+Historical exports now map `Explain codebase structure`, `Build match-photo Edge Function`, and the two `Find and fix a bug in codebase` chats to `/workspace/hawaii-manta-tracker`. Classify the first and both bug-fix chats as stale, and the matcher-design chat as reference-only. None is safe for current coding, and their old implementation claims must be reverified against the canonical repository.
+
 ### Unknown tasks requiring manual verification
 
-Tasks or projects named `hawaii-manta-tracker`, `Build match-photo Edge Function`, `Find and fix a bug in codebase`, `Find and fix typo in codebase`, and `Explain codebase structure` were not positively mapped in the recent accessible task inventory. Manually open each task and verify its host, working directory, Git top-level, branch, remote, and status. Any task rooted at `/workspace/hawaii-manta-tracker` is a cloud/workspace copy or broken stale context and must not be used for coding.
+Tasks or projects named `hawaii-manta-tracker` and `Find and fix typo in codebase` were not positively mapped in the recent accessible task inventory. No separate export with the exact `Find and fix typo in codebase` identity was provided. Manually open each task and verify its host, working directory, Git top-level, branch, remote, and status. Any task rooted at `/workspace/hawaii-manta-tracker` is a cloud/workspace copy or broken stale context and must not be used for coding.
 
 ## Major recovered work
 
@@ -219,3 +221,13 @@ The entries below were imported from `Manta App Project History Extractions Code
 - **Files/code areas mentioned:** `.gitignore`, `src/utils/sizeMeasurements.ts`, browse/catalog size and biopsy views, `supabase/migrations/20260703_070800_manta_sizes_fk_catalog_id.sql`, `scripts/qc/`, `src/pages/admin/DataQualityControlPage.tsx`, admin research routes/pages, and `scripts/analysis/`.
 - **Risks and unresolved issues:** The migration remains production-sensitive regardless of whether an older chat claimed it was unapplied; QC scripts with `--apply` can mutate data; UI/runtime tests and analysis execution were incomplete in the checkpoint; existing build warnings may persist; old cleanliness and remote-tip claims are inherently stale.
 - **Recommended carry-forward context:** This is the safest summary for Git provenance, but still recheck current status and schema state. Preserve the separation between committed migration code and authorization to apply it, and default all QC utilities to dry-run/read-only behavior.
+
+### Build match-photo Edge Function
+
+- **Source chat name:** Build match-photo Edge Function
+- **Classification:** reference-only
+- **Key verified facts:** The canonical tree contains matcher benchmark scripts, top-10 performance reporting, the `match-manta` Edge Function, catalog/photo embedding areas, and a matching-performance page with a 90% top-10 target.
+- **Historical context (not independently verified):** The old chat set a desired goal of placing the correct known manta in the top 10 at least 90% of the time for usable ventral photos. It did not prove that the target was achieved.
+- **Evaluation methodology:** Use distinct known resight photos, prevent exact-image leakage between the query and gallery, and report top-1, top-5, top-10, and top-50 recall, reciprocal and median rank, and representative failure cases.
+- **Risks and unresolved issues:** The old server-side embedding, vector-retrieval, multi-photo representation, and reranking ideas are historical design options, not current architectural decisions or validated performance claims.
+- **Recommended carry-forward context:** Keep matching assistive and human-reviewed. Benchmark the current implementations before claiming accuracy or adopting old Edge Function designs.
