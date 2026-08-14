@@ -4,7 +4,6 @@ import React from "react";
 import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import UniversalCsvUpdateTool from "@/components/admin/UniversalCsvUpdateTool";
 import CatalogStagingPanel from "@/components/importTools/CatalogStagingPanel";
 
 export default function ImportPage() {
@@ -35,10 +34,10 @@ export default function ImportPage() {
           <TabsContent value="mantas">
             <Card>
               <CardContent className="p-4">
-                <UniversalCsvUpdateTool
-                  table="mantas"
-                  primaryKey="pk_manta_id"
-                />
+                <p className="text-sm text-muted-foreground">
+                  The legacy universal CSV updater is disabled. Use the reviewed
+                  staging import workflow instead.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
