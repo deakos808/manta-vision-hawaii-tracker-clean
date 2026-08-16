@@ -12,6 +12,8 @@
     "update-version": "ts-node scripts/updateVersionEnv.js",
     "build": "npm run update-version && vite build",
     "build:dev": "vite build --mode development",
+    "test:auth-routing": "node --import tsx --test src/features/auth/authRouting.test.ts",
+    "test:user-management": "node --import tsx --test src/features/auth/adminUserManagementPolicy.test.ts src/features/auth/adminUserManagementSecurity.test.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "security:check-repository-credentials": "python3 scripts/security/check_repository_credentials.py",

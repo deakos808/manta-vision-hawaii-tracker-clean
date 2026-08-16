@@ -81,19 +81,20 @@ export default function DiagnosticsPage() {
       // EDGE FUNCTION TEST
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       try {
-        const res = await fetch(getEdgeFunctionUrl('list-users'), {
+        const res = await fetch(getEdgeFunctionUrl('admin-user-management'), {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'list' }),
         });
         newResults.push({
-          name: 'Edge Function: list-users',
+          name: 'Edge Function: admin-user-management',
           category: 'Edge Functions',
           status: res.ok ? 'pass' : 'fail',
           message: res.ok ? 'Function call succeeded' : `HTTP ${res.status}`,
         });
       } catch (err: any) {
         newResults.push({
-          name: 'Edge Function: list-users',
+          name: 'Edge Function: admin-user-management',
           category: 'Edge Functions',
           status: 'fail',
           message: err?.message || 'Request failed',
