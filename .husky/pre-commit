@@ -1,2 +1,2 @@
+npm run security:check-repository-credentials -- --staged
 npm run update-version
-

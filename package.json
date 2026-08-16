@@ -14,6 +14,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "security:check-repository-credentials": "python3 scripts/security/check_repository_credentials.py",
+    "test:security-repository-credentials": "python3 scripts/security/test_repository_credentials_guard.py",
     "prepare": "husky install",
     "deploy-all": "./scripts/deploy-all-functions.sh",
     "deploy:functions": "supabase functions deploy --project-ref apweteosdbgsolmvcmhn --all",

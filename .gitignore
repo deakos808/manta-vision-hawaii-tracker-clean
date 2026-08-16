@@ -37,6 +37,13 @@ backups/_checkpoint/
 backups/_inventory_reports/
 **/*.bak*
 
+# Supabase CLI state can contain project and database connection material.
+# Keep every nested copy out of Git; the credential guard enforces this too.
+supabase/.temp/
+supabase/.temp/**
+**/supabase/.temp/
+**/supabase/.temp/**
+
 backups/
 backups/_checkpoint/
 backups/_inventory_reports/
