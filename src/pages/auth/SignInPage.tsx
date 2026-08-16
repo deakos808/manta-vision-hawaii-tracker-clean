@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { safeInternalRedirect } from '@/features/auth/authRouting';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -8,8 +9,8 @@ export default function SignInPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation() as any;
-  const redirectTo = location.state?.redirectTo ?? '/dashboard';
+  const location = useLocation();
+  const redirectTo = safeInternalRedirect((location.state as { redirectTo?: string } | null)?.redirectTo);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,7 +22,7 @@ export default function SignInPage() {
       setErrorMsg(error.message || 'Invalid login credentials');
       return;
     }
-    navigate("/dashboard",{ replace:true });
+    navigate(redirectTo, { replace: true });
   }
 
   async function handleReset(e: React.MouseEvent) {

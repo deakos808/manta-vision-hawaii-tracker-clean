@@ -1,4 +1,20 @@
 [functions]
+[functions.admin-user-management]
+enabled = true
+verify_jwt = true
+
+[functions.admin-create-user]
+enabled = true
+verify_jwt = true
+
+[functions.admin-set-password]
+enabled = true
+verify_jwt = true
+
+[functions.list-users]
+enabled = true
+verify_jwt = true
+
 [functions.embeddings-sighting]
 verify_jwt = false
 
