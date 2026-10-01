@@ -12,15 +12,15 @@ if (!/from "@\/lib\/supabase"/.test(s)) {
   );
 }
 
-// Ensure edgeBase & anonKey helpers exist
+// Ensure edgeBase and publishable-key helpers exist
 if (!/function\s+edgeBase\(\)/.test(s)) {
   s = s.replace(
     /import { Input } from "@\/components\/ui\/input";\n/,
     '$&\nfunction edgeBase(){const e=import.meta.env.VITE_SUPABASE_EDGE_URL?.replace(/\\/$/,"");if(e)return e;const u=(import.meta.env.VITE_SUPABASE_URL||"").replace(/\\/$/,"");return u?`${u}/functions/v1`:"https://apweteosdbgsolmvcmhn.supabase.co/functions/v1";}\n'
   );
 }
-if (!/function\s+anonKey\(\)/.test(s)) {
-  s = s.replace(/function\s+edgeBase\(\)[\s\S]*?\}\n/, (m)=> m + `function anonKey(){return import.meta.env.VITE_SUPABASE_ANON_KEY || "";}\n`);
+if (!/function\s+publishableKey\(\)/.test(s)) {
+  s = s.replace(/function\s+edgeBase\(\)[\s\S]*?\}\n/, (m)=> m + `function publishableKey(){return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";}\n`);
 }
 
 // Replace facet fetch block to include Bearer token
@@ -35,7 +35,7 @@ s = s.replace(
           mode: "cors",
           headers: {
             "Content-Type": "application/json",
-            "apikey": anonKey(),
+            "apikey": publishableKey(),
             ...(token ? { "Authorization": \`Bearer \${token}\` } : {})
           },
           body

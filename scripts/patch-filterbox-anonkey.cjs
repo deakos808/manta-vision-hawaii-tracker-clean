@@ -5,10 +5,10 @@ const bak = p + '.bak.' + Date.now();
 let s = fs.readFileSync(p,'utf8');
 
 // 1) Ensure we have a small helper to read the anon key
-if (!/function\s+anonKey\(\)/.test(s)) {
+if (!/function\s+publishableKey\(\)/.test(s)) {
   s = s.replace(
     /function\s+edgeBase\(\)[\s\S]*?\}\n/,
-    (m)=> m + `function anonKey(){return import.meta.env.VITE_SUPABASE_ANON_KEY || "";}\n`
+    (m)=> m + `function publishableKey(){return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";}\n`
   );
 }
 
@@ -20,7 +20,7 @@ s = s.replace(
         mode: "cors",
         headers: {
           "Content-Type": "application/json",
-          "apikey": anonKey()
+          "apikey": publishableKey()
         },
         body
       });`

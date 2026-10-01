@@ -54,6 +54,27 @@ class RepositoryCredentialGuardTests(unittest.TestCase):
             self.assertIn("database DSN password assignment", result.stderr)
             self.assertNotIn(marker, result.stderr)
 
+    def test_fabricated_supabase_secret_key_fails_without_value_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "renamed-edge-config.txt"
+            marker = "FABRICATED_SECRET_VALUE_DO_NOT_REPORT"
+            fixture.write_text("sb_" + "secret_" + marker + "\n", encoding="utf-8")
+            result = self.run_guard(fixture)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Supabase secret API key", result.stderr)
+            self.assertNotIn(marker, result.stderr)
+
+    def test_fabricated_jwt_fails_without_value_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "renamed-function.ts"
+            marker = "FABRICATED_JWT_SEGMENT_DO_NOT_REPORT"
+            token = "eyJ" + marker + ".eyJ" + marker + "." + marker
+            fixture.write_text(f'const credential = "{token}";\n', encoding="utf-8")
+            result = self.run_guard(fixture)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("hardcoded JWT-shaped credential", result.stderr)
+            self.assertNotIn(marker, result.stderr)
+
     def test_supabase_temporary_state_path_fails_without_reading_content(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             fixture = Path(directory) / "supabase/.temp/project-ref"

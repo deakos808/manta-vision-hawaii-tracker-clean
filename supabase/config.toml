@@ -15,6 +15,26 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.create-user]
+enabled = true
+verify_jwt = true
+
+[functions.delete-manta]
+enabled = true
+verify_jwt = true
+
+[functions.delete-photo]
+enabled = true
+verify_jwt = true
+
+[functions.commit-drone-draft]
+enabled = true
+verify_jwt = true
+
+[functions.generate-newphoto-embedding]
+enabled = true
+verify_jwt = true
+
 [functions.embeddings-sighting]
 verify_jwt = false
 

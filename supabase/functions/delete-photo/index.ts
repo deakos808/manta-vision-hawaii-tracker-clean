@@ -1,37 +1,8 @@
-import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
-  'Content-Type': 'application/json',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
-  }
-
-  try {
-    const { pk_photo_id } = await req.json();
-    if (!pk_photo_id) {
-      return new Response(JSON.stringify({ error: 'Missing pk_photo_id' }), { status: 400, headers: corsHeaders });
-    }
-
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sb = createClient(url, service);
-
-    const { error } = await sb.from('photos')
-      .delete()
-      .eq('pk_photo_id', pk_photo_id);
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
-    }
-
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || 'Unexpected error' }), { status: 500, headers: corsHeaders });
-  }
-});
+serve(() => new Response(JSON.stringify({
+  error: "Permanent photo deletion is disabled pending a transactional, audited replacement.",
+}), {
+  status: 410,
+  headers: { "Content-Type": "application/json" },
+}));

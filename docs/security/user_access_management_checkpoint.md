@@ -25,7 +25,7 @@ Status: local implementation checkpoint. The Edge Function and database migratio
 
 `admin-user-management` accepts only `list`, `invite`, `send_recovery`, and `update_access`. It validates the bearer token with Supabase Auth, reads the acting `profiles` row with the service client, and requires exact `role = admin` plus `is_active = true`. Metadata is used only for a display name. Role/status mutation then calls an authenticated `SECURITY DEFINER` RPC that repeats the authoritative database checks using `auth.uid()`.
 
-The function requires server-only `SUPABASE_SERVICE_ROLE_KEY` and explicit `ALLOWED_ORIGINS`, `PASSWORD_REDIRECT_URL`, and `ALLOWED_REDIRECT_ORIGINS`. The password URL must be HTTPS (except loopback development), must end at `/set-password`, and must match the environment-specific origin allowlist. No fallback production project URL is embedded.
+The function prefers server-only `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY`; the legacy service-role and anon names remain temporary server-side rollout fallbacks only. It also requires explicit `ALLOWED_ORIGINS`, `PASSWORD_REDIRECT_URL`, and `ALLOWED_REDIRECT_ORIGINS`. The password URL must be HTTPS (except loopback development), must end at `/set-password`, and must match the environment-specific origin allowlist. No fallback production project URL is embedded.
 
 Supabase access tokens can remain valid until expiry after a status change. Consequently, the Edge Function and `profiles` RLS re-read active status on every privileged/database request. Before migration approval, every other protected table policy must be checked and updated to call the same live active-user predicate; frontend hiding alone is insufficient.
 

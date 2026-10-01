@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 import { parseAction, parseManagedRole, requireActiveAdmin } from "../_shared/user-management-policy.ts";
 
 type Json = Record<string, unknown>;
@@ -8,6 +8,10 @@ function env(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error("Server configuration is incomplete.");
   return value;
+}
+
+function envOne(primary: string, legacy: string): string {
+  return Deno.env.get(primary)?.trim() || env(legacy);
 }
 
 function cors(origin: string | null): HeadersInit {
@@ -46,8 +50,8 @@ serve(async (request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (request.method !== "POST") return reply(origin, 405, { error: "Method not allowed." });
 
-  let admin: ReturnType<typeof createClient> | null = null;
-  let caller: ReturnType<typeof createClient> | null = null;
+  let admin: ReturnType<typeof createClient<any>> | null = null;
+  let caller: ReturnType<typeof createClient<any>> | null = null;
   let actorId: string | null = null;
   let action = "unknown";
   let targetId: string | null = null;
@@ -63,13 +67,13 @@ serve(async (request) => {
 
   try {
     const supabaseUrl = env("SUPABASE_URL");
-    const anonKey = env("SUPABASE_ANON_KEY");
-    admin = createClient(supabaseUrl, env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
+    const anonKey = envOne("SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY");
+    admin = createClient<any>(supabaseUrl, envOne("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
     const authorization = request.headers.get("authorization") ?? "";
     const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
     if (!token) return reply(origin, 401, { error: "Authentication required." });
 
-    caller = createClient(supabaseUrl, anonKey, {
+    caller = createClient<any>(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -102,7 +106,8 @@ serve(async (request) => {
       const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
       const users = authUsers.users.map((user) => {
         const profile = profileById.get(user.id);
-        const bannedUntil = user.banned_until ? Date.parse(user.banned_until) : 0;
+        const bannedUntilValue = (user as typeof user & { banned_until?: string }).banned_until;
+        const bannedUntil = bannedUntilValue ? Date.parse(bannedUntilValue) : 0;
         const metadata = user.user_metadata && typeof user.user_metadata === "object" ? user.user_metadata : {};
         return {
           id: user.id,
@@ -148,7 +153,7 @@ serve(async (request) => {
         await finishAudit(auditId, "failure", "target_not_found");
         return reply(origin, 404, { error: "The Auth account could not be found." });
       }
-      const mailer = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      const mailer = createClient<any>(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
       const sent = await mailer.auth.resetPasswordForEmail(email, { redirectTo: approvedRedirect() });
       await finishAudit(auditId, sent.error ? "failure" : "success", sent.error ? "recovery_delivery_rejected" : undefined);
       if (sent.error) return reply(origin, 502, { error: "Recovery email could not be sent." });
