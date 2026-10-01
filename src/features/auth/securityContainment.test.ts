@@ -122,6 +122,14 @@ test("active catalog maintenance contracts require active administrators", () =>
   );
 });
 
+test("manta embedding maintenance requires an active administrator", () => {
+  const source = read("supabase/functions/embeddings-manta/index.ts");
+  assert.match(source, /authorizeCaller\(req, "active-admin"\)/);
+  assert.doesNotMatch(source, /Access-Control-Allow-Origin["']:\s*["']\*/);
+  assert.match(source, /searchParams\.get\("offset"\)/);
+  assert.match(source, /text\/event-stream/);
+});
+
 test("obsolete and diagnostic privileged functions are excluded from deployment", () => {
   const config = read("supabase/config.toml");
   for (
