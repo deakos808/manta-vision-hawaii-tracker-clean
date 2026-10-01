@@ -145,6 +145,9 @@ test("obsolete and diagnostic privileged functions are excluded from deployment"
       "whoami",
       "envtest",
       "jwt-debug",
+      "embeddings-catalog",
+      "embeddings-photo",
+      "facet-sightings",
     ]
   ) {
     const section = config.match(
@@ -167,6 +170,7 @@ test("gateway JWT verification is explicit for contained functions", () => {
       "generate-newphoto-embedding",
       "catalog_selfmatch",
       "merge-catalogs",
+      "embeddings-manta",
     ]
   ) {
     const section = config.match(

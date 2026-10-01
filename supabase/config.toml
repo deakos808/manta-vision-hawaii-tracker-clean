@@ -76,11 +76,18 @@ enabled = false
 [functions.jwt-debug]
 enabled = false
 
-[functions.embeddings-sighting]
-verify_jwt = false
-
 [functions.embeddings-catalog]
-verify_jwt = false
+enabled = false
 
 [functions.embeddings-photo]
+enabled = false
+
+[functions.facet-sightings]
+enabled = false
+
+[functions.embeddings-manta]
+enabled = true
+verify_jwt = true
+
+[functions.embeddings-sighting]
 verify_jwt = false
