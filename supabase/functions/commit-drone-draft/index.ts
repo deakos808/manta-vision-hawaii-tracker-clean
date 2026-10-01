@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 import { requireActiveAdmin } from "../_shared/user-management-policy.ts";
+import { resolvePublishableKey, resolveSecretKey } from "../_shared/server-keys.ts";
 
 function corsHeaders(origin: string | null): HeadersInit {
   const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
@@ -50,7 +51,7 @@ serve(async (req) => {
     if (!token) return json({ error: "Authentication required." }, 401, origin);
 
     const url = mustEnv("PROJECT_URL", "SUPABASE_URL");
-    const callerKey = mustEnv("SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY");
+    const callerKey = resolvePublishableKey();
     const caller = createClient(url, callerKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
@@ -60,9 +61,7 @@ serve(async (req) => {
       return json({ error: "Authentication failed." }, 401, origin);
     }
 
-    const key = mustEnv("SUPABASE_SECRET_KEY", "SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY");
-    const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: actorProfile, error: actorError } = await sb
+    const { data: actorProfile, error: actorError } = await caller
       .from("profiles")
       .select("id,role,is_active")
       .eq("id", authData.user.id)
@@ -73,6 +72,7 @@ serve(async (req) => {
     } catch {
       return json({ error: "Active administrator access is required." }, 403, origin);
     }
+    const sb = createClient(url, resolveSecretKey(), { auth: { persistSession: false, autoRefreshToken: false } });
 
     const { draft_id } = await req.json().catch(() => ({}));
     if (!draft_id || typeof draft_id !== "string") {

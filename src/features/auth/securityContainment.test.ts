@@ -48,7 +48,7 @@ test("photo embedding preserves its contract behind active-user authorization", 
   assert.doesNotMatch(edge, /SUPABASE_SERVICE_ROLE_KEY|SERVICE_ROLE_KEY/);
   assert.match(
     authorization,
-    /requiredEnv\(\s*"SUPABASE_SECRET_KEY",\s*"SERVICE_ROLE_KEY",\s*"SUPABASE_SERVICE_ROLE_KEY"/,
+    /resolveSecretKey\(\)/,
   );
 
   assert.match(
@@ -64,6 +64,10 @@ test("photo embedding preserves its contract behind active-user authorization", 
 test("legacy create and delete contracts require an active administrator", () => {
   const authorization = read("supabase/functions/_shared/authorization.ts");
   assert.match(authorization, /auth\.getUser\(token\)/);
+  assert.match(
+    authorization,
+    /global:\s*\{\s*headers:\s*\{\s*Authorization:\s*`Bearer \$\{token\}`/,
+  );
   assert.match(authorization, /select\("id,role,is_active"\)/);
   assert.match(authorization, /requireActiveAdmin\(profile\)/);
   assert.doesNotMatch(authorization, /user_metadata[\s\S]*(role|is_active)/i);
@@ -97,8 +101,8 @@ test("remaining privileged user and drone actions require active admin", () => {
   for (const source of [userManagement, droneCommit]) {
     assert.match(source, /requireActiveAdmin/);
     assert.match(source, /auth\.getUser/);
-    assert.match(source, /SUPABASE_PUBLISHABLE_KEY/);
-    assert.match(source, /SUPABASE_SECRET_KEY/);
+    assert.match(source, /resolvePublishableKey/);
+    assert.match(source, /resolveSecretKey/);
   }
   assert.doesNotMatch(droneCommit, /Access-Control-Allow-Origin["']:\s*["']\*/);
 });
@@ -152,6 +156,7 @@ test("obsolete and diagnostic privileged functions are excluded from deployment"
       "embeddings-catalog",
       "embeddings-photo",
       "facet-sightings",
+      "embeddings-sighting",
     ]
   ) {
     const section = config.match(
@@ -162,7 +167,7 @@ test("obsolete and diagnostic privileged functions are excluded from deployment"
   }
 });
 
-test("gateway JWT verification is explicit for contained functions", () => {
+test("gateway verification is disabled only for independently authorized handlers", () => {
   const config = read("supabase/config.toml");
   for (
     const functionName of [
@@ -181,7 +186,57 @@ test("gateway JWT verification is explicit for contained functions", () => {
       new RegExp(`\\[functions\\.${functionName}\\]([\\s\\S]*?)(?=\\n\\[|$)`),
     );
     assert.ok(section, `missing config for ${functionName}`);
+    assert.match(section[1], /verify_jwt\s*=\s*false/);
+  }
+
+  for (const functionName of [
+    "admin-create-user",
+    "admin-set-password",
+    "list-users",
+  ]) {
+    const section = config.match(
+      new RegExp(`\\[functions\\.${functionName}\\]([\\s\\S]*?)(?=\\n\\[|$)`),
+    );
+    assert.ok(section, `missing config for ${functionName}`);
     assert.match(section[1], /verify_jwt\s*=\s*true/);
+    assert.match(
+      read(`supabase/functions/${functionName}/index.ts`),
+      /status:\s*410/,
+    );
+  }
+});
+
+test("enabled privileged handlers authorize callers before privileged clients", () => {
+  const authorization = read("supabase/functions/_shared/authorization.ts");
+  assert.ok(
+    authorization.indexOf("auth.getUser(token)") <
+      authorization.indexOf("resolveSecretKey()"),
+  );
+  assert.ok(
+    authorization.indexOf('.select("id,role,is_active")') <
+      authorization.indexOf("resolveSecretKey()"),
+  );
+
+  for (const functionName of [
+    "create-user",
+    "delete-manta",
+    "delete-photo",
+    "generate-newphoto-embedding",
+    "catalog_selfmatch",
+    "merge-catalogs",
+    "embeddings-manta",
+  ]) {
+    assert.match(
+      read(`supabase/functions/${functionName}/index.ts`),
+      /authorizeCaller\(/,
+      `${functionName} must use shared caller authorization`,
+    );
+  }
+
+  for (const functionName of ["admin-user-management", "commit-drone-draft"]) {
+    const source = read(`supabase/functions/${functionName}/index.ts`);
+    assert.ok(source.indexOf("auth.getUser") < source.indexOf("resolveSecretKey()"));
+    assert.ok(source.indexOf('.select("id,role,is_active")') < source.indexOf("resolveSecretKey()"));
   }
 });
 

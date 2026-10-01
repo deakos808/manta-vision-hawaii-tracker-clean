@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 import { parseAction, parseManagedRole, requireActiveAdmin } from "../_shared/user-management-policy.ts";
+import { resolvePublishableKey, resolveSecretKey } from "../_shared/server-keys.ts";
 
 type Json = Record<string, unknown>;
 
@@ -8,10 +9,6 @@ function env(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error("Server configuration is incomplete.");
   return value;
-}
-
-function envOne(primary: string, legacy: string): string {
-  return Deno.env.get(primary)?.trim() || env(legacy);
 }
 
 function cors(origin: string | null): HeadersInit {
@@ -67,8 +64,7 @@ serve(async (request) => {
 
   try {
     const supabaseUrl = env("SUPABASE_URL");
-    const anonKey = envOne("SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY");
-    admin = createClient<any>(supabaseUrl, envOne("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
+    const anonKey = resolvePublishableKey();
     const authorization = request.headers.get("authorization") ?? "";
     const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
     if (!token) return reply(origin, 401, { error: "Authentication required." });
@@ -81,7 +77,7 @@ serve(async (request) => {
     if (authError || !authData.user) return reply(origin, 401, { error: "Authentication failed." });
     actorId = authData.user.id;
 
-    const { data: actorProfile, error: actorError } = await admin.from("profiles").select("id,role,is_active").eq("id", actorId).maybeSingle();
+    const { data: actorProfile, error: actorError } = await caller.from("profiles").select("id,role,is_active").eq("id", actorId).maybeSingle();
     if (actorError) {
       await audit("privileged_action_failure", "failure", "Actor profile lookup failed.", { classification: "actor_profile_error" });
       return reply(origin, 500, { error: "Unable to verify administrator access." });
@@ -91,6 +87,7 @@ serve(async (request) => {
       await audit("privileged_action_failure", "failure", "Administrator authorization rejected.", { classification: actorProfile ? "inactive_or_non_admin" : "missing_profile" });
       return reply(origin, 403, { error: "Active administrator access is required." });
     }
+    admin = createClient<any>(supabaseUrl, resolveSecretKey(), { auth: { persistSession: false, autoRefreshToken: false } });
 
     let body: Json;
     try { body = await request.json(); } catch { return reply(origin, 400, { error: "Invalid JSON request." }); }

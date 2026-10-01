@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 import { requireActiveAdmin } from "./user-management-policy.ts";
+import { resolvePublishableKey, resolveSecretKey } from "./server-keys.ts";
 
 export class AuthorizationError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -56,11 +57,9 @@ export async function authorizeCaller(
   if (!token) throw new AuthorizationError(401, "Authentication required.");
 
   const url = requiredEnv("PROJECT_URL", "SUPABASE_URL");
-  const publishableKey = requiredEnv(
-    "SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_ANON_KEY",
-  );
+  const publishableKey = resolvePublishableKey();
   const caller = createClient(url, publishableKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: authData, error: authError } = await caller.auth.getUser(token);
@@ -68,15 +67,7 @@ export async function authorizeCaller(
     throw new AuthorizationError(401, "Authentication failed.");
   }
 
-  const secretKey = requiredEnv(
-    "SUPABASE_SECRET_KEY",
-    "SERVICE_ROLE_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-  );
-  const admin = createClient(url, secretKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: profile, error: profileError } = await admin
+  const { data: profile, error: profileError } = await caller
     .from("profiles")
     .select("id,role,is_active")
     .eq("id", authData.user.id)
@@ -100,6 +91,10 @@ export async function authorizeCaller(
       );
     }
   }
+
+  const admin = createClient(url, resolveSecretKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   return { admin, actor: profile, user: authData.user, url };
 }

@@ -1,7 +1,7 @@
 [functions]
 [functions.admin-user-management]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-create-user]
 enabled = true
@@ -17,31 +17,31 @@ verify_jwt = true
 
 [functions.create-user]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.delete-manta]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.delete-photo]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.commit-drone-draft]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-newphoto-embedding]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.catalog_selfmatch]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.merge-catalogs]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.bootstrap-admin]
 enabled = false
@@ -87,7 +87,8 @@ enabled = false
 
 [functions.embeddings-manta]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 
 [functions.embeddings-sighting]
+enabled = false
 verify_jwt = false
