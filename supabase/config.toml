@@ -35,6 +35,47 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.catalog_selfmatch]
+enabled = true
+verify_jwt = true
+
+[functions.merge-catalogs]
+enabled = true
+verify_jwt = true
+
+[functions.bootstrap-admin]
+enabled = false
+
+[functions.confirm-user]
+enabled = false
+
+[functions.db_check]
+enabled = false
+
+[functions.embeddings-catalog-missing]
+enabled = false
+
+[functions.match-manta]
+enabled = false
+
+[functions.stream-sighting-embedding-update]
+enabled = false
+
+[functions.test-embed-fix]
+enabled = false
+
+[functions.update-password]
+enabled = false
+
+[functions.whoami]
+enabled = false
+
+[functions.envtest]
+enabled = false
+
+[functions.jwt-debug]
+enabled = false
+
 [functions.embeddings-sighting]
 verify_jwt = false
 

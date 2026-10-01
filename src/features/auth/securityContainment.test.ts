@@ -102,6 +102,51 @@ test("remaining privileged user and drone actions require active admin", () => {
   assert.doesNotMatch(droneCommit, /Access-Control-Allow-Origin["']:\s*["']\*/);
 });
 
+test("active catalog maintenance contracts require active administrators", () => {
+  const selfMatch = read("supabase/functions/catalog_selfmatch/index.ts");
+  const mergeCatalogs = read("supabase/functions/merge-catalogs/index.ts");
+  const selfMatchCaller = read("src/pages/admin/MatchingPage.tsx");
+  const mergeCaller = read("src/pages/admin/FindDuplicates/data/catalog.service.ts");
+
+  for (const source of [selfMatch, mergeCatalogs]) {
+    assert.match(source, /authorizeCaller\(req, "active-admin"\)/);
+    assert.doesNotMatch(source, /Access-Control-Allow-Origin["']:\s*["']\*/);
+  }
+  assert.match(
+    selfMatchCaller,
+    /supabase\.functions\.invoke\("catalog_selfmatch"/,
+  );
+  assert.match(
+    mergeCaller,
+    /supabase\.functions\.invoke\("merge-catalogs"/,
+  );
+});
+
+test("obsolete and diagnostic privileged functions are excluded from deployment", () => {
+  const config = read("supabase/config.toml");
+  for (
+    const functionName of [
+      "bootstrap-admin",
+      "confirm-user",
+      "db_check",
+      "embeddings-catalog-missing",
+      "match-manta",
+      "stream-sighting-embedding-update",
+      "test-embed-fix",
+      "update-password",
+      "whoami",
+      "envtest",
+      "jwt-debug",
+    ]
+  ) {
+    const section = config.match(
+      new RegExp(`\\[functions\\.${functionName}\\]([\\s\\S]*?)(?=\\n\\[|$)`),
+    );
+    assert.ok(section, `missing deployment disposition for ${functionName}`);
+    assert.match(section[1], /enabled\s*=\s*false/);
+  }
+});
+
 test("gateway JWT verification is explicit for contained functions", () => {
   const config = read("supabase/config.toml");
   for (
@@ -112,6 +157,8 @@ test("gateway JWT verification is explicit for contained functions", () => {
       "delete-photo",
       "commit-drone-draft",
       "generate-newphoto-embedding",
+      "catalog_selfmatch",
+      "merge-catalogs",
     ]
   ) {
     const section = config.match(
