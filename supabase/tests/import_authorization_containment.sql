@@ -26,6 +26,15 @@ begin
         and proconfig is not null
         and array_to_string(proconfig, ',') ~ '^search_path='
     );
+    assert not has_function_privilege(
+      'anon', format('private.%I_impl(uuid)', object_name), 'EXECUTE'
+    );
+    assert not has_function_privilege(
+      'authenticated', format('private.%I_impl(uuid)', object_name), 'EXECUTE'
+    );
+    assert not has_function_privilege(
+      'service_role', format('private.%I_impl(uuid)', object_name), 'EXECUTE'
+    );
   end loop;
 
   foreach object_name in array array[
@@ -220,6 +229,17 @@ declare
 begin
   assert (select count(*) from public.v_stg_biopsies_norm where import_batch_id = '22000000-0000-4000-8000-000000000001') = 1;
   assert (select count(*) from public.v_stg_drone_photos_norm where import_batch_id = '22000000-0000-4000-8000-000000000002') = 1;
+
+  begin
+    perform private.fn_imports_commit_biopsies_impl('23000000-0000-4000-8000-000000000001');
+    raise exception 'expected direct private biopsy implementation rejection';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform private.fn_imports_commit_drone_photos_impl('23000000-0000-4000-8000-000000000002');
+    raise exception 'expected direct private drone-photo implementation rejection';
+  exception when insufficient_privilege then null;
+  end;
 
   biopsy_result := public.fn_imports_commit_biopsies('23000000-0000-4000-8000-000000000001');
   drone_result := public.fn_imports_commit_drone_photos('23000000-0000-4000-8000-000000000002');

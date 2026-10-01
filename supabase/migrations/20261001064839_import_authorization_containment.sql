@@ -1,6 +1,8 @@
 -- PROPOSED / UNAPPLIED. Production application requires separate approval.
 -- Preserve the legacy import contracts while requiring an authoritative active-admin profile.
 
+begin;
+
 do $fingerprint$
 declare
   function_source text;
@@ -12,7 +14,16 @@ declare
   object_name text;
 begin
   if to_regnamespace('private') is null
-     or to_regprocedure('private.current_user_is_active_admin()') is null then
+     or to_regprocedure('private.current_user_is_active_admin()') is null
+     or to_regprocedure('auth.uid()') is null
+     or to_regclass('public.profiles') is null
+     or to_regclass('public.stg_import_errors') is null
+     or to_regclass('public.biopsies') is null
+     or to_regclass('public.drone_photos') is null
+     or to_regclass('public.stg_biopsies') is null
+     or to_regclass('public.stg_drone_photos') is null
+     or to_regclass('public.stg_biopsies_id_seq') is null
+     or to_regclass('public.stg_drone_photos_id_seq') is null then
     raise exception 'import authorization prerequisite fingerprint mismatch';
   end if;
 
@@ -316,3 +327,5 @@ grant select on table public.v_stg_invalid_biopsies to authenticated;
 grant select on table public.v_stg_invalid_drone_photos to authenticated;
 
 notify pgrst, 'reload schema';
+
+commit;

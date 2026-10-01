@@ -222,17 +222,25 @@ test("import commits preserve contracts behind active-admin database authorizati
     );
     assert.match(
       rollback,
-      new RegExp(`rename to fn_imports_commit_${target}`),
+      new RegExp(`drop function public\\.fn_imports_commit_${target}\\(uuid\\)`),
     );
   }
 
   assert.match(migration, /actor_id uuid := auth\.uid\(\)/);
+  assert.match(migration, /begin;[\s\S]*commit;/);
   assert.match(migration, /role = 'admin' and is_active is true/);
   assert.match(migration, /set search_path = ''/);
   assert.match(migration, /security_invoker = true/);
   assert.match(migration, /with check \(\(select public\.is_admin_user\(\)\)\)/);
   assert.match(migration, /using \(\(select public\.is_admin_user\(\)\)\)/);
   assert.doesNotMatch(migration, /create(?: or replace)? function public\.try_cast_double/i);
+  assert.match(rollback, /Fail-closed rollback/);
+  assert.match(rollback, /from public, anon, authenticated, service_role/);
+  assert.match(rollback, /private import implementation remains callable/);
+  assert.match(rollback, /authoritative import staging policy rollback mismatch/);
+  assert.doesNotMatch(rollback, /grant\s+(?:all|execute|select|insert)/i);
+  assert.doesNotMatch(rollback, /public\.is_admin\(\)/);
+  assert.doesNotMatch(rollback, /delete\s+from|truncate|drop\s+table/i);
 
   assert.match(importPanel, /from\(tableName\)\.insert\(chunk,/);
   assert.match(importPanel, /supabase\.rpc\(commitFn, \{ p_batch: batchId \}\)/);
