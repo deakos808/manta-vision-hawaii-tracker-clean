@@ -67,15 +67,11 @@ export default function CatalogMatchModal({ open, onClose, photoUrl, tempMantaId
           .upsert({ id: tempId, photo_url: publicUrl }, { onConflict: ['id'] });
         if (insertError) throw new Error('Insert failed');
 
-        const embedRes = await fetch('https://apweteosdbgsolmvcmhn.functions.supabase.co/generate-newphoto-embedding', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ photo_id: tempId }),
-        });
-        if (!embedRes.ok) {
-          const errText = await embedRes.text();
-          throw new Error('Embedding function failed: ' + errText);
-        }
+        const { error: embedError } = await supabase.functions.invoke(
+          'generate-newphoto-embedding',
+          { body: { photo_id: tempId } },
+        );
+        if (embedError) throw new Error('Embedding function failed');
 
         // Wait for embedding
         let attempts = 0;

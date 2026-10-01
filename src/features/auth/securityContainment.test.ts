@@ -24,13 +24,36 @@ test("browser source accepts only the publishable Supabase key name", () => {
   assert.doesNotMatch(browserSource, /sb_secret_[A-Za-z0-9_-]+/);
 });
 
-test("drifted matching endpoint remains fail closed pending contract reconciliation", () => {
-  const source = read(
-    "supabase/functions/generate-newphoto-embedding/index.ts",
+test("photo embedding preserves its contract behind active-user authorization", () => {
+  const edge = read("supabase/functions/generate-newphoto-embedding/index.ts");
+  const caller = read("src/components/matching/CatalogMatchModal.tsx");
+  const authorization = read("supabase/functions/_shared/authorization.ts");
+
+  assert.match(edge, /authorizeCaller\(request, "active-user"\)/);
+  assert.match(edge, /body\.photo_id/);
+  assert.match(edge, /from\("temp_photos"\)[\s\S]*select\("photo_url"\)/);
+  assert.match(edge, /JSON\.stringify\(\{ image_base64: imageBase64 \}\)/);
+  assert.match(edge, /from\("temp_photos"\)[\s\S]*update\(\{ embedding \}\)/);
+  assert.match(edge, /status: "ok", photo_id: photoId/);
+  assert.doesNotMatch(
+    edge,
+    /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/,
   );
-  assert.match(source, /status:\s*410/);
-  assert.doesNotMatch(source, /createClient/);
-  assert.doesNotMatch(source, /SERVICE_ROLE|SECRET_KEY/);
+  assert.doesNotMatch(edge, /Access-Control-Allow-Origin["']:\s*["']\*/);
+  assert.doesNotMatch(edge, /SUPABASE_SERVICE_ROLE_KEY|SERVICE_ROLE_KEY/);
+  assert.match(
+    authorization,
+    /requiredEnv\(\s*"SUPABASE_SECRET_KEY",\s*"SERVICE_ROLE_KEY",\s*"SUPABASE_SERVICE_ROLE_KEY"/,
+  );
+
+  assert.match(
+    caller,
+    /supabase\.functions\.invoke\([\s\S]*["']generate-newphoto-embedding["'][\s\S]*photo_id:\s*tempId/,
+  );
+  assert.doesNotMatch(
+    caller,
+    /apweteosdbgsolmvcmhn\.functions\.supabase\.co\/generate-newphoto-embedding/,
+  );
 });
 
 test("legacy create and delete contracts require an active administrator", () => {
