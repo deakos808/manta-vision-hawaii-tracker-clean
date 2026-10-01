@@ -196,3 +196,58 @@ test("database proposal preserves the one-active-admin floor and fail-closed fin
   assert.match(migration, /profiles RLS fingerprint mismatch/);
   assert.match(migration, /profiles policy-definition fingerprint mismatch/);
 });
+
+test("import commits preserve contracts behind active-admin database authorization", () => {
+  const migration = read(
+    "supabase/migrations/20261001064839_import_authorization_containment.sql",
+  );
+  const rollback = read(
+    "supabase/rollback/20261001064839_import_authorization_containment_rollback.sql",
+  );
+  const sqlTest = read("supabase/tests/import_authorization_containment.sql");
+  const importPanel = read("src/admin/ImportCsvPanel.tsx");
+
+  for (const target of ["biopsies", "drone_photos"]) {
+    assert.match(
+      migration,
+      new RegExp(`alter function public\\.fn_imports_commit_${target}\\(uuid\\)`),
+    );
+    assert.match(
+      migration,
+      new RegExp(`private\\.fn_imports_commit_${target}_impl\\(p_batch\\)`),
+    );
+    assert.match(
+      migration,
+      new RegExp(`revoke all on function public\\.fn_imports_commit_${target}\\(uuid\\) from public, anon`),
+    );
+    assert.match(
+      rollback,
+      new RegExp(`rename to fn_imports_commit_${target}`),
+    );
+  }
+
+  assert.match(migration, /actor_id uuid := auth\.uid\(\)/);
+  assert.match(migration, /role = 'admin' and is_active is true/);
+  assert.match(migration, /set search_path = ''/);
+  assert.match(migration, /security_invoker = true/);
+  assert.match(migration, /with check \(\(select public\.is_admin_user\(\)\)\)/);
+  assert.match(migration, /using \(\(select public\.is_admin_user\(\)\)\)/);
+  assert.doesNotMatch(migration, /create(?: or replace)? function public\.try_cast_double/i);
+
+  assert.match(importPanel, /from\(tableName\)\.insert\(chunk,/);
+  assert.match(importPanel, /supabase\.rpc\(commitFn, \{ p_batch: batchId \}\)/);
+  assert.match(importPanel, /fn_imports_commit_drone_photos/);
+
+  for (const scenario of [
+    "anonymous",
+    "active-user",
+    "inactive-user",
+    "missing-profile",
+    "identity-less privileged-role",
+  ]) {
+    assert.match(sqlTest, new RegExp(scenario));
+  }
+  assert.match(sqlTest, /Active administrators retain staging inserts/);
+  assert.match(sqlTest, /hostile JWT metadata/);
+  assert.match(sqlTest, /public\.try_cast_double\('not-a-number'\) is null/);
+});
