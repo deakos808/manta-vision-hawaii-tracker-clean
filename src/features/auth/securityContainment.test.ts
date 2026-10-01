@@ -22,6 +22,7 @@ test("browser source accepts only the publishable Supabase key name", () => {
   assert.doesNotMatch(browserSource, /VITE_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(browserSource, /VITE_SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(browserSource, /sb_secret_[A-Za-z0-9_-]+/);
+  assert.doesNotMatch(browserSource, /apweteosdbgsolmvcmhn/);
 });
 
 test("photo embedding preserves its contract behind active-user authorization", () => {
@@ -125,6 +126,9 @@ test("active catalog maintenance contracts require active administrators", () =>
 test("manta embedding maintenance requires an active administrator", () => {
   const source = read("supabase/functions/embeddings-manta/index.ts");
   assert.match(source, /authorizeCaller\(req, "active-admin"\)/);
+  assert.match(source, /\{ admin: supabase \}/);
+  assert.match(source, /Deno\.env\.get\("EMBED_URL"\)/);
+  assert.doesNotMatch(source, /apweteosdbgsolmvcmhn/);
   assert.doesNotMatch(source, /Access-Control-Allow-Origin["']:\s*["']\*/);
   assert.match(source, /searchParams\.get\("offset"\)/);
   assert.match(source, /text\/event-stream/);

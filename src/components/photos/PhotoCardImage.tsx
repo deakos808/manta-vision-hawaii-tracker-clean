@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import fallbackImage from '@/assets/hamer_logo_1.png';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface PhotoCardImageProps {
   storagePath: string | null;
@@ -12,7 +13,7 @@ export default function PhotoCardImage({ storagePath, photoId }: PhotoCardImageP
   const [isError, setIsError] = useState(false);
 
   const photoUrl = storagePath
-    ? `https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/manta-images/${storagePath}`
+    ? supabase.storage.from('manta-images').getPublicUrl(storagePath).data.publicUrl
     : fallbackImage;
 
   return (

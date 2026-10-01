@@ -61,7 +61,9 @@ export default function CatalogMatchModal({ open, onClose, photoUrl, tempMantaId
           .upload(filePath, blob, { upsert: true });
         if (uploadError) throw new Error('Upload failed');
 
-        const publicUrl = `https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/temp-images/${filePath}`;
+        const publicUrl = supabase.storage
+          .from('temp-images')
+          .getPublicUrl(filePath).data.publicUrl;
         const { error: insertError } = await supabase
           .from('temp_photos')
           .upsert({ id: tempId, photo_url: publicUrl }, { onConflict: ['id'] });
