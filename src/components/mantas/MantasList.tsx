@@ -1,5 +1,9 @@
 import React from "react";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import {
+  newOrganicBiopsy,
+  type OrganicBiopsyDraft,
+} from "@/features/biopsies/organicBiopsy";
 
 type Photo = {
   thumbnail_url?: string;
@@ -18,6 +22,8 @@ type Props = {
   onRemove: (id: string) => void;
   openMatch: (m: MantaDraft, ventralUrl?: string) => void;
   totalPhotosAll: number;
+  sightingDate: string;
+  allowBiopsyEntry: boolean;
 };
 
 const TILE_W=128;
@@ -59,7 +65,15 @@ function fmtMeters(v:any){
   const meters = n >= 10 ? (n/100) : n; // assume cm if >=10
   return meters.toFixed(2) + " m";
 }
-export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Props){
+export default function MantasList({
+  mantas,
+  setMantas,
+  onEdit,
+  onRemove,
+  openMatch,
+  sightingDate,
+  allowBiopsyEntry,
+}: Props){
   // compact grid that fits inside the card with no horizontal scroll in normal widths
   // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
   const GRID="grid grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3";
@@ -90,9 +104,24 @@ export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Prop
           const count = Array.isArray(m?.photos) ? m.photos.length : 0;
           const matchedId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id) ?? null;
           const noMatch = !!(m?.noMatch || m?.no_match);
+          const biopsy = m.biopsy as OrganicBiopsyDraft | null | undefined;
+          const updateBiopsy = (patch: Partial<OrganicBiopsyDraft>) => {
+            setMantas((current) => current.map((candidate) =>
+              String(candidate.id) === String(m.id)
+                ? {
+                    ...candidate,
+                    biopsy: {
+                      ...(candidate.biopsy ?? newOrganicBiopsy(sightingDate)),
+                      ...patch,
+                    } as OrganicBiopsyDraft,
+                  }
+                : candidate
+            ));
+          };
 
           return (
-            <div key={String(m?.id ?? idx)} className={`${GRID} px-6 py-3 overflow-hidden pr-3`}>
+            <div key={String(m?.id ?? idx)}>
+            <div className={`${GRID} px-6 py-3 overflow-hidden pr-3`}>
                               {/* Ventral column with baseline-aligned pill */}
                 <div className="h-[136px] flex flex-col items-center justify-end">
                   <ImgTile url={ventUrl} placeholder="ventral" />
@@ -173,6 +202,63 @@ export default function MantasList({ mantas, onEdit, onRemove, openMatch }: Prop
                   </svg>
                 </button>
               </div>
+            </div>
+            {allowBiopsyEntry && (
+              <div className="px-6 pb-3">
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(biopsy?.collected)}
+                    onChange={(event) => {
+                      setMantas((current) => current.map((candidate) =>
+                        String(candidate.id) === String(m.id)
+                          ? {
+                              ...candidate,
+                              biopsy: event.target.checked
+                                ? newOrganicBiopsy(sightingDate)
+                                : null,
+                            }
+                          : candidate
+                      ));
+                    }}
+                  />
+                  Biopsy collected for {tempName(m)}
+                </label>
+                {biopsy?.collected && (
+                  <details className="mt-2 rounded border bg-slate-50 p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-700">
+                      Biopsy details — {tempName(m)}
+                    </summary>
+                    <div className="mt-3 grid gap-3 md:grid-cols-4">
+                      <label className="text-xs text-slate-600">Sample date
+                        <input type="date" required value={biopsy.sampleDate} onChange={(e) => updateBiopsy({ sampleDate: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Sample time
+                        <input type="time" value={biopsy.sampleTime ?? ""} onChange={(e) => updateBiopsy({ sampleTime: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Collector
+                        <input required value={biopsy.collector} onChange={(e) => updateBiopsy({ collector: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Collection method
+                        <input required value={biopsy.method} onChange={(e) => updateBiopsy({ method: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Tissue type
+                        <input required value={biopsy.tissueType} onChange={(e) => updateBiopsy({ tissueType: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Sample ID
+                        <input value={biopsy.sampleId ?? ""} onChange={(e) => updateBiopsy({ sampleId: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600">Lab ID
+                        <input value={biopsy.labId ?? ""} onChange={(e) => updateBiopsy({ labId: e.target.value })} className="mt-1 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="text-xs text-slate-600 md:col-span-4">Biopsy notes
+                        <textarea value={biopsy.notes ?? ""} onChange={(e) => updateBiopsy({ notes: e.target.value })} className="mt-1 min-h-16 w-full rounded border bg-white px-2 py-1.5 text-sm" />
+                      </label>
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
             </div>
           );
         })}

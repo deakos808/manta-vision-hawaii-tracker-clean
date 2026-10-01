@@ -259,3 +259,51 @@ test("import commits preserve contracts behind active-admin database authorizati
   assert.match(sqlTest, /hostile JWT metadata/);
   assert.match(sqlTest, /public\.try_cast_double\('not-a-number'\) is null/);
 });
+
+test("organic biopsy entry uses stable correlation and retires the CSV importer", () => {
+  const migration = read(
+    "supabase/migrations/20261001150410_organic_biopsy_entry_and_legacy_retirement.sql",
+  );
+  const rollback = read(
+    "supabase/rollback/20261001150410_organic_biopsy_entry_and_legacy_retirement_rollback.sql",
+  );
+  const page = read("src/pages/AddSightingPage.tsx");
+  const list = read("src/components/mantas/MantasList.tsx");
+
+  assert.match(migration, /add column submission_manta_id text/);
+  assert.match(migration, /mantas_sighting_submission_manta_id_uidx/);
+  assert.match(migration, /trg_validate_committed_biopsy_mapping/);
+  assert.match(migration, /deferrable initially deferred/);
+  assert.match(migration, /sighting commit correlation patch fingerprint mismatch/);
+  assert.match(migration, /m\.submission_manta_id = manta_payload->>'id'/);
+  assert.doesNotMatch(migration, /offset\s*\(|row_number\s*\(/i);
+  assert.match(migration, /role in \('user', 'admin'\)/);
+  assert.match(migration, /set search_path = ''/);
+  assert.match(migration, /drop function public\.fn_imports_commit_biopsies\(uuid\)/);
+  assert.match(migration, /drop function private\.fn_imports_commit_biopsies_impl\(uuid\)/);
+  assert.match(migration, /revoke all on table public\.stg_biopsies/);
+  assert.match(migration, /drone-photo import contract changed unexpectedly/);
+  for (const incompatible of [
+    "sample_time_utc",
+    "latitude",
+    "longitude",
+    "storage_vial_id",
+    "lab_tracking_id",
+  ]) {
+    assert.doesNotMatch(
+      migration.match(/insert into public\.biopsies[\s\S]*?\);/)?.[0] ?? "",
+      new RegExp(`\\b${incompatible}\\b`),
+    );
+  }
+
+  assert.match(page, /commit_sighting_submission_with_biopsies/);
+  assert.match(page, /hasOrganicBiopsies\(mantas\)/);
+  assert.match(list, /allowBiopsyEntry &&/);
+  assert.match(list, /Biopsy collected for/);
+
+  assert.match(rollback, /Fail-closed rollback/);
+  assert.match(rollback, /Biopsy submission is disabled/);
+  assert.doesNotMatch(rollback, /create function public\.fn_imports_commit_biopsies/i);
+  assert.doesNotMatch(rollback, /grant\s+(?:all|execute|select|insert)/i);
+  assert.doesNotMatch(rollback, /delete\s+from|truncate|drop\s+table/i);
+});
