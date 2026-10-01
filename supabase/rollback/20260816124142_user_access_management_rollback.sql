@@ -1,4 +1,6 @@
 -- Manual rollback to the documented profiles policy/grant/function baseline.
+-- This intentionally removes the one-active-admin RPC invariant and restores the
+-- former direct browser-admin DELETE/UPDATE policies; use only during a reviewed rollback.
 drop function if exists public.admin_set_profile_access(uuid, text, boolean, text);
 drop policy if exists "active admins can read user access audit" on public.user_access_audit;
 drop table if exists public.user_access_audit;

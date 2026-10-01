@@ -97,14 +97,14 @@ test("synthetic Edge user-management authorization and response contracts", asyn
     check((await call(inactiveUserToken, { action: "list" })).response.status === 403, "inactive regular user was not rejected");
     check((await call(missingProfileToken, { action: "list" })).response.status === 403, "missing-profile user was not rejected");
 
-    check((await call(adminToken, { action: "update_access", target_id: secondAdmin, role: "user", is_active: true, reason: "Synthetic floor check" })).response.status === 409, "two-admin floor was not enforced");
+    check((await call(adminToken, { action: "update_access", target_id: secondAdmin, role: "user", is_active: true, reason: "Synthetic one-admin reconciliation" })).response.status === 200, "demotion to the one-admin minimum failed");
     check((await call(adminToken, { action: "update_access", target_id: firstAdmin, role: "user", is_active: true, reason: "Synthetic self change" })).response.status === 409, "self-demotion was not rejected");
     check((await call(adminToken, { action: "update_access", target_id: firstAdmin, role: "admin", is_active: false, reason: "Synthetic self suspension" })).response.status === 409, "self-suspension was not rejected");
     check((await call(adminToken, { action: "update_access", target_id: regular, role: "owner", is_active: true, reason: "Synthetic invalid role" })).response.status === 400, "invalid role was not rejected");
     check((await call(adminToken, { action: "update_access", target_id: inactiveUser, role: "user", is_active: true, reason: "" })).response.status === 400, "missing reason was not rejected");
 
-    check((await call(adminToken, { action: "update_access", target_id: regular, role: "admin", is_active: true, reason: "Synthetic promotion" })).response.status === 200, "third-admin promotion failed");
-    check((await call(adminToken, { action: "update_access", target_id: secondAdmin, role: "user", is_active: true, reason: "Synthetic demotion" })).response.status === 200, "demotion after third-admin promotion failed");
+    check((await call(adminToken, { action: "update_access", target_id: regular, role: "admin", is_active: true, reason: "Synthetic promotion" })).response.status === 200, "second-admin promotion failed");
+    check((await call(adminToken, { action: "update_access", target_id: regular, role: "user", is_active: true, reason: "Synthetic demotion" })).response.status === 200, "demotion back to one admin failed");
     check((await call(adminToken, { action: "update_access", target_id: inactiveUser, role: "user", is_active: true, reason: "Synthetic reactivation" })).response.status === 200, "reactivation failed");
     check((await call(adminToken, { action: "update_access", target_id: inactiveUser, role: "user", is_active: false, reason: "Synthetic suspension" })).response.status === 200, "suspension failed");
 

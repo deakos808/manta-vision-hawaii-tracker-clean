@@ -226,13 +226,13 @@ begin
   if not found then raise exception 'Target application profile does not exist'; end if;
   if actor_id = target_user_id and target_profile.role = 'admin' and target_profile.is_active is true
      and (requested_role <> 'admin' or requested_is_active is not true) then
-    raise exception 'Administrators cannot demote or suspend themselves';
+    raise exception 'Administrators cannot demote, suspend, or deactivate themselves';
   end if;
   if target_profile.role = 'admin' and target_profile.is_active is true
      and (requested_role <> 'admin' or requested_is_active is not true) then
     select count(*) into active_admin_count
     from public.profiles where role = 'admin' and is_active is true;
-    if active_admin_count <= 2 then raise exception 'At least two active administrators must remain'; end if;
+    if active_admin_count <= 1 then raise exception 'At least one active administrator must remain'; end if;
   end if;
 
   update public.profiles set role = requested_role, is_active = requested_is_active

@@ -43,7 +43,11 @@ test("the proposed migration is fail-closed, transactional, and narrowly granted
   assert.match(sql, /security definer[\s\S]*set search_path = ''/i);
   assert.match(sql, /revoke all on function public\.admin_set_profile_access[\s\S]*from public, anon/);
   assert.match(sql, /grant execute on function public\.admin_set_profile_access[\s\S]*to authenticated/);
-  assert.match(sql, /At least two active administrators must remain/);
+  assert.match(sql, /At least one active administrator must remain/);
+  assert.match(sql, /Administrators cannot demote, suspend, or deactivate themselves/);
+  assert.match(sql, /active_admin_count <= 1/);
+  assert.match(sql, /role not in \('admin', 'user'\)/);
+  assert.doesNotMatch(sql, /Mark Deakos/i);
   assert.match(sql, /values \(new\.id, new\.email, 'user', true\)/);
   assert.match(sql, /insert into public\.user_access_audit[\s\S]*update public\.profiles|update public\.profiles[\s\S]*insert into public\.user_access_audit/);
 });
@@ -52,6 +56,7 @@ test("rollback restores the documented policy and grant baseline", () => {
   const rollback = source("../../../supabase/rollback/20260816124142_user_access_management_rollback.sql");
   assert.match(rollback, /drop function if exists public\.admin_set_profile_access/);
   assert.match(rollback, /create policy profiles_admin_update_all/);
+  assert.match(rollback, /create policy profiles_admin_delete_all/);
   assert.match(rollback, /grant all privileges on table public\.profiles/);
 });
 

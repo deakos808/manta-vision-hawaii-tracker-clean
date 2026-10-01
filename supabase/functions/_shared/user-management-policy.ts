@@ -57,10 +57,10 @@ export function planAccessChange(args: {
   const removesAdminAccess = args.target.role === "admin" && args.target.is_active === true &&
     (role !== "admin" || args.requestedActive !== true);
   if (args.actor.id === args.target.id && removesAdminAccess) {
-    throw new Error("Administrators cannot demote or suspend themselves.");
+    throw new Error("Administrators cannot demote, suspend, or deactivate themselves.");
   }
-  if (removesAdminAccess && args.activeAdminCount <= 2) {
-    throw new Error("At least two active administrators must remain.");
+  if (removesAdminAccess && args.activeAdminCount <= 1) {
+    throw new Error("At least one active administrator must remain.");
   }
 
   return { role, isActive: args.requestedActive, reason };

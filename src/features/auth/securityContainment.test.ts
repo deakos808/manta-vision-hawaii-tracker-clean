@@ -30,6 +30,10 @@ test("photo embedding preserves its contract behind active-user authorization", 
   const authorization = read("supabase/functions/_shared/authorization.ts");
 
   assert.match(edge, /authorizeCaller\(request, "active-user"\)/);
+  assert.match(
+    authorization,
+    /profile\.role !== "admin" && profile\.role !== "user"/,
+  );
   assert.match(edge, /body\.photo_id/);
   assert.match(edge, /from\("temp_photos"\)[\s\S]*select\("photo_url"\)/);
   assert.match(edge, /JSON\.stringify\(\{ image_base64: imageBase64 \}\)/);
@@ -118,12 +122,14 @@ test("gateway JWT verification is explicit for contained functions", () => {
   }
 });
 
-test("database proposal preserves the two-active-admin floor and fail-closed fingerprint", () => {
+test("database proposal preserves the one-active-admin floor and fail-closed fingerprint", () => {
   const migration = read(
     "supabase/migrations/20260816124142_user_access_management.sql",
   );
   assert.match(migration, /manta-active-admin-floor/);
-  assert.match(migration, /At least two active administrators must remain/);
+  assert.match(migration, /At least one active administrator must remain/);
+  assert.match(migration, /Administrators cannot demote, suspend, or deactivate themselves/);
+  assert.match(migration, /active_admin_count <= 1/);
   assert.match(migration, /profiles RLS fingerprint mismatch/);
   assert.match(migration, /profiles policy-definition fingerprint mismatch/);
 });

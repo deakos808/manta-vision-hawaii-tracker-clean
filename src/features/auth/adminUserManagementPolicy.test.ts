@@ -35,20 +35,20 @@ test("invalid actions and roles are rejected", () => {
   assert.throws(() => parseManagedRole("owner"), /invalid/i);
 });
 
-test("self-demotion and self-suspension are rejected", () => {
-  assert.throws(() => planAccessChange({ actor: admin, target: admin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 3 }), /cannot demote or suspend themselves/i);
-  assert.throws(() => planAccessChange({ actor: admin, target: admin, requestedRole: "admin", requestedActive: false, reason: "Taking leave", activeAdminCount: 3 }), /cannot demote or suspend themselves/i);
+test("self-demotion, self-suspension, and self-deactivation are rejected", () => {
+  assert.throws(() => planAccessChange({ actor: admin, target: admin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 1 }), /cannot demote, suspend, or deactivate themselves/i);
+  assert.throws(() => planAccessChange({ actor: admin, target: admin, requestedRole: "admin", requestedActive: false, reason: "Taking leave", activeAdminCount: 1 }), /cannot demote, suspend, or deactivate themselves/i);
 });
 
-test("the two-active-admin floor is protected", () => {
+test("the one-active-admin floor is protected", () => {
   const otherAdmin = { id: "other-admin", role: "admin", is_active: true };
-  assert.throws(() => planAccessChange({ actor: admin, target: otherAdmin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 2 }), /at least two/i);
-  assert.doesNotThrow(() => planAccessChange({ actor: admin, target: otherAdmin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 3 }));
+  assert.throws(() => planAccessChange({ actor: admin, target: otherAdmin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 1 }), /at least one/i);
+  assert.doesNotThrow(() => planAccessChange({ actor: admin, target: otherAdmin, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 2 }));
 });
 
 test("a rejected plan cannot partially mutate caller state", () => {
   const target = { id: "other-admin", role: "admin", is_active: true };
   const before = structuredClone(target);
-  assert.throws(() => planAccessChange({ actor: admin, target, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 2 }));
+  assert.throws(() => planAccessChange({ actor: admin, target, requestedRole: "user", requestedActive: true, reason: "Changing duties", activeAdminCount: 1 }));
   assert.deepEqual(target, before);
 });

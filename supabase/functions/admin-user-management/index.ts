@@ -171,8 +171,8 @@ serve(async (request) => {
     if (result.error) {
       await audit("privileged_action_failure", "failure", "Profile access change rejected.", { action, classification: "database_policy_rejected" });
       const known = [
-        "Administrators cannot demote or suspend themselves",
-        "At least two active administrators must remain",
+        "Administrators cannot demote, suspend, or deactivate themselves",
+        "At least one active administrator must remain",
         "Target application profile does not exist",
         "Invalid application role",
       ].find((message) => result.error.message.includes(message));

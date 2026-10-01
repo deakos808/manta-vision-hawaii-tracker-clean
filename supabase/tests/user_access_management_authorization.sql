@@ -58,6 +58,11 @@ begin
     raise exception 'expected direct profile update rejection';
   exception when insufficient_privilege then null;
   end;
+  begin
+    delete from public.profiles where id = '10000000-0000-4000-8000-000000000001';
+    raise exception 'expected direct profile self-delete rejection';
+  exception when insufficient_privilege then null;
+  end;
   assert (select count(*) from public.profiles) = 1, 'browser admin must see only its own profile';
 end
 $$;
@@ -87,9 +92,9 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
 do $$ begin
   begin perform public.admin_set_profile_access('10000000-0000-4000-8000-000000000001', 'user', true, 'synthetic self demotion'); raise exception 'expected rejection';
-  exception when others then assert sqlerrm like '%cannot demote or suspend themselves%'; end;
+  exception when others then assert sqlerrm like '%cannot demote, suspend, or deactivate themselves%'; end;
   begin perform public.admin_set_profile_access('10000000-0000-4000-8000-000000000001', 'admin', false, 'synthetic self suspension'); raise exception 'expected rejection';
-  exception when others then assert sqlerrm like '%cannot demote or suspend themselves%'; end;
+  exception when others then assert sqlerrm like '%cannot demote, suspend, or deactivate themselves%'; end;
   begin perform public.admin_set_profile_access('10000000-0000-4000-8000-000000000003', 'owner', true, 'synthetic invalid role'); raise exception 'expected rejection';
   exception when others then assert sqlerrm like '%Invalid application role%'; end;
   begin perform public.admin_set_profile_access('10000000-0000-4000-8000-000000000003', 'user', false, ''); raise exception 'expected rejection';
@@ -97,27 +102,28 @@ do $$ begin
 end $$;
 reset role;
 
--- There are exactly two active admins; removing either is blocked.
+-- There are exactly two active admins; reconciling to one is allowed.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
+select public.admin_set_profile_access('10000000-0000-4000-8000-000000000002', 'user', true, 'synthetic reconcile to one admin');
 do $$ begin
-  begin perform public.admin_set_profile_access('10000000-0000-4000-8000-000000000002', 'user', true, 'synthetic floor test'); raise exception 'expected rejection';
-  exception when others then assert sqlerrm like '%At least two active administrators must remain%'; end;
+  assert (select count(*) from public.profiles where role = 'admin' and is_active is true) = 1,
+    'reconciliation must leave exactly one active administrator';
 end $$;
 
--- Promote a third administrator, then demote another; suspend/reactivate a regular user.
+-- Promote a second administrator, then return to one; suspend/reactivate a regular user.
 select public.admin_set_profile_access('10000000-0000-4000-8000-000000000003', 'admin', true, 'synthetic promotion');
-select public.admin_set_profile_access('10000000-0000-4000-8000-000000000002', 'user', true, 'synthetic demotion after promotion');
+select public.admin_set_profile_access('10000000-0000-4000-8000-000000000003', 'user', true, 'synthetic demotion after promotion');
 select public.admin_set_profile_access('10000000-0000-4000-8000-000000000005', 'user', true, 'synthetic reactivation');
 select public.admin_set_profile_access('10000000-0000-4000-8000-000000000005', 'user', false, 'synthetic suspension');
 reset role;
 
 do $$
 begin
-  assert (select role from public.profiles where id = '10000000-0000-4000-8000-000000000003') = 'admin';
+  assert (select role from public.profiles where id = '10000000-0000-4000-8000-000000000003') = 'user';
   assert (select role from public.profiles where id = '10000000-0000-4000-8000-000000000002') = 'user';
   assert (select is_active from public.profiles where id = '10000000-0000-4000-8000-000000000005') is false;
-  assert (select count(*) from public.user_access_audit where outcome = 'success') = 4;
+  assert (select count(*) from public.user_access_audit where outcome = 'success') = 5;
 end
 $$;
 
@@ -132,7 +138,7 @@ end $$;
 reset role;
 do $$ begin
   assert (select role from public.profiles where id = '10000000-0000-4000-8000-000000000002') = 'user', 'profile mutation must roll back with audit failure';
-  assert (select count(*) from public.user_access_audit where outcome = 'success') = 4, 'failed transaction must not add audit row';
+  assert (select count(*) from public.user_access_audit where outcome = 'success') = 5, 'failed transaction must not add audit row';
 end $$;
 alter table public.user_access_audit drop constraint synthetic_reject_role_audit;
 
