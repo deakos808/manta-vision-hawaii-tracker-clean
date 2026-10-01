@@ -222,7 +222,11 @@ declare
   resolved_storage_path text;
   resolved_file_name text;
 begin
-  select * into submission_row from public.sighting_submissions where id = sub_id for update;
+  select *
+  into submission_row
+  from public.sighting_submissions
+  where id = sub_id
+  for update;
   if not found then raise exception 'Submission not found'; end if;
   if submission_row.status = 'committed' and submission_row.committed_pk_sighting_id is not null then return; end if;
   resolved_sitelocation := nullif(trim(coalesce(submission_row.payload->>'sitelocation', submission_row.payload->>'locationName')), '');

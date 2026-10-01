@@ -267,6 +267,9 @@ test("organic biopsy entry uses stable correlation and retires the CSV importer"
   const rollback = read(
     "supabase/rollback/20261001150410_organic_biopsy_entry_and_legacy_retirement_rollback.sql",
   );
+  const hardening = read(
+    "supabase/migrations/20261001153752_harden_organic_biopsy_integrity.sql",
+  );
   const page = read("src/pages/AddSightingPage.tsx");
   const list = read("src/components/mantas/MantasList.tsx");
 
@@ -306,4 +309,14 @@ test("organic biopsy entry uses stable correlation and retires the CSV importer"
   assert.doesNotMatch(rollback, /create function public\.fn_imports_commit_biopsies/i);
   assert.doesNotMatch(rollback, /grant\s+(?:all|execute|select|insert)/i);
   assert.doesNotMatch(rollback, /delete\s+from|truncate|drop\s+table/i);
+
+  assert.match(hardening, /prevent_submission_manta_id_change/);
+  assert.match(hardening, /submission correlation IDs are immutable/);
+  assert.match(hardening, /validate_biopsy_parent_consistency/);
+  assert.match(hardening, /fk_sighting_id is distinct from m\.fk_sighting_id/);
+  assert.match(hardening, /fk_catalog_id is distinct from m\.fk_catalog_id/);
+  assert.match(hardening, /revoke insert, update on table public\.mantas/);
+  assert.match(hardening, /security definer/);
+  assert.match(hardening, /set search_path = ''/);
+  assert.match(hardening, /role in \(''user'', ''admin''\)/);
 });

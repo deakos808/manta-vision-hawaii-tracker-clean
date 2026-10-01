@@ -9,6 +9,8 @@ begin
   assert to_regprocedure('public.fn_imports_commit_biopsies(uuid)') is null;
   assert to_regprocedure('private.fn_imports_commit_biopsies_impl(uuid)') is null;
   assert to_regprocedure('private.validate_committed_biopsy_mapping()') is not null;
+  assert to_regprocedure('private.prevent_submission_manta_id_change()') is not null;
+  assert to_regprocedure('private.validate_biopsy_parent_consistency()') is not null;
   assert exists (select 1 from public.sightings where pk_sighting_id = -1);
   assert exists (select 1 from public.mantas where pk_manta_id = -1 and fk_sighting_id = -1);
   assert exists (select 1 from public.photos where pk_photo_id = -1 and fk_manta_id = -1);
@@ -24,6 +26,7 @@ begin
     assert not has_table_privilege(role_name, 'public.biopsies', 'UPDATE');
     assert not has_table_privilege(role_name, 'public.biopsies', 'DELETE');
   end loop;
+  assert not has_column_privilege('authenticated', 'public.mantas', 'submission_manta_id', 'UPDATE');
 end $$;
 
 -- Any biopsy payload is rejected even for an active administrator.

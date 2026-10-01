@@ -10,6 +10,12 @@ do $$ begin
   assert exists (select 1 from public.stg_biopsies where import_batch_id = '10000000-0000-4000-8000-000000000099');
   assert to_regprocedure('public.fn_imports_commit_biopsies(uuid)') is null;
   assert to_regprocedure('private.fn_imports_commit_biopsies_impl(uuid)') is null;
+  assert not has_function_privilege('anon', 'public.commit_sighting_submission(uuid)', 'EXECUTE');
+  assert not has_function_privilege('anon', 'public.commit_sighting_submission_with_biopsies(uuid)', 'EXECUTE');
+  assert has_function_privilege('authenticated', 'public.commit_sighting_submission(uuid)', 'EXECUTE');
+  assert has_function_privilege('authenticated', 'public.commit_sighting_submission_with_biopsies(uuid)', 'EXECUTE');
+  assert not has_column_privilege('authenticated', 'public.mantas', 'submission_manta_id', 'INSERT');
+  assert not has_column_privilege('authenticated', 'public.mantas', 'submission_manta_id', 'UPDATE');
 end $$;
 
 -- Fabricated identities only.
@@ -110,6 +116,12 @@ do $$ begin
     where id = '31000000-0000-4000-8000-000000000009';
     raise exception 'expected inactive update rejection';
   exception when insufficient_privilege then null; end;
+  begin
+    perform public.commit_sighting_submission(
+      '31000000-0000-4000-8000-000000000009'
+    );
+    raise exception 'expected inactive no-biopsy commit rejection';
+  exception when insufficient_privilege then null; end;
 end $$;
 select set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000004', true);
 do $$ begin
@@ -120,8 +132,18 @@ do $$ begin
     );
     raise exception 'expected missing-profile rejection';
   exception when insufficient_privilege then null; end;
+  begin
+    perform public.commit_sighting_submission(
+      '31000000-0000-4000-8000-000000000009'
+    );
+    raise exception 'expected missing-profile no-biopsy commit rejection';
+  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
+do $$ begin
+  assert (select status from public.sighting_submissions
+          where id = '31000000-0000-4000-8000-000000000009') = 'pending';
+end $$;
 
 -- Malformed fields and duplicate correlation IDs fail before persistence.
 set local role authenticated;
@@ -157,7 +179,10 @@ values (
   '31000000-0000-4000-8000-000000000010', 'nobiopsy@example.invalid', date '2026-10-01',
   '{"date":"2026-10-01","island":"Synthetic","locationName":"Test","mantas":[{"id":"no-biopsy","name":"Same","matchedCatalogId":101,"photos":[],"biopsy":null}]}'::jsonb
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000002', true);
 select public.commit_sighting_submission('31000000-0000-4000-8000-000000000010');
+reset role;
 do $$ begin
   assert (select status from public.sighting_submissions where id = '31000000-0000-4000-8000-000000000010') = 'committed';
   assert not exists (select 1 from public.biopsies where source = 'organic_sighting' and fk_sighting_id = (select committed_pk_sighting_id from public.sighting_submissions where id = '31000000-0000-4000-8000-000000000010'));
@@ -219,6 +244,39 @@ end $$;
 reset role;
 alter sequence public.mantas_pk_manta_id_seq increment by 1 minvalue 1 no maxvalue restart with 1001;
 
+-- Browser roles cannot populate or change the correlation field directly.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000002', true);
+do $$ begin
+  begin
+    insert into public.mantas (fk_sighting_id, fk_catalog_id, submission_manta_id)
+    values (-1, 101, 'direct-browser-correlation');
+    raise exception 'expected direct correlation insert rejection';
+  exception when insufficient_privilege then null; end;
+  begin
+    update public.mantas set submission_manta_id = 'remapped'
+    where submission_manta_id = 'stable-a';
+    raise exception 'expected direct correlation update rejection';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+
+-- Correlations are immutable even to a privileged database caller and cannot
+-- be reused within the same sighting.
+do $$ begin
+  begin
+    update public.mantas set submission_manta_id = 'remapped'
+    where submission_manta_id = 'stable-a';
+    raise exception 'expected immutable correlation rejection';
+  exception when insufficient_privilege then null; end;
+  begin
+    insert into public.mantas (fk_sighting_id, fk_catalog_id, submission_manta_id)
+    select fk_sighting_id, fk_catalog_id, submission_manta_id
+    from public.mantas where submission_manta_id = 'stable-a';
+    raise exception 'expected reused correlation rejection';
+  exception when unique_violation then null; end;
+end $$;
+
 -- Reversing submitted order does not change stable-ID mapping. One manta may
 -- have a biopsy while an otherwise indistinguishable manta has none.
 set local role authenticated;
@@ -249,6 +307,67 @@ do $$ begin
   );
 end $$;
 reset role;
+
+-- Redundant biopsy sighting/catalog references may never contradict the exact
+-- manta-observation parent, even through privileged direct SQL.
+do $$
+declare
+  stable_manta_id integer;
+  stable_sighting_id integer;
+  stable_catalog_id integer;
+begin
+  select pk_manta_id, fk_sighting_id, fk_catalog_id
+    into stable_manta_id, stable_sighting_id, stable_catalog_id
+  from public.mantas where submission_manta_id = 'stable-a';
+
+  begin
+    insert into public.biopsies (
+      fk_manta_id, fk_sighting_id, fk_catalog_id, sample_date,
+      collector, method, tissue_type, source, raw_sample_id
+    ) values (
+      null, stable_sighting_id, stable_catalog_id, date '2026-10-08',
+      'Orphan', 'remote', 'skin', 'organic_sighting', 'ORPHAN-INSERT'
+    );
+    set constraints all immediate;
+    raise exception 'expected orphan biopsy rejection';
+  exception when check_violation then null; end;
+  set constraints all deferred;
+
+  begin
+    insert into public.biopsies (
+      fk_manta_id, fk_sighting_id, fk_catalog_id, sample_date,
+      collector, method, tissue_type, source, raw_sample_id
+    ) values (
+      stable_manta_id, -1, stable_catalog_id, date '2026-10-08',
+      'Mismatch', 'remote', 'skin', 'organic_sighting', 'MISMATCH-INSERT'
+    );
+    set constraints all immediate;
+    raise exception 'expected mismatched biopsy insert rejection';
+  exception when check_violation then null; end;
+  set constraints all deferred;
+
+  begin
+    update public.biopsies set fk_catalog_id = 101
+    where raw_sample_id = 'SAMPLE-A';
+    set constraints all immediate;
+    raise exception 'expected mismatched biopsy update rejection';
+  exception when check_violation then null; end;
+  set constraints all deferred;
+
+  begin
+    update public.mantas set fk_catalog_id = 101
+    where pk_manta_id = stable_manta_id;
+    set constraints all immediate;
+    raise exception 'expected mismatched parent update rejection';
+  exception when check_violation then null; end;
+  set constraints all deferred;
+
+  assert not exists (select 1 from public.biopsies where raw_sample_id = 'MISMATCH-INSERT');
+  assert not exists (select 1 from public.biopsies where raw_sample_id = 'ORPHAN-INSERT');
+  assert (select fk_catalog_id from public.mantas where pk_manta_id = stable_manta_id) = stable_catalog_id;
+  assert (select fk_catalog_id from public.biopsies where raw_sample_id = 'SAMPLE-A') = stable_catalog_id;
+  assert (select fk_sighting_id from public.biopsies where raw_sample_id = 'SAMPLE-A') = stable_sighting_id;
+end $$;
 
 -- A parent moved to another sighting makes mapping fail and rolls back the commit.
 create function public.synthetic_move_biopsy_parent() returns trigger language plpgsql as $$
