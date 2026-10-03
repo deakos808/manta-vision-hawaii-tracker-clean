@@ -29,7 +29,7 @@ test("browser source accepts only the publishable Supabase key name", () => {
 
 test("photo embedding preserves its contract behind active-user authorization", () => {
   const edge = read("supabase/functions/generate-newphoto-embedding/index.ts");
-  const caller = read("src/components/matching/CatalogMatchModal.tsx");
+  const caller = read("src/features/matching/rankedMatchWorkflow.ts");
   const authorization = read("supabase/functions/_shared/authorization.ts");
 
   assert.match(edge, /authorizeCaller\(request, "active-user"\)/);
@@ -57,7 +57,7 @@ test("photo embedding preserves its contract behind active-user authorization", 
 
   assert.match(
     caller,
-    /supabase\.functions\.invoke\([\s\S]*["']generate-newphoto-embedding["'][\s\S]*photo_id:\s*tempId/,
+    /supabase\.functions\.invoke\([\s\S]*["']generate-newphoto-embedding["'][\s\S]*photo_id:\s*id/,
   );
   assert.doesNotMatch(
     caller,

@@ -538,7 +538,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // MantasList hooks
   const onEdit = (m: MantaDraft) => setEditingManta(m);
   const onRemove = (id: string) => setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
+  const allowMatching = access.isActive === true && (access.role === "user" || access.role === "admin");
   const openMatch = (m: MantaDraft, ventralUrl?: string) => {
+    if (!allowMatching || !ventralUrl) return;
     setPageMatchMeta({ name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
     setPageMatchUrl(ventralUrl || "");
     setPageMatchFor(String(m.id));
@@ -726,6 +728,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               totalPhotosAll={totalPhotosAll}
               sightingDate={date}
               allowBiopsyEntry={access.isActive === true && (access.role === "user" || access.role === "admin")}
+              allowMatching={allowMatching}
             />
             <div className="mt-3">
               <Button type="button" data-clean-id="add-mantas" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
@@ -759,6 +762,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         open={pageMatchOpen}
         onClose={() => setPageMatchOpen(false)}
         tempUrl={pageMatchUrl}
+        rankedEnabled={allowMatching}
         aMeta={pageMatchMeta}
         onChoose={(catalogId) => {
           if (!pageMatchFor) { setPageMatchOpen(false); return; }

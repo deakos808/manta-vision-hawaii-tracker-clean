@@ -603,7 +603,7 @@ export default function UnifiedMantaModal({
         <MatchModal
           open={true}
           onClose={() => setMatchOpen(null)}
-          ventralUrl={matchOpen.previewUrl || matchOpen.url}
+          tempUrl={matchOpen.previewUrl || matchOpen.url}
           aMeta={{ name, gender, ageClass, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
             setPotentialCatalogId(id);

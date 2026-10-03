@@ -24,6 +24,7 @@ type Props = {
   totalPhotosAll: number;
   sightingDate: string;
   allowBiopsyEntry: boolean;
+  allowMatching: boolean;
 };
 
 const TILE_W=128;
@@ -73,6 +74,7 @@ export default function MantasList({
   openMatch,
   sightingDate,
   allowBiopsyEntry,
+  allowMatching,
 }: Props){
   // compact grid that fits inside the card with no horizontal scroll in normal widths
   // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
@@ -136,6 +138,8 @@ export default function MantasList({
                         <button
                           type="button"
                           className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
+                          disabled={!allowMatching || !ventUrl}
+                          title={!ventUrl ? 'Add a ventral photo to find a match' : !allowMatching ? 'An active account is required' : 'Find catalog match'}
                           onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
                         >
                           Match
@@ -148,6 +152,7 @@ export default function MantasList({
                         type="button"
                         aria-label="Change match"
                         className="p-[3px] rounded hover:bg-slate-100 text-slate-600"
+                        disabled={!allowMatching || !ventUrl}
                         onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
                         title="Edit match"
                       >
