@@ -8,6 +8,7 @@ dist/
 venv/
 env/
 **/__pycache__/
+embed/.model-cache/
 *.pyc
 *.bundle
 *.tgz

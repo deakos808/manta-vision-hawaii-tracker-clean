@@ -55,9 +55,20 @@ serve(async (request) => {
         origin,
       );
     }
+    const embedApiToken = Deno.env.get("EMBED_API_TOKEN")?.trim();
+    if (!embedApiToken) {
+      return jsonResponse(
+        { error: "Embedding service authentication is not configured" },
+        500,
+        origin,
+      );
+    }
     const embeddingResponse = await fetch(embedUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${embedApiToken}`,
+      },
       body: JSON.stringify({ image_base64: imageBase64 }),
     });
     if (!embeddingResponse.ok) {

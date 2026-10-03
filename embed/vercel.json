@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
+  "installCommand": null,
+  "outputDirectory": null,
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "includeFiles": ".model-cache/**",
+      "excludeFiles": "{sift_server.py,Dockerfile,Dockerfile.torch,docker-compose.yml,tests/**}"
+    }
+  }
+}

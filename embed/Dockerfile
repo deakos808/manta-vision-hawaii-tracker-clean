@@ -21,13 +21,8 @@ RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir \
       fastapi==0.111.0 uvicorn[standard]==0.30.1 pillow==10.3.0 numpy==1.26.4 requests==2.32.3
 
-# Pre-fetch ResNet50 weights into the image so the server never downloads at runtime
-RUN python - <<'PY'
-from torchvision.models import resnet50, ResNet50_Weights
-m = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-m.eval()
-print("resnet50 weights cached")
-PY
+# Fetch and independently verify the exact ResNet50 weights at build time.
+RUN python scripts/prepare_model_weights.py
 
 EXPOSE 5050
 CMD ["uvicorn", "embed_server:app", "--host", "0.0.0.0", "--port", "5050"]

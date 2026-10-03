@@ -40,6 +40,8 @@ test("photo embedding preserves its contract behind active-user authorization", 
   assert.match(edge, /body\.photo_id/);
   assert.match(edge, /from\("temp_photos"\)[\s\S]*select\("photo_url"\)/);
   assert.match(edge, /JSON\.stringify\(\{ image_base64: imageBase64 \}\)/);
+  assert.match(edge, /Deno\.env\.get\("EMBED_API_TOKEN"\)/);
+  assert.match(edge, /"Authorization": `Bearer \$\{embedApiToken\}`/);
   assert.match(edge, /from\("temp_photos"\)[\s\S]*update\(\{ embedding \}\)/);
   assert.match(edge, /status: "ok", photo_id: photoId/);
   assert.doesNotMatch(
