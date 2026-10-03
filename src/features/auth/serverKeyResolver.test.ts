@@ -35,14 +35,64 @@ test("plural maps take precedence over legacy values", () => {
   );
 });
 
-test("legacy values are used only when the plural variable is absent", () => {
+test("legacy publishable values are used only when the plural variable is absent", () => {
   assert.equal(
     resolvePublishableKey(environment({ SUPABASE_ANON_KEY: "legacy-anon" })),
     "legacy-anon",
   );
+});
+
+test("named secret mode is the default and may be selected explicitly", () => {
   assert.equal(
-    resolveSecretKey(environment({ SERVICE_ROLE_KEY: "legacy-service" })),
+    resolveSecretKey(environment({
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "named-secret" }),
+      SUPABASE_SERVICE_ROLE_KEY: "legacy-service",
+    })),
+    "named-secret",
+  );
+  assert.equal(
+    resolveSecretKey(environment({
+      MANTA_BACKEND_KEY_SOURCE: "named_secret",
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "named-secret" }),
+      SUPABASE_SERVICE_ROLE_KEY: "legacy-service",
+    })),
+    "named-secret",
+  );
+});
+
+test("legacy service-role mode is explicit and auditable", () => {
+  assert.equal(
+    resolveSecretKey(environment({
+      MANTA_BACKEND_KEY_SOURCE: "legacy_service_role",
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "named-secret" }),
+      SUPABASE_SERVICE_ROLE_KEY: "legacy-service",
+    })),
     "legacy-service",
+  );
+});
+
+test("malformed key-source configuration fails closed", () => {
+  assert.throws(
+    () => resolveSecretKey(environment({
+      MANTA_BACKEND_KEY_SOURCE: "automatic",
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "named-secret" }),
+      SUPABASE_SERVICE_ROLE_KEY: "legacy-service",
+    })),
+    /Invalid server key configuration: MANTA_BACKEND_KEY_SOURCE\./,
+  );
+});
+
+test("each secret mode fails closed when its selected key is missing", () => {
+  assert.throws(
+    () => resolveSecretKey(environment({})),
+    /Missing server key configuration: SUPABASE_SECRET_KEYS\./,
+  );
+  assert.throws(
+    () => resolveSecretKey(environment({
+      MANTA_BACKEND_KEY_SOURCE: "legacy_service_role",
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "named-secret" }),
+    })),
+    /Missing server key configuration: SUPABASE_SERVICE_ROLE_KEY\./,
   );
 });
 

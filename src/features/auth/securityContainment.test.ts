@@ -21,6 +21,8 @@ test("browser source accepts only the publishable Supabase key name", () => {
   assert.match(browserSource, /VITE_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(browserSource, /VITE_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(browserSource, /VITE_SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(browserSource, /MANTA_BACKEND_KEY_SOURCE/);
+  assert.doesNotMatch(browserSource, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(browserSource, /sb_secret_[A-Za-z0-9_-]+/);
   assert.doesNotMatch(browserSource, /apweteosdbgsolmvcmhn/);
 });
@@ -238,6 +240,15 @@ test("enabled privileged handlers authorize callers before privileged clients", 
     assert.ok(source.indexOf("auth.getUser") < source.indexOf("resolveSecretKey()"));
     assert.ok(source.indexOf('.select("id,role,is_active")') < source.indexOf("resolveSecretKey()"));
   }
+});
+
+test("backend key compatibility is explicit, server-only, and fail closed", () => {
+  const resolver = read("supabase/functions/_shared/server-keys.ts");
+  assert.match(resolver, /source === "legacy_service_role"/);
+  assert.match(resolver, /readEnvironment\("SUPABASE_SERVICE_ROLE_KEY"\)/);
+  assert.match(resolver, /source !== undefined && source !== "named_secret"/);
+  assert.match(resolver, /defaultFromMap\(pluralValue, "SUPABASE_SECRET_KEYS"\)/);
+  assert.doesNotMatch(resolver, /401|unauthorized/i);
 });
 
 test("database proposal preserves the one-active-admin floor and fail-closed fingerprint", () => {

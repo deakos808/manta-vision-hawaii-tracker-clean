@@ -50,9 +50,28 @@ export function resolvePublishableKey(
 export function resolveSecretKey(
   readEnvironment: EnvironmentReader = readDenoEnvironment,
 ): string {
-  return resolveKey(readEnvironment, "SUPABASE_SECRET_KEYS", [
-    "SUPABASE_SECRET_KEY",
-    "SERVICE_ROLE_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-  ]);
+  const source = readEnvironment("MANTA_BACKEND_KEY_SOURCE");
+  if (source === "legacy_service_role") {
+    const legacy = readEnvironment("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+    if (!legacy) {
+      throw new Error(
+        "Missing server key configuration: SUPABASE_SERVICE_ROLE_KEY.",
+      );
+    }
+    return legacy;
+  }
+
+  if (source !== undefined && source !== "named_secret") {
+    throw new Error(
+      "Invalid server key configuration: MANTA_BACKEND_KEY_SOURCE.",
+    );
+  }
+
+  const pluralValue = readEnvironment("SUPABASE_SECRET_KEYS");
+  if (pluralValue === undefined) {
+    throw new Error(
+      "Missing server key configuration: SUPABASE_SECRET_KEYS.",
+    );
+  }
+  return defaultFromMap(pluralValue, "SUPABASE_SECRET_KEYS");
 }
