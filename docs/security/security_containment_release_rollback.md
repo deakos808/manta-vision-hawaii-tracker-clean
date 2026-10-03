@@ -61,12 +61,26 @@ corrected function, it disables both public sighting-commit entry points by
 revoking browser/API execution. It does not alter the trigger, tables, rows,
 relationships, Auth records, or Storage metadata.
 
+## Biopsy primary-key sequence reconciliation
+
+The later upward-only sequence correction
+`20261003165701_reconcile_biopsies_primary_key_sequence.sql` has a dedicated
+fail-closed rollback artifact:
+
+`supabase/rollback/20261003165701_reconcile_biopsies_primary_key_sequence_rollback.sql`
+
+The sequence correction is intentionally not reversed: lowering or resetting a
+primary-key sequence could reintroduce a collision. Its rollback fingerprints
+the corrected state and disables both sighting-commit entry points by revoking
+browser/API execution. It does not change a table row or sequence value.
+
 ## Verification
 
 Run:
 
 ```sh
 python3 scripts/security/test_combined_release_rollback.py
+python3 scripts/security/test_biopsy_sequence_reconciliation.py
 ```
 
 The test creates disposable local PostgreSQL databases, applies the four
@@ -77,3 +91,6 @@ mismatch and a client interruption leave no partial schema change. The test
 also verifies that organic-biopsy and drone-import writes fail closed, the
 retired biopsy importer remains absent, direct/private bypasses are denied, and
 the ordinary no-biopsy sighting path remains available to an active profile.
+The sequence test separately proves the exact upward-only reconciliation,
+unchanged biopsy row content, rollback-only next-value verification,
+fingerprint atomicity, and fail-closed rollback.
