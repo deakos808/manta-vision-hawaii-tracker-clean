@@ -1,46 +1,54 @@
-import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import {
+  AuthorizationError,
+  authorizeCaller,
+  jsonResponse,
+  responseHeaders,
+} from "../_shared/authorization.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
-  'Content-Type': 'application/json',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+serve(async (request) => {
+  const origin = request.headers.get("origin");
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: responseHeaders(origin),
+    });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin);
   }
 
   try {
-    const { pk_manta_id } = await req.json();
-    if (!pk_manta_id) {
-      return new Response(JSON.stringify({ error: 'Missing pk_manta_id' }), { status: 400, headers: corsHeaders });
+    const { admin } = await authorizeCaller(request, "active-admin");
+    const body = await request.json().catch(() => ({}));
+    const mantaId = Number(body.pk_manta_id);
+    if (!Number.isSafeInteger(mantaId) || mantaId <= 0) {
+      return jsonResponse({ error: "Missing pk_manta_id" }, 400, origin);
     }
 
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sb = createClient(url, service);
-
-    // delete photos for this manta first
-    const { error: pErr } = await sb.from('photos')
-      .delete()
-      .eq('fk_manta_id', pk_manta_id);
-    if (pErr) {
-      return new Response(JSON.stringify({ error: pErr.message }), { status: 500, headers: corsHeaders });
+    const { error: photosError } = await admin.from("photos").delete().eq(
+      "fk_manta_id",
+      mantaId,
+    );
+    if (photosError) {
+      return jsonResponse(
+        { error: "Associated photo deletion failed." },
+        500,
+        origin,
+      );
     }
-
-    // delete manta row
-    const { error: mErr } = await sb.from('mantas')
-      .delete()
-      .eq('pk_manta_id', pk_manta_id);
-    if (mErr) {
-      return new Response(JSON.stringify({ error: mErr.message }), { status: 500, headers: corsHeaders });
+    const { error: mantaError } = await admin.from("mantas").delete().eq(
+      "pk_manta_id",
+      mantaId,
+    );
+    if (mantaError) {
+      return jsonResponse({ error: "Manta deletion failed." }, 500, origin);
     }
-
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || 'Unexpected error' }), { status: 500, headers: corsHeaders });
+    return jsonResponse({ success: true }, 200, origin);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return jsonResponse({ error: error.message }, error.status, origin);
+    }
+    return jsonResponse({ error: "Unexpected error" }, 500, origin);
   }
 });

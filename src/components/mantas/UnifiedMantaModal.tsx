@@ -4,6 +4,7 @@ import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
 import { readBasicExif } from "@/lib/exif";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import type { OrganicBiopsyDraft } from "@/features/biopsies/organicBiopsy";
 
 type View = "ventral" | "dorsal" | "other";
 
@@ -33,6 +34,7 @@ export type MantaDraft = {
   potentialCatalogId?: number | null;
   potentialNoMatch?: boolean;
   firstExifMeta?: { date?: string; time?: string; lat?: number; lon?: number } | null;
+  biopsy?: OrganicBiopsyDraft | null;
 };
 
 type Props = {
@@ -312,6 +314,7 @@ export default function UnifiedMantaModal({
       noMatch: potentialNoMatch,
       noPhotos,
       firstExifMeta,
+      biopsy: existingManta?.biopsy ?? null,
     };
     onSave(draft);
     onClose();
@@ -600,7 +603,7 @@ export default function UnifiedMantaModal({
         <MatchModal
           open={true}
           onClose={() => setMatchOpen(null)}
-          ventralUrl={matchOpen.previewUrl || matchOpen.url}
+          tempUrl={matchOpen.previewUrl || matchOpen.url}
           aMeta={{ name, gender, ageClass, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
             setPotentialCatalogId(id);

@@ -15,28 +15,29 @@
 // • Uses your shared Supabase client (src/lib/supabase.ts) so RLS reads include the session JWT.
 // • Public URL is built directly from VITE_SUPABASE_URL + bucket + storage_path (no SDK permission issues).
 // • Best-ventral resolver prefers catalog.best → else candidate set (catalog/manta best) → else first photo.
-import { supabase } from "@/lib/supabase";
+import { supabase, supabasePublishableKey, supabaseUrl } from "@/lib/supabase";
 
 // ---------- Edge helpers ----------
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || "";
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "";
+const SUPABASE_URL = supabaseUrl || "";
 
 function edgeBase(): string {
   const edge = (import.meta.env.VITE_SUPABASE_EDGE_URL as string) || "";
   const base = edge ? edge : `${SUPABASE_URL.replace(/\/+$/g, "")}/functions/v1`;
   return base.replace(/\/+$/g, "");
 }
-function edgeHeaders(): HeadersInit {
+async function edgeHeaders(): Promise<HeadersInit> {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
   return {
     "Content-Type": "application/json",
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: supabasePublishableKey || "",
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 }
 async function edgePost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${edgeBase()}${path}`, {
     method: "POST",
-    headers: edgeHeaders(),
+    headers: await edgeHeaders(),
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));

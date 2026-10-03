@@ -33,14 +33,11 @@ export default function MatchingPage() {
     setRunning(true);
     setMsg("");
     try {
-      const res = await fetch("/functions/v1/catalog_selfmatch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 100 }),
+      const { data, error } = await supabase.functions.invoke("catalog_selfmatch", {
+        body: { limit: 100 },
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || "Selfmatch failed");
-      setMsg(`OK: processed ${j.processed ?? 0}`);
+      if (error) throw new Error(error.message || "Selfmatch failed");
+      setMsg(`OK: processed ${data?.processed ?? 0}`);
       setPage(1);
       await fetchPage(1);
     } catch (e: any) {

@@ -1,16 +1,14 @@
 // File: supabase/functions/embeddings-manta/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
+import {
+  AuthorizationError,
+  authorizeCaller,
+  jsonResponse,
+  responseHeaders,
+} from "../_shared/authorization.ts";
 
-const SUPABASE_STORAGE_BASE = "https://apweteosdbgsolmvcmhn.supabase.co";
-const EMBED_ENDPOINT = "https://68770e47f6e5.ngrok-free.app/embed"; // ← your ngrok endpoint
 const BUCKET = "manta-images";
 const PAGE_SIZE = 10;
-
-const supabase = createClient(
-  SUPABASE_STORAGE_BASE,
-  Deno.env.get("SUPABASE_ANON_KEY")!
-);
 
 function normalize(vec: number[]): number[] {
   const norm = Math.sqrt(vec.reduce((sum, x) => sum + x * x, 0));
@@ -18,6 +16,31 @@ function normalize(vec: number[]): number[] {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: responseHeaders(origin) });
+  }
+
+  let supabase: Awaited<ReturnType<typeof authorizeCaller>>["admin"];
+  try {
+    ({ admin: supabase } = await authorizeCaller(req, "active-admin"));
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return jsonResponse({ error: error.message }, error.status, origin);
+    }
+    return jsonResponse({ error: "Server authorization failed" }, 500, origin);
+  }
+
+  const embedEndpoint = Deno.env.get("EMBED_URL")?.trim() ||
+    Deno.env.get("LOCAL_EMBEDDING_SERVER_URL")?.trim();
+  if (!embedEndpoint) {
+    return jsonResponse(
+      { error: "Embedding service is not configured" },
+      500,
+      origin,
+    );
+  }
+
   const encoder = new TextEncoder();
   const { searchParams } = new URL(req.url);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
@@ -64,7 +87,7 @@ serve(async (req) => {
 
             const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-            const embedRes = await fetch(EMBED_ENDPOINT, {
+            const embedRes = await fetch(embedEndpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ image_base64: base64 }),
@@ -129,10 +152,10 @@ serve(async (req) => {
 
   return new Response(stream, {
     headers: {
+      ...responseHeaders(origin),
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 });

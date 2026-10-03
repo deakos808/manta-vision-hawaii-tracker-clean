@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 type MatchResult = {
   pk_manta_id: number;
@@ -20,15 +21,11 @@ export default function MantaPhotoDiagnosticsPage() {
   useEffect(() => {
     const fetchDiagnostics = async () => {
       setLoading(true);
-      const res = await fetch('/rest/v1/manta_match_diagnostics_view?select=*', {
-        headers: {
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
-
-      const json = await res.json();
-      setData(json);
+      const { data: diagnostics, error } = await supabase
+        .from('manta_match_diagnostics_view')
+        .select('*');
+      if (error) throw error;
+      setData((diagnostics ?? []) as MatchResult[]);
       setLoading(false);
     };
 

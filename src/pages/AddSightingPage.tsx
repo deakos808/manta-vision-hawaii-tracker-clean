@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
 import { saveReviewServer } from "@/utils/reviewSave";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useUserAccess } from "@/hooks/useUserAccess";
+import { hasOrganicBiopsies, validateOrganicBiopsy } from "@/features/biopsies/organicBiopsy";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
@@ -37,6 +39,7 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 }
 
 export default function AddSightingPage() {
+  const access = useUserAccess();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -183,6 +186,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             matchedCatalogId: m.matchedCatalogId ?? m.potentialCatalogId ?? null,
             noMatch: !!(m.noMatch ?? m.potentialNoMatch),
             noPhotos: !!m.noPhotos,
+            biopsy: m.biopsy ?? null,
           })));
         }
         console.info("[AddSighting][review] hydrated", anyd.email, anyd.sighting_date);
@@ -377,6 +381,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const handleSubmit = async () => {
     if (!dateValid) return;
     if (!emailValid) return;
+    const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
+    if (invalidBiopsy) {
+      window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
+      return;
+    }
 
     const payload = {
       date, startTime, stopTime, photographer, email, phone,
@@ -386,7 +395,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     };
 
     try {
-      await supabase.from("sighting_submissions").insert({
+      const { error } = await supabase.from("sighting_submissions").insert({
         email: email || null,
         sighting_date: date || null,
         manta_count: mantas.length,
@@ -394,7 +403,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         payload,
         status: "pending"
       });
-    } catch {}
+      if (error) throw error;
+    } catch (error: unknown) {
+      window.alert(error instanceof Error ? error.message : "Sighting submission failed.");
+      return;
+    }
 
     setSuccessMessage(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
     setSuccessOpen(true);
@@ -455,6 +468,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         const merged:any = { ...(m as any) };
         if (keep.matchedCatalogId != null && merged.matchedCatalogId == null) merged.matchedCatalogId = keep.matchedCatalogId;
         if (typeof keep.noMatch === "boolean" && typeof merged.noMatch !== "boolean") merged.noMatch = keep.noMatch;
+        if (keep.biopsy && !merged.biopsy) merged.biopsy = keep.biopsy;
         const c=[...prev]; c[i]=merged as any; return c;
       }
       return [...prev, m];
@@ -472,6 +486,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       mantas,
       notes
     };
+    const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
+    if (invalidBiopsy) {
+      window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
+      return;
+    }
     try {
       await saveReviewServer(reviewId, payload);
       window.alert("Saved ✓");
@@ -487,11 +506,18 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     if (!reviewId) return;
     if (!window.confirm("Commit this submission to final tables?")) return;
     try {
-      const { error } = await supabase.rpc("commit_sighting_submission", { sub_id: reviewId });
+      const commitFunction = hasOrganicBiopsies(mantas)
+        ? "commit_sighting_submission_with_biopsies"
+        : "commit_sighting_submission";
+      const { error } = await supabase.rpc(commitFunction, { sub_id: reviewId });
       if (error) { throw error; }
       window.alert("Committed.");
     } catch (e) {
       console.warn("[CommitReview] RPC not available or failed; falling back to status update.", (e && (e.message||e)) || e);
+      if (hasOrganicBiopsies(mantas)) {
+        window.alert("Commit failed. No sighting or biopsy was created.");
+        return;
+      }
       await supabase.from("sighting_submissions")
         .update({ status: "committed", committed_at: new Date().toISOString() })
         .eq("id", reviewId);
@@ -512,7 +538,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // MantasList hooks
   const onEdit = (m: MantaDraft) => setEditingManta(m);
   const onRemove = (id: string) => setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
+  const allowMatching = access.isActive === true && (access.role === "user" || access.role === "admin");
   const openMatch = (m: MantaDraft, ventralUrl?: string) => {
+    if (!allowMatching || !ventralUrl) return;
     setPageMatchMeta({ name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
     setPageMatchUrl(ventralUrl || "");
     setPageMatchFor(String(m.id));
@@ -698,6 +726,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               onRemove={onRemove}
               openMatch={openMatch}
               totalPhotosAll={totalPhotosAll}
+              sightingDate={date}
+              allowBiopsyEntry={access.isActive === true && (access.role === "user" || access.role === "admin")}
+              allowMatching={allowMatching}
             />
             <div className="mt-3">
               <Button type="button" data-clean-id="add-mantas" onClick={()=>setAddOpen(true)}>Add Mantas</Button>
@@ -731,6 +762,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         open={pageMatchOpen}
         onClose={() => setPageMatchOpen(false)}
         tempUrl={pageMatchUrl}
+        rankedEnabled={allowMatching}
         aMeta={pageMatchMeta}
         onChoose={(catalogId) => {
           if (!pageMatchFor) { setPageMatchOpen(false); return; }

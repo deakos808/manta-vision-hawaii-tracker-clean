@@ -16,6 +16,14 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 TEMP_PATH = re.compile(r"(?:^|/)supabase/\.temp(?:/|$)")
 CONTENT_PATTERNS: tuple[tuple[re.Pattern[bytes], str], ...] = (
     (
+        re.compile(rb"sb_secret_[A-Za-z0-9_-]{16,}"),
+        "Supabase secret API key",
+    ),
+    (
+        re.compile(rb"eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),
+        "hardcoded JWT-shaped credential",
+    ),
+    (
         re.compile(rb"postgres(?:ql)?://[^\s/'\"<>:@]+:[^\s/'\"<>@]+@", re.IGNORECASE),
         "database URL with embedded credentials",
     ),

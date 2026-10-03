@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import CatalogFilterBox, { type FiltersState } from '@/components/catalog/CatalogFilterBox';
+import { useRankedCatalogMatch } from '@/features/matching/rankedMatchWorkflow';
 
 function normStr(v?: string | null): string {
   return (v ?? "").toString().normalize("NFC").trim().toLowerCase();
@@ -45,6 +46,7 @@ interface Props {
   aMeta?: Meta;
   onChoose?: (catalogId: number) => void;
   onNoMatch?: () => void;
+  rankedEnabled?: boolean;
 }
 
 const EMPTY_FILTERS: FiltersState = {
@@ -64,18 +66,33 @@ function imgFromRow(r?: CatalogRow): string {
 
 const TOOLBAR_H = 300;
 const IMG_BOX_H = 420;
+// Ranked suggestions remain preserved for the separate matcher-compatibility
+// reconciliation. Keep production on the proven manual catalog workflow until
+// the 768/1024-dimensional contract is resolved with evidence.
+const RANKED_MATCHING_AVAILABLE = false;
 
-const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, onNoMatch }) => {
-  const [leftSrc, setLeftSrc] = useState<string | null>(tempUrl ?? null);
+const MatchModal: React.FC<Props> = ({
+  open,
+  onClose,
+  tempUrl,
+  aMeta,
+  onChoose,
+  onNoMatch,
+  rankedEnabled = true,
+}) => {
+  const [mode, setMode] = useState<'suggested' | 'manual'>('manual');
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const actionLockRef = useRef(false);
   useEffect(() => {
     if (open) {
-      if (tempUrl) setLeftSrc(tempUrl);
-    } else {
-      setLeftSrc(null);
+      setMode('manual');
+      setCleanupError(null);
     }
   }, [open, tempUrl]);
 
-  const safeClose = () => { try { onClose(); } catch { /* noop */ } };
+  const rankedIntegrationAvailable = rankedEnabled && RANKED_MATCHING_AVAILABLE;
+  const ranked = useRankedCatalogMatch(open && rankedIntegrationAvailable, tempUrl);
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,17 +126,6 @@ const MatchModal: React.FC<Props> = ({ open, onClose, tempUrl, aMeta, onChoose, 
     if (!parts.length) return '';
     return parts.join(' • ');
   }, [filters]);
-const filteredSummary = useMemo(() => {
-    const parts:string[]=[];
-    if (filters.species.length) parts.push('species: ' + filters.species.join(', '));
-    if (filters.population.length) parts.push('population: ' + filters.population.join(', '));
-    if (filters.island.length) parts.push('island: ' + filters.island.join(', '));
-    if (filters.sitelocation.length) parts.push('location: ' + filters.sitelocation.join(', '));
-    if (filters.gender.length) parts.push('gender: ' + filters.gender.join(', '));
-    if (filters.age_class.length) parts.push('age: ' + filters.age_class.join(', '));
-    return parts.join(' • ');
-  }, [filters]);
-
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -138,7 +144,6 @@ const filteredSummary = useMemo(() => {
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    const matchesList = (list: string[], v?: string | null) => list.length === 0 || (v ? list.includes(v) : false);
     const base = rows.filter((c) => {
   const nm = normStr(c.name);
   const byText = (nm ? nm.includes(s) : false) || String(c.pk_catalog_id).includes(s);
@@ -160,25 +165,101 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
     setIdx((i) => (filtered.length ? Math.min(i, filtered.length - 1) : 0));
   }, [filtered.length]);
 
+  async function cleanupBefore(action: () => void) {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionBusy(true);
+    setCleanupError(null);
+    try {
+      if (!(await ranked.cleanup())) {
+        setCleanupError('Temporary matching data could not be removed. Please try again.');
+        return;
+      }
+      action();
+    } finally {
+      actionLockRef.current = false;
+      setActionBusy(false);
+    }
+  }
+
+  const closeModal = () => void cleanupBefore(onClose);
+  const browseManually = () => void cleanupBefore(() => setMode('manual'));
+  const chooseMatch = (catalogId: number | string) => {
+    const numericId = Number(catalogId);
+    if (!Number.isFinite(numericId)) return;
+    void cleanupBefore(() => {
+      onChoose?.(numericId);
+      onClose();
+    });
+  };
+  const chooseNoMatch = () => void cleanupBefore(() => {
+    onNoMatch?.();
+    onClose();
+  });
+
   if (!open) return null;
   const current = filtered[idx];
+  const progressText = ranked.progress === 'preparing'
+    ? 'Preparing selected photo…'
+    : ranked.progress === 'uploading'
+      ? 'Uploading a temporary derivative…'
+      : ranked.progress === 'embedding'
+        ? 'Generating the photo embedding…'
+        : ranked.progress === 'matching'
+          ? 'Ranking catalog candidates…'
+          : 'Loading suggested matches…';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={(()=>{ try{ onClose && onClose(); }catch{} })} />
-      <div className="relative bg-white w-[min(1280px,96vw)] max-h-[92vh] rounded shadow overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4" role="presentation">
+      <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
+      <div
+        className="relative bg-white w-[min(1280px,96vw)] max-h-[92vh] rounded shadow overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="find-match-title"
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="text-lg font-semibold">Find Catalog Match</div>
-          <button type="button" className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100" onClick={(()=>{ try{ onClose && onClose(); }catch{} })} aria-label="Close">×</button>
+          <div id="find-match-title" className="text-lg font-semibold">Find Catalog Match</div>
+          <button type="button" className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100 disabled:opacity-50" onClick={closeModal} disabled={actionBusy} aria-label="Close match dialog">×</button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 max-h-[calc(92vh-56px)] overflow-auto">
-          <div className="border rounded p-3 bg-white" style={{ paddingTop: TOOLBAR_H }}>
-            <div className="text-sm font-medium mb-2">Best ventral (temp)</div>
+        {rankedIntegrationAvailable && <div className="px-4 pt-3" role="tablist" aria-label="Catalog match method">
+          <div className="inline-flex rounded border p-1 gap-1">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'suggested'}
+              className={`px-3 py-2 rounded text-sm ${mode === 'suggested' ? 'bg-sky-600 text-white' : 'hover:bg-slate-100'}`}
+              onClick={() => setMode('suggested')}
+            >
+              Suggested Matches
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'manual'}
+              className={`px-3 py-2 rounded text-sm ${mode === 'manual' ? 'bg-sky-600 text-white' : 'hover:bg-slate-100'}`}
+              onClick={browseManually}
+              disabled={actionBusy}
+            >
+              Browse Catalog Manually
+            </button>
+          </div>
+        </div>}
+
+        {(cleanupError || !rankedEnabled) && (
+          <div role="alert" className="mx-4 mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {cleanupError || 'Find Match is available only to active signed-in users.'}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 max-h-[calc(92vh-112px)] overflow-auto">
+          <div className="border rounded p-3 bg-white">
+            <div className="text-sm font-medium mb-2">Selected manta photo</div>
             <div className="w-full rounded bg-gray-50 grid place-items-center" style={{ height: IMG_BOX_H }}>
               <img
-                src={leftSrc || '/manta-logo.svg'}
-                alt="temp"
+                src={tempUrl || '/manta-logo.svg'}
+                alt="Selected manta ventral photo"
                 className="max-w-full max-h-full object-contain"
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
@@ -193,8 +274,75 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
             </div>
           </div>
 
-          <div className="border rounded p-3 bg-white flex flex-col">
-            <div style={{ height: TOOLBAR_H, overflow: 'auto' }}>
+          {rankedIntegrationAvailable && mode === 'suggested' ? (
+            <div className="border rounded p-3 bg-white flex flex-col min-h-[520px]" role="tabpanel">
+              <div className="flex items-center justify-between gap-3 border-b pb-3">
+                <div>
+                  <h2 className="font-semibold">Suggested Matches</h2>
+                  <p className="text-xs text-slate-600">Select a candidate explicitly, or browse the full catalog.</p>
+                </div>
+                <button type="button" className="px-3 py-2 rounded border text-sm" onClick={browseManually} disabled={actionBusy}>
+                  Browse Catalog Manually
+                </button>
+              </div>
+
+              {ranked.loading && (
+                <div role="status" aria-live="polite" className="py-8 text-center text-sky-700">
+                  {progressText}
+                </div>
+              )}
+
+              {ranked.error && (
+                <div className="py-5 space-y-3">
+                  <p role="alert" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{ranked.error}</p>
+                  <button type="button" className="px-3 py-2 rounded bg-sky-600 text-white text-sm" onClick={browseManually} disabled={actionBusy}>
+                    Browse Catalog Manually
+                  </button>
+                </div>
+              )}
+
+              {!ranked.loading && !ranked.error && ranked.matches.length === 0 && (
+                <p className="py-8 text-center text-sm text-slate-600">No suggested matches were returned.</p>
+              )}
+
+              {!ranked.loading && !ranked.error && ranked.matches.length > 0 && (
+                <div className="mt-3 space-y-3 overflow-auto" aria-label="Ranked catalog candidates">
+                  {ranked.matches.map((candidate, rank) => (
+                    <article key={`${candidate.catalog_id}-${rank}`} className="flex gap-3 rounded border p-3">
+                      <img
+                        src={candidate.thumb_url || '/manta-logo.svg'}
+                        alt={candidate.name || `Catalog ${candidate.catalog_id}`}
+                        className="h-24 w-24 rounded border object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(event) => { event.currentTarget.src = '/manta-logo.svg'; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold">{rank + 1}. {candidate.name || `Catalog ${candidate.catalog_id}`}</div>
+                        <div className="text-sm text-slate-600">Catalog {candidate.catalog_id}</div>
+                        <div className="text-sm text-slate-600">Match score: {Number(candidate.score).toFixed(4)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="self-center px-3 py-2 rounded bg-sky-600 text-white text-sm disabled:opacity-50"
+                        onClick={() => chooseMatch(candidate.catalog_id)}
+                        disabled={actionBusy}
+                      >
+                        Select match
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-auto pt-3 border-t flex justify-end">
+                <button type="button" className="px-3 py-2 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>
+                  No Matches Found – New Individual
+                </button>
+              </div>
+            </div>
+          ) : (
+          <div className="border rounded p-3 bg-white flex flex-col" role="tabpanel">
+            <div style={{ minHeight: TOOLBAR_H, overflow: 'auto' }}>
               <input
                 className="border rounded px-3 py-2 text-sm w-full mb-2"
                 placeholder="Search by Catalog ID or name…"
@@ -242,11 +390,12 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
                 <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={() => setIdx((i) => Math.min(filtered.length - 1, i + 1))} disabled={idx >= filtered.length - 1 || !filtered.length}>Next</button>
               </div>
               <div className="flex gap-2">
-                <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current} onClick={() => { if (current && onChoose) onChoose(current.pk_catalog_id); safeClose(); }}>This Matches</button>
-                <button type="button" className="px-3 py-1 rounded border text-sm" onClick={() => { if (onNoMatch) onNoMatch(); safeClose(); }}>No Matches Found</button>
+                <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current || actionBusy} onClick={() => current && chooseMatch(current.pk_catalog_id)}>This Matches</button>
+                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Matches Found</button>
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

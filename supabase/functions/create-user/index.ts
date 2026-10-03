@@ -1,97 +1,125 @@
-import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import {
+  AuthorizationError,
+  authorizeCaller,
+  jsonResponse,
+  responseHeaders,
+} from "../_shared/authorization.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
-  'Content-Type': 'application/json'
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+serve(async (request) => {
+  const origin = request.headers.get("origin");
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: responseHeaders(origin),
+    });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin);
+  }
 
   try {
-    const { email, password, role, admin_id } = await req.json();
-    if (!email || !password || !role || !admin_id) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: corsHeaders });
+    const { admin, actor } = await authorizeCaller(request, "active-admin");
+    const body = await request.json().catch(() => ({}));
+    const email = typeof body.email === "string"
+      ? body.email.trim().toLowerCase()
+      : "";
+    const requestedPassword = typeof body.password === "string"
+      ? body.password
+      : "";
+    const role = body.role === "admin" || body.role === "user"
+      ? body.role
+      : null;
+    const adminId = typeof body.admin_id === "string"
+      ? body.admin_id.trim()
+      : "";
+    if (
+      !/^\S+@\S+\.\S+$/.test(email) || !requestedPassword || !role || !adminId
+    ) {
+      return jsonResponse({ error: "Missing required fields" }, 400, origin);
     }
-
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sb = createClient(url, serviceKey);
-    const emailLower = String(email).trim().toLowerCase();
+    if (adminId !== actor.id) {
+      return jsonResponse(
+        { error: "Authenticated administrator does not match admin_id" },
+        403,
+        origin,
+      );
+    }
 
     let userId: string | null = null;
-
-    const { data: created, error: createErr } = await sb.auth.admin.createUser({
-      email: emailLower,
-      password,
-      email_confirm: true
+    const created = await admin.auth.admin.createUser({
+      email,
+      password: requestedPassword,
+      email_confirm: true,
     });
-
-    if (created?.user?.id) {
-      userId = created.user.id;
+    if (created.data.user?.id) {
+      userId = created.data.user.id;
     } else {
-      const conflict = (createErr?.message || '').toLowerCase().includes('already been registered');
+      const conflict = (created.error?.message ?? "").toLowerCase().includes(
+        "already been registered",
+      );
       if (!conflict) {
-        return new Response(JSON.stringify({ error: createErr?.message || 'Auth user creation failed' }), { status: 500, headers: corsHeaders });
+        return jsonResponse(
+          { error: "Auth user creation failed" },
+          500,
+          origin,
+        );
       }
-      let page = 1;
-      const perPage = 200;
-      while (!userId) {
-        const { data, error } = await sb.auth.admin.listUsers({ page, perPage });
-        if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
-        const hit = data?.users?.find((u) => (u.email || '').toLowerCase() === emailLower);
-        if (hit) { userId = hit.id; break; }
-        if (!data?.users?.length || data.users.length < perPage) break;
-        page += 1;
+      for (let page = 1; !userId; page += 1) {
+        const listed = await admin.auth.admin.listUsers({ page, perPage: 200 });
+        if (listed.error) {
+          return jsonResponse(
+            { error: "Auth user lookup failed" },
+            500,
+            origin,
+          );
+        }
+        userId = listed.data.users.find((user) =>
+          user.email?.toLowerCase() === email
+        )?.id ?? null;
+        if (listed.data.users.length < 200) break;
       }
-      if (!userId) return new Response(JSON.stringify({ error: 'Auth user exists but could not be located' }), { status: 500, headers: corsHeaders });
-
-      const { error: updErr } = await sb.auth.admin.updateUserById(userId, {
-        password,
-        email_confirm: true
+      if (!userId) {
+        return jsonResponse(
+          { error: "Auth user could not be located" },
+          500,
+          origin,
+        );
+      }
+      const updated = await admin.auth.admin.updateUserById(userId, {
+        password: requestedPassword,
+        email_confirm: true,
       });
-      if (updErr) return new Response(JSON.stringify({ error: `Auth update failed: ${updErr.message}` }), { status: 500, headers: corsHeaders });
+      if (updated.error) {
+        return jsonResponse({ error: "Auth user update failed" }, 500, origin);
+      }
     }
 
-    const upsertPayload = {
-      id: userId!,
-      email: emailLower,
+    const { error: profileError } = await admin.from("profiles").upsert({
+      id: userId,
+      email,
       role,
       is_active: true,
-      created_by: admin_id,
-      updated_at: new Date().toISOString()
-    };
-    const { error: upsertErr } = await sb.from('profiles').upsert(upsertPayload, { onConflict: 'id' });
-    if (upsertErr) return new Response(JSON.stringify({ error: upsertErr.message }), { status: 500, headers: corsHeaders });
+      created_by: actor.id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (profileError) {
+      return jsonResponse(
+        { error: "Application profile update failed" },
+        500,
+        origin,
+      );
+    }
 
-    let emailed = false;
-    try {
-      const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({ type: 'recovery', email: emailLower });
-      const actionLink = linkData?.properties?.action_link;
-      const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-      if (!linkErr && actionLink && RESEND_API_KEY) {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: 'Acme <onboarding@resend.dev>',
-            to: [emailLower],
-            subject: 'You have been invited to Hawaii Manta Tracker',
-            html: `<p>You have been invited to the Hawaii Manta Tracker.</p>
-                   <p><a href="${actionLink}" style="padding:10px 16px;background:#0b66ff;color:#fff;border-radius:6px;text-decoration:none">Set Password</a></p>
-                   <p>If the button does not work, copy and paste this URL:</p>
-                   <p><a href="${actionLink}">${actionLink}</a></p>`
-          })
-        });
-        emailed = res.ok;
-      }
-    } catch (_) {}
-
-    return new Response(JSON.stringify({ success: true, user_id: userId, emailed }), { status: 200, headers: corsHeaders });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message || 'Unexpected error' }), { status: 500, headers: corsHeaders });
+    return jsonResponse(
+      { success: true, user_id: userId, emailed: false },
+      200,
+      origin,
+    );
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return jsonResponse({ error: error.message }, error.status, origin);
+    }
+    return jsonResponse({ error: "Unexpected error" }, 500, origin);
   }
 });

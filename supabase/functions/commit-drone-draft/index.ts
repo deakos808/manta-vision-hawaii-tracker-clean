@@ -1,15 +1,24 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
+import { requireActiveAdmin } from "../_shared/user-management-policy.ts";
+import { resolvePublishableKey, resolveSecretKey } from "../_shared/server-keys.ts";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+function corsHeaders(origin: string | null): HeadersInit {
+  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return {
+    ...(origin && allowed.includes(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  };
+}
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
+function json(body: unknown, status = 200, origin: string | null = null) {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders(origin) });
 }
 
 function mustEnv(...names: string[]) {
@@ -27,21 +36,48 @@ function composeTimestamp(d?: string | null, t?: string | null) {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
 
   try {
-    if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+    if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, origin);
+
+    const authorization = req.headers.get("authorization") ?? "";
+    const token = authorization.toLowerCase().startsWith("bearer ")
+      ? authorization.slice(7).trim()
+      : "";
+    if (!token) return json({ error: "Authentication required." }, 401, origin);
+
+    const url = mustEnv("PROJECT_URL", "SUPABASE_URL");
+    const callerKey = resolvePublishableKey();
+    const caller = createClient(url, callerKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: authData, error: authError } = await caller.auth.getUser();
+    if (authError || !authData.user) {
+      return json({ error: "Authentication failed." }, 401, origin);
+    }
+
+    const { data: actorProfile, error: actorError } = await caller
+      .from("profiles")
+      .select("id,role,is_active")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+    if (actorError) return json({ error: "Unable to verify administrator access." }, 500, origin);
+    try {
+      requireActiveAdmin(actorProfile);
+    } catch {
+      return json({ error: "Active administrator access is required." }, 403, origin);
+    }
+    const sb = createClient(url, resolveSecretKey(), { auth: { persistSession: false, autoRefreshToken: false } });
 
     const { draft_id } = await req.json().catch(() => ({}));
     if (!draft_id || typeof draft_id !== "string") {
-      return json({ error: "draft_id required" }, 400);
+      return json({ error: "draft_id required" }, 400, origin);
     }
-
-    const url = mustEnv("PROJECT_URL", "SUPABASE_URL");
-    const key = mustEnv("SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY");
-    const sb = createClient(url, key, { auth: { persistSession: false } });
 
     const { data: draft, error: e1 } = await sb
       .from("temp_drone_sightings")
@@ -50,7 +86,7 @@ serve(async (req) => {
       .single();
 
     if (e1 || !draft) {
-      return json({ error: e1?.message || "Draft not found" }, 404);
+      return json({ error: e1?.message || "Draft not found" }, 404, origin);
     }
 
     const { data: photos, error: e2 } = await sb
@@ -60,7 +96,7 @@ serve(async (req) => {
       .order("created_at", { ascending: true });
 
     if (e2) {
-      return json({ error: e2.message }, 400);
+      return json({ error: e2.message }, 400, origin);
     }
 
     const pk_drone_survey = crypto.randomUUID();
@@ -150,21 +186,21 @@ serve(async (req) => {
       .single();
 
     if (insSurvey.error) {
-      return json({ error: insSurvey.error.message, where: "drone_surveys" }, 400);
+      return json({ error: insSurvey.error.message, where: "drone_surveys" }, 400, origin);
     }
 
     if (livePhotos.length) {
       const insPhotos = await sb.from("drone_photos").insert(livePhotos).select("fk_drone_survey");
       if (insPhotos.error) {
-        return json({ error: insPhotos.error.message, where: "drone_photos" }, 400);
+        return json({ error: insPhotos.error.message, where: "drone_photos" }, 400, origin);
       }
     }
 
     await sb.from("temp_drone_photos").delete().eq("draft_id", draft_id);
     await sb.from("temp_drone_sightings").delete().eq("id", draft_id);
 
-    return json({ ok: true, pk_drone_survey, results }, 200);
-  } catch (err: any) {
-    return json({ error: String(err?.message || err) }, 500);
+    return json({ ok: true, pk_drone_survey, results }, 200, origin);
+  } catch {
+    return json({ error: "Commit failed." }, 500, origin);
   }
 });

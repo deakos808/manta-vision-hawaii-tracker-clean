@@ -36,10 +36,10 @@ const DRY_RUN = (getFlag('dry-run', 'true')! || 'true').toLowerCase() === 'true'
 const BUCKET = 'manta-images';
 
 const URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 
 if (!URL || !KEY) {
-  console.error('❌ Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (or fallback) in env.');
+  console.error('❌ Missing SUPABASE_URL and SUPABASE_SECRET_KEY/SUPABASE_SERVICE_ROLE_KEY in env.');
   process.exit(1);
 }
 

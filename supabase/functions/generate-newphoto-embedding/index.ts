@@ -1,102 +1,103 @@
-// supabase/functions/generate-newphoto-embedding/index.ts
-// Minimal: accept storage_path or photo_url, call embed server, upsert row.
-// No PostgREST query to storage schema.
-
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import {
+  AuthorizationError,
+  authorizeCaller,
+  jsonResponse,
+  responseHeaders,
+} from "../_shared/authorization.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const EMBED_URL = Deno.env.get("EMBED_URL") ?? "http://manta-embed:5050/embed";
-const BUCKET = "manta-images";
-
-serve(async (req) => {
-  try {
-    const { storage_path, photo_url } = await req.json();
-
-    if (!storage_path && !photo_url) {
-      return json({ error: "Provide storage_path or photo_url" }, 400);
-    }
-
-    // Build the public URL if only storage_path is provided.
-    const url =
-      photo_url ??
-      `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${storage_path}`;
-
-    // Sanity check the image is reachable (HEAD is cheap)
-    const head = await fetch(url, { method: "HEAD" });
-    if (!head.ok) {
-      return json(
-        { error: `Image not reachable`, url, http: head.status },
-        400,
-      );
-    }
-
-    // Get embedding
-    const eresp = await fetch(EMBED_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ image_url: url }),
+serve(async (request) => {
+  const origin = request.headers.get("origin");
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: responseHeaders(origin),
     });
-    if (!eresp.ok) {
-      return json(
-        { error: "embed failed", status: eresp.status, body: await eresp.text() },
-        502,
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin);
+  }
+
+  try {
+    const { admin } = await authorizeCaller(request, "active-user");
+    const body = await request.json().catch(() => ({}));
+    const photoId = typeof body.photo_id === "string"
+      ? body.photo_id.trim()
+      : "";
+    if (!photoId) {
+      return jsonResponse({ error: "Missing photo_id" }, 400, origin);
+    }
+
+    const { data: metadata, error: fetchError } = await admin
+      .from("temp_photos")
+      .select("photo_url")
+      .eq("id", photoId)
+      .maybeSingle();
+    if (fetchError || !metadata?.photo_url) {
+      return jsonResponse({ error: "Photo URL not found" }, 404, origin);
+    }
+
+    const imageResponse = await fetch(metadata.photo_url);
+    if (!imageResponse.ok) {
+      return jsonResponse({ error: "Failed to fetch image" }, 502, origin);
+    }
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageBase64 = btoa(
+      String.fromCharCode(...new Uint8Array(imageBuffer)),
+    );
+
+    const embedUrl = Deno.env.get("EMBED_URL")?.trim() ||
+      Deno.env.get("LOCAL_EMBEDDING_SERVER_URL")?.trim();
+    if (!embedUrl) {
+      return jsonResponse(
+        { error: "Embedding service is not configured" },
+        500,
+        origin,
       );
     }
-    const ej = await eresp.json();
-    const embedding: number[] = ej.embedding;
-    const dim: number = ej.dim ?? 0;
-    const norm: number = ej.norm ?? 0;
-
-    if (!Array.isArray(embedding) || embedding.length !== 1024) {
-      return json({ error: "bad embedding", dim, norm }, 500);
+    const embedApiToken = Deno.env.get("EMBED_API_TOKEN")?.trim();
+    if (!embedApiToken) {
+      return jsonResponse(
+        { error: "Embedding service authentication is not configured" },
+        500,
+        origin,
+      );
     }
-
-    // Upsert into catalog_embeddings
-    // We key by source_photo_path; keep pk_catalog_id/photo_id null unless you want to fill them.
-    const up = await fetch(`${SUPABASE_URL}/rest/v1/catalog_embeddings`, {
+    const embeddingResponse = await fetch(embedUrl, {
       method: "POST",
       headers: {
-        "apikey": SERVICE_ROLE_KEY,
-        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
         "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates",
+        "Authorization": `Bearer ${embedApiToken}`,
       },
-      body: JSON.stringify([{
-        source_photo_path: storage_path ??
-          new URL(url).pathname.replace(
-            /^\/storage\/v1\/object\/public\/manta-images\//,
-            "",
-          ),
-        embedding,          // pgvector column
-        embedding_raw: embedding, // if you keep a JSON copy; remove if not needed
-        pk_catalog_id: null,
-        photo_id: null,
-      }]),
+      body: JSON.stringify({ image_base64: imageBase64 }),
     });
-    if (!up.ok) {
-      return json(
-        { error: "upsert failed", status: up.status, body: await up.text() },
+    if (!embeddingResponse.ok) {
+      return jsonResponse({ error: "Embedding server error" }, 500, origin);
+    }
+
+    const embeddingPayload = await embeddingResponse.json();
+    const embedding = embeddingPayload.embedding;
+    if (!Array.isArray(embedding)) {
+      return jsonResponse({ error: "Invalid embedding received" }, 422, origin);
+    }
+
+    const { error: updateError } = await admin
+      .from("temp_photos")
+      .update({ embedding })
+      .eq("id", photoId);
+    if (updateError) {
+      return jsonResponse(
+        { error: "Failed to update temp_photos" },
         500,
+        origin,
       );
     }
 
-    return json({
-      status: "ok",
-      dim,
-      norm,
-      source_photo_path: storage_path ?? "(derived from URL)",
-      url,
-      embed_url: EMBED_URL,
-    });
-  } catch (e) {
-    return json({ error: e?.message ?? String(e) }, 400);
+    return jsonResponse({ status: "ok", photo_id: photoId }, 200, origin);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return jsonResponse({ error: error.message }, error.status, origin);
+    }
+    return jsonResponse({ error: "Unexpected error" }, 500, origin);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}

@@ -2,7 +2,7 @@
 
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sighting as SightingType } from '@/lib/supabase';
+import { Sighting as SightingType, supabase } from '@/lib/supabase';
 
 interface SightingCardProps {
   sighting: Partial<SightingType>;
@@ -11,7 +11,7 @@ interface SightingCardProps {
 // Local fallback utility to safely construct image URLs
 const getImageUrl = (path: string | null | undefined): string =>
   path
-    ? `https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/manta-images/${path}`
+    ? supabase.storage.from('manta-images').getPublicUrl(path).data.publicUrl
     : '/no-photo.png';
 
 const SightingCard = ({ sighting }: SightingCardProps) => {

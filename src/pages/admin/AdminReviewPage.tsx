@@ -67,9 +67,12 @@ export default function AdminReviewPage() {
       const newPath = `manta-images/${filename}`;
       await supabase.storage.from('temp-images').move(p.photo_url, newPath);
 
+      const photoUrl = supabase.storage
+        .from('manta-images')
+        .getPublicUrl(filename).data.publicUrl;
       const { data: photoInsert, error: photoError } = await supabase.from('photos').insert({
         fk_manta_id: newMantaId,
-        photo_url: `https://apweteosdbgsolmvcmhn.supabase.co/storage/v1/object/public/manta-images/${filename}`,
+        photo_url: photoUrl,
         photo_path: newPath,
         is_best_catalog_photo: p.is_best_ventral,
         is_best_sighting_photo: p.is_best_ventral,

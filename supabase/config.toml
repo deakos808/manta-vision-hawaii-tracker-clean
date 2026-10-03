@@ -1,9 +1,94 @@
 [functions]
-[functions.embeddings-sighting]
+[functions.admin-user-management]
+enabled = true
 verify_jwt = false
+
+[functions.admin-create-user]
+enabled = true
+verify_jwt = true
+
+[functions.admin-set-password]
+enabled = true
+verify_jwt = true
+
+[functions.list-users]
+enabled = true
+verify_jwt = true
+
+[functions.create-user]
+enabled = true
+verify_jwt = false
+
+[functions.delete-manta]
+enabled = true
+verify_jwt = false
+
+[functions.delete-photo]
+enabled = true
+verify_jwt = false
+
+[functions.commit-drone-draft]
+enabled = true
+verify_jwt = false
+
+[functions.generate-newphoto-embedding]
+enabled = true
+verify_jwt = false
+
+[functions.catalog_selfmatch]
+enabled = true
+verify_jwt = false
+
+[functions.merge-catalogs]
+enabled = true
+verify_jwt = false
+
+[functions.bootstrap-admin]
+enabled = false
+
+[functions.confirm-user]
+enabled = false
+
+[functions.db_check]
+enabled = false
+
+[functions.embeddings-catalog-missing]
+enabled = false
+
+[functions.match-manta]
+enabled = false
+
+[functions.stream-sighting-embedding-update]
+enabled = false
+
+[functions.test-embed-fix]
+enabled = false
+
+[functions.update-password]
+enabled = false
+
+[functions.whoami]
+enabled = false
+
+[functions.envtest]
+enabled = false
+
+[functions.jwt-debug]
+enabled = false
 
 [functions.embeddings-catalog]
-verify_jwt = false
+enabled = false
 
 [functions.embeddings-photo]
+enabled = false
+
+[functions.facet-sightings]
+enabled = false
+
+[functions.embeddings-manta]
+enabled = true
+verify_jwt = false
+
+[functions.embeddings-sighting]
+enabled = false
 verify_jwt = false
