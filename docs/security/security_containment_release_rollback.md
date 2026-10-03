@@ -48,6 +48,19 @@ The older component rollback files remain in Git as historical evidence and
 focused migration-test fixtures. They are not alternatives to the canonical
 release-level artifact and must not be chained to construct a release rollback.
 
+## Catalog best-photo trigger correction
+
+The later relation-qualification correction
+`20261003161146_qualify_update_best_catalog_photo_url.sql` has a dedicated
+fail-closed rollback artifact:
+
+`supabase/rollback/20261003161146_qualify_update_best_catalog_photo_url_rollback.sql`
+
+It never restores the unqualified trigger body. After fingerprinting the exact
+corrected function, it disables both public sighting-commit entry points by
+revoking browser/API execution. It does not alter the trigger, tables, rows,
+relationships, Auth records, or Storage metadata.
+
 ## Verification
 
 Run:

@@ -21,8 +21,11 @@ MIGRATIONS = [
     ROOT / "supabase/migrations/20261001064839_import_authorization_containment.sql",
     ROOT / "supabase/migrations/20261001150410_organic_biopsy_entry_and_legacy_retirement.sql",
     ROOT / "supabase/migrations/20261001153752_harden_organic_biopsy_integrity.sql",
+    ROOT / "supabase/migrations/20261003161146_qualify_update_best_catalog_photo_url.sql",
 ]
 ROLLBACK = ROOT / "supabase/rollback/20261001162000_security_containment_combined_fail_closed_rollback.sql"
+TRIGGER_MIGRATION = MIGRATIONS[-1]
+TRIGGER_ROLLBACK = ROOT / "supabase/rollback/20261003161146_qualify_update_best_catalog_photo_url_rollback.sql"
 ADMIN_ID = "10000000-0000-4000-8000-000000000001"
 USER_ID = "10000000-0000-4000-8000-000000000002"
 
@@ -137,7 +140,8 @@ class Cluster:
     def run(self, args: list[str], *, check: bool = True, timeout: int = 60) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(args, text=True, capture_output=True, timeout=timeout)
         if check and result.returncode != 0:
-            raise HarnessError(f"local-command-failed:{Path(args[0]).name}")
+            detail = " | ".join(result.stderr.strip().splitlines()[-3:]) if result.stderr.strip() else "no-error-detail"
+            raise HarnessError(f"local-command-failed:{Path(args[0]).name}:{detail}")
         return result
 
     def start(self) -> None:
@@ -182,6 +186,12 @@ class Cluster:
 def prepare_candidate(cluster: Cluster, db: str) -> None:
     cluster.psql(db, file=BASELINE)
     for migration in MIGRATIONS:
+        cluster.psql(db, file=migration)
+
+
+def prepare_before_trigger_fix(cluster: Cluster, db: str) -> None:
+    cluster.psql(db, file=BASELINE)
+    for migration in MIGRATIONS[:-1]:
         cluster.psql(db, file=migration)
 
 
@@ -363,6 +373,77 @@ def test_interruption_atomicity(cluster: Cluster) -> None:
     assert_equal(metadata_state(cluster, db), before_meta, "interruption-left-partial-schema")
 
 
+def test_trigger_correction_and_fail_closed_rollback(cluster: Cluster) -> None:
+    db = "trigger_correction"
+    cluster.create_db(db)
+    prepare_candidate(cluster, db)
+    seed_candidate(cluster, db)
+    cluster.psql(
+        db,
+        sql="""
+          insert into public.catalog (pk_catalog_id, name)
+          values (1501, 'Synthetic trigger catalog');
+          insert into public.sightings (pk_sighting_id, sighting_date, island, sitelocation)
+          values (1601, date '2026-01-05', 'Synthetic Island', 'Synthetic Trigger Site');
+          insert into public.mantas (pk_manta_id, fk_sighting_id, fk_catalog_id)
+          values (1701, 1601, 1501);
+          insert into public.photos (
+            pk_photo_id, fk_manta_id, fk_sighting_id, fk_catalog_id,
+            storage_path, file_name2, thumbnail_url, photo_view
+          ) values (
+            1801, 1701, 1601, 1501, 'synthetic/trigger/photo.jpg',
+            'trigger-photo.jpg', 'synthetic/trigger/thumb.jpg', 'ventral'
+          );
+          set search_path = '';
+          update public.catalog
+          set best_cat_mask_ventral_id_int = 1801
+          where pk_catalog_id = 1501;
+          reset search_path;
+        """,
+    )
+    actual_url = cluster.psql(
+        db,
+        sql="select best_catalog_photo_url from public.catalog where pk_catalog_id=1501;",
+    ).stdout.strip()
+    assert_equal(actual_url, "synthetic/trigger/thumb.jpg", "catalog-best-photo-behavior-changed")
+
+    before = snapshot(cluster, db)
+    cluster.psql(db, file=TRIGGER_ROLLBACK)
+    assert_equal(snapshot(cluster, db), before, "trigger-rollback-mutated-data")
+    for role in ("anon", "authenticated", "service_role"):
+        for function in (
+            "public.commit_sighting_submission(uuid)",
+            "public.commit_sighting_submission_with_biopsies(uuid)",
+        ):
+            privilege = cluster.psql(
+                db,
+                sql=f"select has_function_privilege('{role}','{function}','EXECUTE');",
+            ).stdout.strip()
+            assert_equal(privilege, "f", f"trigger-rollback-{role}-execute-not-revoked")
+
+
+def test_trigger_migration_fingerprint_atomicity(cluster: Cluster) -> None:
+    db = "trigger_fingerprint"
+    cluster.create_db(db)
+    prepare_before_trigger_fix(cluster, db)
+    cluster.psql(
+        db,
+        sql="alter function public.update_best_catalog_photo_url() stable;",
+    )
+    before_definition = cluster.psql(
+        db,
+        sql="select pg_get_functiondef('public.update_best_catalog_photo_url()'::regprocedure);",
+    ).stdout
+    result = cluster.psql(db, file=TRIGGER_MIGRATION, check=False)
+    if result.returncode == 0:
+        raise HarnessError("trigger-fingerprint-mismatch-was-accepted")
+    after_definition = cluster.psql(
+        db,
+        sql="select pg_get_functiondef('public.update_best_catalog_photo_url()'::regprocedure);",
+    ).stdout
+    assert_equal(after_definition, before_definition, "trigger-fingerprint-failure-made-partial-change")
+
+
 def main() -> int:
     cluster = Cluster()
     try:
@@ -377,6 +458,11 @@ def main() -> int:
         print("PASS fingerprint-mismatch-atomicity")
         test_interruption_atomicity(cluster)
         print("PASS interruption-transaction-rollback")
+        test_trigger_correction_and_fail_closed_rollback(cluster)
+        print("PASS catalog-best-photo-qualified-trigger-behavior")
+        print("PASS trigger-correction-fail-closed-rollback-data-preservation")
+        test_trigger_migration_fingerprint_atomicity(cluster)
+        print("PASS trigger-correction-fingerprint-mismatch-atomicity")
         return 0
     except (HarnessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         print(f"FAIL {type(exc).__name__}:{exc}")
