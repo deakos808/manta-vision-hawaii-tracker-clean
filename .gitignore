@@ -49,3 +49,5 @@ backups/
 backups/_checkpoint/
 backups/_inventory_reports/
 **/*.bak*
+.vercel/
+.env.local
