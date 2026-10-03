@@ -66,6 +66,10 @@ function imgFromRow(r?: CatalogRow): string {
 
 const TOOLBAR_H = 300;
 const IMG_BOX_H = 420;
+// Ranked suggestions remain preserved for the separate matcher-compatibility
+// reconciliation. Keep production on the proven manual catalog workflow until
+// the 768/1024-dimensional contract is resolved with evidence.
+const RANKED_MATCHING_AVAILABLE = false;
 
 const MatchModal: React.FC<Props> = ({
   open,
@@ -76,18 +80,19 @@ const MatchModal: React.FC<Props> = ({
   onNoMatch,
   rankedEnabled = true,
 }) => {
-  const [mode, setMode] = useState<'suggested' | 'manual'>('suggested');
+  const [mode, setMode] = useState<'suggested' | 'manual'>('manual');
   const [cleanupError, setCleanupError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const actionLockRef = useRef(false);
   useEffect(() => {
     if (open) {
-      setMode('suggested');
+      setMode('manual');
       setCleanupError(null);
     }
   }, [open, tempUrl]);
 
-  const ranked = useRankedCatalogMatch(open && rankedEnabled, tempUrl);
+  const rankedIntegrationAvailable = rankedEnabled && RANKED_MATCHING_AVAILABLE;
+  const ranked = useRankedCatalogMatch(open && rankedIntegrationAvailable, tempUrl);
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -218,7 +223,7 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
           <button type="button" className="h-8 w-8 grid place-items-center rounded hover:bg-gray-100 disabled:opacity-50" onClick={closeModal} disabled={actionBusy} aria-label="Close match dialog">×</button>
         </div>
 
-        <div className="px-4 pt-3" role="tablist" aria-label="Catalog match method">
+        {rankedIntegrationAvailable && <div className="px-4 pt-3" role="tablist" aria-label="Catalog match method">
           <div className="inline-flex rounded border p-1 gap-1">
             <button
               type="button"
@@ -240,7 +245,7 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
               Browse Catalog Manually
             </button>
           </div>
-        </div>
+        </div>}
 
         {(cleanupError || !rankedEnabled) && (
           <div role="alert" className="mx-4 mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -269,7 +274,7 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
             </div>
           </div>
 
-          {mode === 'suggested' ? (
+          {rankedIntegrationAvailable && mode === 'suggested' ? (
             <div className="border rounded p-3 bg-white flex flex-col min-h-[520px]" role="tabpanel">
               <div className="flex items-center justify-between gap-3 border-b pb-3">
                 <div>

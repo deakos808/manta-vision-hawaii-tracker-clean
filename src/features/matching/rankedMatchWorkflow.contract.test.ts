@@ -7,13 +7,14 @@ const addSighting = readFileSync('src/pages/AddSightingPage.tsx', 'utf8');
 const compatibilityWrapper = readFileSync('src/components/matching/CatalogMatchModal.tsx', 'utf8');
 const rankedWorkflow = readFileSync('src/features/matching/rankedMatchWorkflow.ts', 'utf8');
 
-test('actual Add Sighting modal presents suggested matches first with a manual fallback', () => {
-  assert.match(matchModal, /Suggested Matches/);
-  assert.match(matchModal, /Browse Catalog Manually/);
-  assert.match(matchModal, /role="status"/);
+test('actual Add Sighting modal keeps ranked source disabled and opens the manual catalog workflow', () => {
+  assert.match(matchModal, /const RANKED_MATCHING_AVAILABLE = false/);
+  assert.match(matchModal, /useState<'suggested' \| 'manual'>\('manual'\)/);
+  assert.match(matchModal, /setMode\('manual'\)/);
+  assert.match(matchModal, /open && rankedIntegrationAvailable/);
+  assert.match(matchModal, /rankedIntegrationAvailable && <div className="px-4 pt-3" role="tablist"/);
+  assert.match(matchModal, /rankedIntegrationAvailable && mode === 'suggested'/);
   assert.match(rankedWorkflow, /Suggested matches are temporarily unavailable/);
-  assert.match(matchModal, /ranked\.matches\.map/);
-  assert.match(matchModal, /chooseMatch\(candidate\.catalog_id\)/);
 });
 
 test('explicit selection updates only the intended manta draft association', () => {
