@@ -67,7 +67,7 @@ function App() {
           className="sticky top-0 z-[100] bg-amber-300 px-3 py-1 text-center text-xs font-bold tracking-wide text-slate-950 shadow"
           role="status"
         >
-          MANTATRACKER DEVELOPMENT — NON-PRODUCTION BACKEND
+          MantaTracker Development · LIVE DATA · {import.meta.env.VITE_DEV_BRANCH} · {import.meta.env.VITE_DEV_SHA}
         </div>
       )}
       <Routes>

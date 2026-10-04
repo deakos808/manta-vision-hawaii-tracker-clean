@@ -12,7 +12,7 @@ import './index.css';
 const queryClient = new QueryClient();
 
 if (import.meta.env.DEV) {
-  document.title = "[DEV] Hawaii Manta Tracker";
+  document.title = "MantaTracker Development";
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
