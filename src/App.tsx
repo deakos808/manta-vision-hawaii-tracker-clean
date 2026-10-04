@@ -61,7 +61,16 @@ function App() {
   console.info("[AppRoutes] render OK");
 
   return (
-    <Routes>
+    <>
+      {import.meta.env.DEV && (
+        <div
+          className="sticky top-0 z-[100] bg-amber-300 px-3 py-1 text-center text-xs font-bold tracking-wide text-slate-950 shadow"
+          role="status"
+        >
+          MANTATRACKER DEVELOPMENT — NON-PRODUCTION BACKEND
+        </div>
+      )}
+      <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/signin" element={<Layout><SignInPage /></Layout>} />
       <Route path="/signout" element={<SignOutPage />} />
@@ -121,7 +130,8 @@ function App() {
       <Route path="/admin/calibration" element={<RequireAuth adminOnly><CalibrationLandingPage /></RequireAuth>} />
       <Route path="/admin/calibration/:id" element={<RequireAuth adminOnly><CalibrationSessionPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }
 

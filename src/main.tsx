@@ -11,6 +11,10 @@ import './index.css';
 
 const queryClient = new QueryClient();
 
+if (import.meta.env.DEV) {
+  document.title = "[DEV] Hawaii Manta Tracker";
+}
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <SessionContextProvider supabaseClient={supabase}>
