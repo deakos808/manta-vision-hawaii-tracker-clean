@@ -6,6 +6,7 @@ import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import { photoTimeBounds, photoTimeUpdate, readSurveyType, type SurveyType } from "@/features/sightings/photoTimes";
 import { readSightingMethods } from "@/features/sightings/sightingMethods";
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
@@ -17,8 +18,6 @@ import { useUserAccess } from "@/hooks/useUserAccess";
 import { hasOrganicBiopsies, validateOrganicBiopsy } from "@/features/biopsies/organicBiopsy";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
-function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
-const TIME_OPTIONS = buildTimes(5);
 const METHOD_OPTIONS = [
   ["pairedLaser", "Paired-laser photogrammetry", "Paired laser"],
   ["biopsySampling", "Biopsy sampling", "Biopsy"],
@@ -101,6 +100,26 @@ export default function AddSightingPage() {
   const [date, setDate] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [stopTime, setStopTime] = useState<string>("");
+  const [standardizeSurvey, setStandardizeSurvey] = useState<SurveyType>(isReview ? null : "No");
+  const [timesManuallyEdited, setTimesManuallyEdited] = useState(false);
+  const [timeChoiceMade, setTimeChoiceMade] = useState(false);
+  const [reviewedPhotoDates, setReviewedPhotoDates] = useState("");
+  const photoBounds = useMemo(() => photoTimeBounds(mantas), [mantas]);
+  const multiDateKey = photoBounds?.multipleDates ? `${photoBounds.first}/${photoBounds.last}` : "";
+  const needsTimeReview = !!multiDateKey && reviewedPhotoDates !== multiDateKey;
+  const retainEffort = () => { setTimesManuallyEdited(true); setTimeChoiceMade(true); };
+  const editTime = (field: "date" | "start" | "stop", value: string) => {
+    setTimesManuallyEdited(true);
+    setReviewedPhotoDates("");
+    if (field === "date") setDate(value);
+    else if (field === "start") setStartTime(value);
+    else setStopTime(value);
+  };
+  useEffect(() => {
+    const update = photoTimeUpdate(standardizeSurvey, timesManuallyEdited, photoBounds);
+    if (update) { setDate(update.date); setStartTime(update.start); setStopTime(update.stop); }
+  }, [standardizeSurvey, timesManuallyEdited, photoBounds]);
+
 
   // Contact
   const [photographer, setPhotographer] = useState("");
@@ -201,6 +220,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
         const p = (anyd.payload || {}) as any;
         setMethods(readSightingMethods(p.methods));
+        setStandardizeSurvey(readSurveyType(p.standardize_survey));
+        setTimesManuallyEdited(true); // Preserve hydrated review values until explicitly changed.
+        setTimeChoiceMade(true);
         if (p.startTime) setStartTime(String(p.startTime));
         if (p.stopTime) setStopTime(String(p.stopTime));
         if (p.locationId) setLocationId(String(p.locationId));
@@ -364,8 +386,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     }
 
     const suggestion: ExifSuggestion = {
-      date: meta.date,
-      time: meta.time,
       lat: meta.lat,
       lon: meta.lon,
       suggestedIsland: bestIsland,
@@ -381,8 +401,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   function applyExifMetadata(meta: ExifSuggestion) {
     console.log("[AddSighting][EXIF] applyExifMetadata", meta);
 
-    if (meta.date && !String(date || "").trim()) setDate(meta.date);
-    if (meta.time && !String(startTime || "").trim()) setStartTime(meta.time);
     if (typeof meta.lat === "number" && !String(lat || "").trim()) setLat(String(Number(meta.lat).toFixed(5)));
     if (typeof meta.lon === "number" && !String(lng || "").trim()) setLng(String(Number(meta.lon).toFixed(5)));
 
@@ -417,7 +435,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // Submit (user mode)
   const handleSubmit = async () => {
-    if (!dateValid) return;
+    if (!dateValid || needsTimeReview) return;
     if (!emailValid) return;
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
     if (invalidBiopsy) {
@@ -429,7 +447,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       date, startTime, stopTime, photographer, email, phone,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
-      mantas, methods
+      mantas, methods, standardize_survey: standardizeSurvey
     };
 
     try {
@@ -466,37 +484,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       return next;
     });
 
-    const surveyHasDate = !!String(date || "").trim();
     const surveyHasLocation = !!String(locationId || locationName || "").trim();
-    const exif = (m as any)?.firstExifMeta ?? null;
-
-    console.log("[AddSighting][onAddSave] survey state", {
-      surveyHasDate,
-      surveyHasLocation,
-      date,
-      locationId,
-      locationName,
-      exif,
-    });
-
-    if ((!surveyHasDate || !surveyHasLocation) && exif) {
-      console.log("[AddSighting][onAddSave] calling prepareExifSuggestion", exif);
-
-      const suggestion = await prepareExifSuggestion(exif);
-
-      console.log("[AddSighting][onAddSave] prepareExifSuggestion result", suggestion);
-
-      if (suggestion) {
-        setPendingExif(suggestion.meta);
-        setSuggestedExifIsland(suggestion.bestIsland ?? null);
-        setSuggestedExifLocation(suggestion.bestLocation ?? null);
-        setConfirmExifOpen(true);
-      }
-    } else {
-      console.log("[AddSighting][onAddSave] not prompting", {
-        missingSurveyField: !surveyHasDate || !surveyHasLocation,
-        hasExif: !!exif,
-      });
+    const exif = m.firstExifMeta;
+    if (!surveyHasLocation && typeof exif?.lat === "number" && typeof exif?.lon === "number") {
+      await prepareExifSuggestion(exif);
     }
   };
   const onEditSave = (m:MantaDraft) => {
@@ -517,6 +508,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   async function handleSaveReview() {
     if (!reviewId) { window.alert("Not in review mode"); return; }
+    if (needsTimeReview) { window.alert("Review the sighting date and survey times for photos spanning multiple dates."); return; }
     const payload:any = {
       date, startTime, stopTime,
       photographer, email, phone,
@@ -524,6 +516,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       latitude: lat, longitude: lng,
       mantas,
       methods,
+      standardize_survey: standardizeSurvey,
       notes
     };
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
@@ -544,6 +537,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // Review actions
   async function handleCommitReview() {
     if (!reviewId) return;
+    if (needsTimeReview) { window.alert("Review the sighting date and survey times for photos spanning multiple dates."); return; }
     if (!window.confirm("Commit this submission to final tables?")) return;
     try {
       const commitFunction = hasOrganicBiopsies(mantas)
@@ -629,6 +623,15 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       onPointerDownOutside={(event) => event.preventDefault()}
     >
       <DialogTitle>Methods used during this sighting</DialogTitle>
+      <div role="radiogroup" aria-label="Survey type" className="mt-4 space-y-2 text-sm">
+        <div className="font-medium">Survey type</div>
+        {([['No', 'Opportunistic sighting/photos'], ['Yes', 'Systematic survey']] as const).map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2">
+            <input type="radio" name="survey-type" value={value} checked={standardizeSurvey === value}
+              onChange={() => setStandardizeSurvey(value)} />{label}
+          </label>
+        ))}
+      </div>
       <div className="my-5 space-y-3 text-sm">
         {METHOD_OPTIONS.map(([key, label]) => (
           <label key={key} className="flex items-center gap-2">
@@ -671,20 +674,29 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <Card>
           <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-3">
-            <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="border rounded px-3 py-2" />
-            <select value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="border rounded px-3 py-2">
-              <option value="">Start Time</option>
-              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={stopTime} onChange={(e)=>setStopTime(e.target.value)} className="border rounded px-3 py-2">
-              <option value="">Stop Time</option>
-              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
+            <input aria-label="Sighting Date" type="date" value={date} onChange={(e)=>editTime("date", e.target.value)} className="border rounded px-3 py-2" />
+            <label className="text-sm">Start Time<input aria-label="Start Time" type="time" step="1" value={startTime} onChange={(e)=>editTime("start", e.target.value)} className="block w-full border rounded px-3 py-2" /></label>
+            <label className="text-sm">Stop Time<input aria-label="Stop Time" type="time" step="1" value={stopTime} onChange={(e)=>editTime("stop", e.target.value)} className="block w-full border rounded px-3 py-2" /></label>
+            <div className="md:col-span-3 text-xs text-slate-600 space-y-1">
+              <div>{standardizeSurvey === "Yes" ? "Systematic survey — actual survey effort times" : standardizeSurvey === "No" ? (timesManuallyEdited ? "Opportunistic sighting — manually adjusted times" : "Opportunistic sighting — times from photo metadata") : "Survey type not specified"}</div>
+              {photoBounds && <div>Photo timestamps: {photoBounds.first.replace("T", " ")} – {photoBounds.last.replace("T", " ")}</div>}
+              {photoBounds?.multipleDates && (
+                <div role="status" className="text-amber-800">
+                  Photos span multiple dates. Review the sighting date, Start Time, and Stop Time manually.
+                  {needsTimeReview && <button type="button" className="ml-2 underline disabled:opacity-50"
+                    disabled={!date || !startTime || !stopTime}
+                    onClick={() => { retainEffort(); setReviewedPhotoDates(multiDateKey); }}>
+                    Use reviewed survey times
+                  </button>}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {methodsConfirmed && (
           <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>Survey type: {standardizeSurvey === "Yes" ? "Systematic survey" : standardizeSurvey === "No" ? "Opportunistic sighting/photos" : "Not specified"}</span>
             <span>Methods: {METHOD_OPTIONS.filter(([key]) => methods[key]).map(([, , label]) => label).join(", ") || "None"}</span>
             <button type="button" className="text-sky-700 underline" onClick={() => setEditMethodsOpen(true)}>
               Edit Methods
@@ -839,7 +851,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           ) : (
             <>
               <Button variant="outline" onClick={() => navigate("/dashboard")}>Cancel</Button>
-              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
+              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid || needsTimeReview}>
                 Submit Sighting
               </Button>
             </>
@@ -878,6 +890,30 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           setPageMatchOpen(false);
         }}
       />
+
+      <Dialog open={!!photoBounds && !timeChoiceMade && !isReview && !addOpen && !editingManta && !confirmExifOpen}
+        onOpenChange={(open) => { if (!open) setTimeChoiceMade(true); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Photo timestamps found</DialogTitle>
+            <DialogDescription>
+              {standardizeSurvey === "Yes" ? "Photo times are reference only. Enter or retain the actual time spent searching for mantas." : "Photo timestamps provide the default sighting times. You can keep or manually adjust the times."}
+            </DialogDescription>
+          </DialogHeader>
+          {photoBounds && <div className="text-sm space-y-2">
+            <div>Capture date: {photoBounds.multipleDates ? `${photoBounds.first.slice(0, 10)} – ${photoBounds.last.slice(0, 10)}` : photoBounds.date}</div>
+            <div>Photo time range: {photoBounds.start} – {photoBounds.stop}</div>
+            {(startTime || stopTime) && <div>Current survey times: {startTime || "—"} – {stopTime || "—"}. {standardizeSurvey === "No" ? "Manual values are retained unless you choose Use Photo Times." : "These effort times are retained."}</div>}
+            {photoBounds.multipleDates && <div className="text-amber-800">Photos span multiple dates. Review the sighting date and survey times manually.</div>}
+          </div>}
+          <div className="flex flex-wrap justify-end gap-2">
+            {standardizeSurvey === "No" && <Button variant="outline" disabled={photoBounds?.multipleDates} autoFocus={!timesManuallyEdited && !photoBounds?.multipleDates} onClick={() => {
+              setTimesManuallyEdited(false); setTimeChoiceMade(true);
+            }}>Use Photo Times</Button>}
+            <Button autoFocus={standardizeSurvey !== "No" || timesManuallyEdited || photoBounds?.multipleDates} onClick={retainEffort}>{standardizeSurvey === "Yes" ? "Enter/Retain Survey Effort Times" : "Keep/Adjust Times"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Map modal: only Save commits the draft coordinates. */}
       {mapOpen && (

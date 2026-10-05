@@ -25,6 +25,8 @@ export type Uploaded = {
   storageBucket?: "manta-images";
   originalPath?: string;
   editTransform?: EditTransform;
+  captureDate?: string;
+  captureTime?: string;
 };
 
 export type MantaDraft = {
@@ -62,24 +64,6 @@ function uuid() {
   } catch {
     return Math.random().toString(36).slice(2);
   }
-}
-
-function pad2(v: number) {
-  return String(v).padStart(2, "0");
-}
-
-function formatExifDate(value: unknown): string | undefined {
-  if (!value) return undefined;
-  const d = value instanceof Date ? value : new Date(String(value));
-  if (!Number.isFinite(d.getTime())) return undefined;
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function formatExifTime(value: unknown): string | undefined {
-  if (!value) return undefined;
-  const d = value instanceof Date ? value : new Date(String(value));
-  if (!Number.isFinite(d.getTime())) return undefined;
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 export default function UnifiedMantaModal({
@@ -192,11 +176,11 @@ export default function UnifiedMantaModal({
         photoId: pendingPhoto.id, editId: crypto.randomUUID(),
         original: pendingPhoto.file, prepared, editTransform,
       });
-      setPhotos(previous => [...previous, { ...added, previewUrl: URL.createObjectURL(prepared) }]);
       const exif = pendingPhoto.exif;
-      if (!batchExifChosen.current) {
+      setPhotos(previous => [...previous, { ...added, captureDate: exif.captureDate, captureTime: exif.captureTime, previewUrl: URL.createObjectURL(prepared) }]);
+      if (!batchExifChosen.current && typeof exif.lat === "number" && typeof exif.lon === "number") {
         setFirstExifMeta({
-          date: formatExifDate(exif.takenAt), time: formatExifTime(exif.takenAt),
+          date: exif.captureDate, time: exif.captureTime,
           lat: exif.lat, lon: exif.lon,
         });
         batchExifChosen.current = true;
