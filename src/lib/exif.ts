@@ -4,6 +4,7 @@ export type BasicExif = {
   takenAt?: Date;
   lat?: number;
   lon?: number;
+  orientation?: number;
 };
 
 // Safe EXIF reader for JPEG/HEIC when supported by the browser.
@@ -30,7 +31,9 @@ export async function readBasicExif(file: File): Promise<BasicExif> {
     const lat = typeof (meta as any).latitude === 'number' ? (meta as any).latitude : undefined;
     const lon = typeof (meta as any).longitude === 'number' ? (meta as any).longitude : undefined;
 
-    return { takenAt, lat, lon };
+    const orientation = Number.isInteger(meta.Orientation) && meta.Orientation >= 1 && meta.Orientation <= 8
+      ? meta.Orientation as number : undefined;
+    return { takenAt, lat, lon, orientation };
   } catch {
     return {};
   }

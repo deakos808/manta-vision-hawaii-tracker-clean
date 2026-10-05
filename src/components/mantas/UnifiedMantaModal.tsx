@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
+import PhotoEditModal from "./PhotoEditModal";
+import { uploadPreparedPair, uploadReeditedPhoto, meanDiscWidthMeters, type EditTransform } from "@/features/photos/photoPreparation";
+import type { BasicExif } from "@/lib/exif";
 import { readBasicExif } from "@/lib/exif";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { OrganicBiopsyDraft } from "@/features/biopsies/organicBiopsy";
@@ -16,9 +19,12 @@ export type Uploaded = {
   view: View;
   isBestVentral?: boolean;
   isBestDorsal?: boolean;
-  measure?: { dlCm: number; dwCm: number; discPx: number; scalePx: number; scaleCm: number };
+  measure?: { dlCm: number; dwCm: number; discPx: number; scalePx: number; scaleCm: number; points?: MeasureResult["points"] };
   previewUrl?: string | null;
   isHeicLike?: boolean;
+  storageBucket?: "manta-images";
+  originalPath?: string;
+  editTransform?: EditTransform;
 };
 
 export type MantaDraft = {
@@ -95,6 +101,13 @@ export default function UnifiedMantaModal({
 
   const [photos, setPhotos] = useState<Uploaded[]>([]);
   const [busy, setBusy] = useState(false);
+  const [pendingPhotos, setPendingPhotos] = useState<{ id: string; file: File; exif: BasicExif }[]>([]);
+  const [intakeError, setIntakeError] = useState<string | null>(null);
+  const intakeLock = useRef(false);
+  const batchExifChosen = useRef(false);
+  const [editingPhoto, setEditingPhoto] = useState<{ photo: Uploaded; file: File } | null>(null);
+  const pendingPhoto = pendingPhotos[0];
+  const intakeActive = busy || pendingPhotos.length > 0 || editingPhoto !== null;
   const [measureOpen, setMeasureOpen] = useState<Uploaded | null>(null);
   const [matchOpen, setMatchOpen] = useState<Uploaded | null>(null);
   const [potentialCatalogId, setPotentialCatalogId] = useState<number | null>(null);
@@ -105,10 +118,16 @@ export default function UnifiedMantaModal({
   const [firstExifMeta, setFirstExifMeta] = useState<{ date?: string; time?: string; lat?: number; lon?: number } | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const mantaId = useMemo(() => existingManta?.id ?? uuid(), [existingManta?.id]);
+  const [mantaId, setMantaId] = useState(() => existingManta?.id ?? uuid());
 
   useEffect(() => {
     if (!open) return;
+    // One identity per new entry, shared by its paths and eventual MantaDraft.
+    // Reusing the modal for B must not reuse A's identity.
+    setMantaId(existingManta?.id ?? uuid());
+    setPendingPhotos([]);
+    setEditingPhoto(null);
+    setIntakeError(null);
     setName((existingManta?.name ?? automaticName ?? "").trim());
     setNameTouched(false);
     setGender(existingManta?.gender ?? null);
@@ -127,116 +146,93 @@ export default function UnifiedMantaModal({
     };
   }, []);
 
-  const meanDorsalDW = useMemo(() => {
-    const vals = photos
-      .filter((p) => p.view === "dorsal" && p.measure?.dwCm)
-      .map((p) => p.measure!.dwCm);
-
-    if (vals.length === 0) return null;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  }, [photos]);
+  const meanDW = useMemo(() => meanDiscWidthMeters(photos), [photos]);
 
   useEffect(() => {
-    if (meanDorsalDW !== null) {
-      const meters = meanDorsalDW / 100;
-      setSize(meters.toFixed(2));
-    }
-  }, [meanDorsalDW]);
+    // Keep the existing precedence: a changed measured mean updates the editable
+    // size field; manual edits remain until the measured mean changes again.
+    if (meanDW !== null) setSize(meanDW.toFixed(2));
+  }, [meanDW]);
 
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
-    if (!files?.length) return;
-
+    if (!files.length || intakeLock.current || pendingPhotos.length || editingPhoto) return;
+    intakeLock.current = true;
     setBusy(true);
-
-    const allow = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    const added: Uploaded[] = [];
-    let firstExif: { date?: string; time?: string; lat?: number; lon?: number } | null = null;
-
-    for (const f of files) {
-      const lower = f.name.toLowerCase();
-      const isHeicLike = f.type === "image/heic" || f.type === "image/heif" || lower.endsWith(".heic") || lower.endsWith(".heif");
-      const typeAllowed = allow.includes(f.type) || lower.endsWith(".heic") || lower.endsWith(".heif");
-      if (!typeAllowed) continue;
-
-      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-      const id = uuid();
-      const path = `${sightingId}/${mantaId}/${id}.${ext}`;
-      const previewUrl = URL.createObjectURL(f);
-
-      try {
-        const exif = await readBasicExif(f).catch((err) => {
-          console.warn("[UnifiedMantaModal][EXIF] readBasicExif failed", f.name, err);
-          return null;
-        });
-        console.log("[UnifiedMantaModal][EXIF] parsed", {
-          file: f.name,
-          type: f.type,
-          exif,
-        });
-        if (!firstExif && exif) {
-          const takenAt = exif.takenAt ? new Date(exif.takenAt) : null;
-          const validTakenAt = takenAt && Number.isFinite(takenAt.getTime()) ? takenAt : null;
-
-          const pad2 = (n: number) => String(n).padStart(2, "0");
-          const dateStr = validTakenAt
-            ? `${validTakenAt.getFullYear()}-${pad2(validTakenAt.getMonth() + 1)}-${pad2(validTakenAt.getDate())}`
-            : undefined;
-          const timeStr = validTakenAt
-            ? `${pad2(validTakenAt.getHours())}:${pad2(validTakenAt.getMinutes())}`
-            : undefined;
-
-          firstExif = {
-            date: dateStr,
-            time: timeStr,
-            lat: typeof exif.lat === "number" ? exif.lat : undefined,
-            lon: typeof exif.lon === "number" ? exif.lon : undefined,
-          };
-          console.log("[UnifiedMantaModal][EXIF] firstExif selected", firstExif);
-        }
-      } catch {}
-
-      try {
-        const { error } = await supabase.storage.from("temp-images").upload(path, f, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: f.type || undefined,
-        });
-
-        if (error) {
-          console.warn("[UnifiedMantaModal] upload error", error.message);
-          continue;
-        }
-
-        const { data } = supabase.storage.from("temp-images").getPublicUrl(path);
-
-        added.push({
-          id,
-          name: f.name,
-          url: data?.publicUrl || previewUrl,
-          path,
-          view: "other",
-          previewUrl,
-          isHeicLike,
-        });
-      } catch (e: any) {
-        console.warn("[UnifiedMantaModal] upload exception", e?.message || e);
+    setIntakeError(null);
+    batchExifChosen.current = false;
+    try {
+      const accepted = files.filter(file => /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name));
+      if (accepted.length !== files.length) setIntakeError("Only JPEG, PNG, WebP, HEIC and HEIF photos can be prepared.");
+      const queue = [];
+      for (const file of accepted) {
+        queue.push({ id: crypto.randomUUID(), file, exif: await readBasicExif(file) });
       }
+      setPendingPhotos(queue);
+    } catch {
+      setIntakeError("Could not prepare the selected files. No files were uploaded.");
+    } finally {
+      intakeLock.current = false;
+      setBusy(false);
     }
+  }
 
-    if (added.length) {
-      setPhotos((prev) => [...prev, ...added]);
+  async function savePreparedPhoto(prepared: Blob, editTransform: EditTransform) {
+    if (!pendingPhoto || intakeLock.current) throw new Error("Photo preparation is already in progress.");
+    intakeLock.current = true;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) throw new Error("Sign in before saving a photo. No files were uploaded.");
+      const added = await uploadPreparedPair(supabase.storage.from("manta-images"), {
+        uploaderId: data.user.id, sightingId, mantaId,
+        photoId: pendingPhoto.id, editId: crypto.randomUUID(),
+        original: pendingPhoto.file, prepared, editTransform,
+      });
+      setPhotos(previous => [...previous, { ...added, previewUrl: URL.createObjectURL(prepared) }]);
+      const exif = pendingPhoto.exif;
+      if (!batchExifChosen.current) {
+        setFirstExifMeta({
+          date: formatExifDate(exif.takenAt), time: formatExifTime(exif.takenAt),
+          lat: exif.lat, lon: exif.lon,
+        });
+        batchExifChosen.current = true;
+      }
+      setPendingPhotos(previous => previous.slice(1));
+    } finally {
+      intakeLock.current = false;
+      setBusy(false);
     }
+  }
 
-    if (firstExif) {
-      console.log("[UnifiedMantaModal][EXIF] firstExif ready", firstExif);
-      setFirstExifMeta(firstExif);
-    } else {
-      console.log("[UnifiedMantaModal][EXIF] no EXIF found");
-    }
+  async function editCrop(photo: Uploaded) {
+    if (intakeActive || intakeLock.current || !photo.originalPath || photo.storageBucket !== "manta-images") return;
+    intakeLock.current = true;
+    setBusy(true);
+    setIntakeError(null);
+    try {
+      const { data, error } = await supabase.storage.from("manta-images").download(photo.originalPath);
+      if (error || !data) throw new Error("Could not load the untouched original. The photo is unchanged.");
+      setEditingPhoto({ photo, file: new File([data], photo.name, { type: data.type }) });
+    } catch {
+      setIntakeError("Could not load the untouched original. The photo is unchanged.");
+    } finally { intakeLock.current = false; setBusy(false); }
+  }
 
-    setBusy(false);
+  async function saveReeditedPhoto(prepared: Blob, editTransform: EditTransform) {
+    if (!editingPhoto || intakeLock.current) throw new Error("Photo preparation is already in progress.");
+    intakeLock.current = true;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) throw new Error("Sign in before saving a photo. No files were uploaded.");
+      const updated = await uploadReeditedPhoto(supabase.storage.from("manta-images"), editingPhoto.photo, prepared, editTransform, crypto.randomUUID());
+      const previewUrl = URL.createObjectURL(prepared);
+      setPhotos(previous => previous.map(photo => photo.id === updated.id ? { ...photo, path: updated.path, url: updated.url, editTransform: updated.editTransform, previewUrl } : photo));
+      // Keep any previously saved draft's preview alive if this manta edit is cancelled.
+      setEditingPhoto(null);
+    } finally { intakeLock.current = false; setBusy(false); }
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -292,6 +288,7 @@ export default function UnifiedMantaModal({
                 discPx: r.discPx,
                 scalePx: r.scalePx,
                 scaleCm: r.scaleCm,
+                points: r.points,
               },
             }
           : p
@@ -338,7 +335,7 @@ export default function UnifiedMantaModal({
             type="button"
             aria-label="Close"
             className="absolute top-3 right-3 text-2xl leading-none hover:text-gray-700"
-            onClick={onClose}
+            onClick={() => { if (!intakeActive) onClose(); }}
           >
             &times;
           </button>
@@ -361,7 +358,7 @@ export default function UnifiedMantaModal({
                   type="button"
                   onClick={() => inputRef.current?.click()}
                   className="px-5 py-2.5 rounded-md bg-sky-700 text-white font-medium hover:bg-sky-800 disabled:opacity-50"
-                  disabled={busy}
+                  disabled={intakeActive}
                 >
                   Choose Photo
                 </button>
@@ -375,6 +372,7 @@ export default function UnifiedMantaModal({
                 />
               </div>
 
+              {intakeError && <p role="alert" className="mt-2 text-sm text-red-700">{intakeError}</p>}
               {photos.length === 0 && (
                 <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
                   <input type="checkbox" checked={noPhotos} onChange={(e) => setNoPhotos(e.target.checked)} />
@@ -516,12 +514,20 @@ export default function UnifiedMantaModal({
                     <div className="flex items-center gap-2 justify-self-end">
                       <button
                         type="button"
+                        className="px-2 py-1 rounded border disabled:opacity-50"
+                        disabled={intakeActive || !p.originalPath || p.storageBucket !== "manta-images"}
+                        title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"}
+                        onClick={() => void editCrop(p)}
+                      >Edit Crop</button>
+                      <button
+                        type="button"
                         className="px-2 py-1 rounded bg-sky-600 text-white"
+                        disabled={intakeActive}
                         onClick={() => setMeasureOpen(p)}
                       >
                         Size
                       </button>
-                      <button type="button" className="text-red-600" onClick={() => deletePhoto(p.id)}>Delete</button>
+                      <button type="button" className="text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
                     </div>
                   </div>
                 );
@@ -531,12 +537,12 @@ export default function UnifiedMantaModal({
             </div>
 
             <div className="px-0 py-3 mt-2 flex justify-end gap-2 border-t">
-              <button type="button" className="px-3 py-2 rounded border" onClick={onClose} disabled={busy}>Cancel</button>
+              <button type="button" className="px-3 py-2 rounded border" onClick={() => { if (!intakeActive) onClose(); }} disabled={intakeActive}>Cancel</button>
               <button
                 type="button"
                 className="px-3 py-2 rounded bg-sky-600 text-white disabled:opacity-50"
                 onClick={save}
-                disabled={busy || !canSave()}
+                disabled={intakeActive || !canSave()}
               >
                 Save Manta
               </button>
@@ -544,6 +550,29 @@ export default function UnifiedMantaModal({
           </div>
         </div>
       </div>
+
+      {editingPhoto && (
+        <PhotoEditModal
+          key={`edit-${editingPhoto.photo.id}`}
+          file={editingPhoto.file}
+          exifOrientation={editingPhoto.photo.editTransform?.exifOrientation ?? 1}
+          initialTransform={editingPhoto.photo.editTransform}
+          remaining={1}
+          onClose={() => { if (!intakeLock.current) setEditingPhoto(null); }}
+          onSave={saveReeditedPhoto}
+        />
+      )}
+
+      {pendingPhoto && (
+        <PhotoEditModal
+          key={pendingPhoto.id}
+          file={pendingPhoto.file}
+          exifOrientation={pendingPhoto.exif.orientation ?? 1}
+          remaining={pendingPhotos.length}
+          onClose={() => { if (!intakeLock.current) setPendingPhotos(previous => previous.slice(1)); }}
+          onSave={savePreparedPhoto}
+        />
+      )}
 
       {measureOpen && (
         <MeasureModal
@@ -562,6 +591,7 @@ export default function UnifiedMantaModal({
                   discPx: measureOpen.measure.discPx,
                   scalePx: measureOpen.measure.scalePx,
                   scaleCm: measureOpen.measure.scaleCm,
+                  points: measureOpen.measure.points,
                 }
               : undefined
           }

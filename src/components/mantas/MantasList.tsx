@@ -52,8 +52,8 @@ function tempName(m:any){
 
 function ImgTile({url, placeholder}:{url?:string; placeholder:string}){
   return (
-    <div className="overflow-hidden rounded border bg-white grid place-items-center" style={{width:TILE_W, height:TILE_H}}>
-      {url ? <img src={url} alt={placeholder} className="w-full h-full object-cover object-center"/> :
+    <div className="overflow-hidden rounded border bg-white flex items-center justify-center shrink-0" style={{width:TILE_W, height:TILE_H}}>
+      {url ? <img src={url} alt={placeholder} style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", objectPosition: "center", display: "block" }}/> :
         <div className="text-xs text-slate-400 select-none">{placeholder}</div>}
     </div>
   );
