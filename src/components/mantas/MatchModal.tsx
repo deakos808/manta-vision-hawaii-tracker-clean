@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import CatalogFilterBox, { type FiltersState } from '@/components/catalog/CatalogFilterBox';
 import { useRankedCatalogMatch } from '@/features/matching/rankedMatchWorkflow';
@@ -56,6 +56,7 @@ const EMPTY_FILTERS: FiltersState = {
   gender: [],
   age_class: [],
   species: [],
+  mprf: [],
 };
 
 function imgFromRow(r?: CatalogRow): string {
@@ -64,8 +65,7 @@ function imgFromRow(r?: CatalogRow): string {
 }
 
 
-const TOOLBAR_H = 300;
-const IMG_BOX_H = 420;
+const IMAGE_FRAME = "w-full h-[min(56vh,560px)] min-h-[260px] rounded bg-gray-50 grid place-items-center overflow-hidden";
 // Ranked suggestions remain preserved for the separate matcher-compatibility
 // reconciliation. Keep production on the proven manual catalog workflow until
 // the 768/1024-dimensional contract is resolved with evidence.
@@ -98,8 +98,9 @@ const MatchModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
-  const [sortAsc, setSortAsc] = useState(true);
   const [idx, setIdx] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const catalogViewerRef = useRef<HTMLDivElement>(null);
   // Jump to provided start catalog id (set via window.__matchStartCatalogId) when rows are ready.
   useEffect(() => {
     try {
@@ -115,17 +116,6 @@ const MatchModal: React.FC<Props> = ({
     } catch {}
   }, [open, rows]);
 
-  const filteredSummaryClean = useMemo(() => {
-    const parts:string[]=[];
-    if (filters.species.length) parts.push(filters.species.join(', '));
-    if (filters.population.length) parts.push(filters.population.join(', '));
-    if (filters.island.length) parts.push(filters.island.join(', '));
-    if (filters.sitelocation.length) parts.push(filters.sitelocation.join(', '));
-    if (filters.gender.length) parts.push(filters.gender.join(', '));
-    if (filters.age_class.length) parts.push(filters.age_class.join(', '));
-    if (!parts.length) return '';
-    return parts.join(' • ');
-  }, [filters]);
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -160,10 +150,58 @@ const MatchModal: React.FC<Props> = ({
 
   return byText && byFilters && speciesOk;
 });
-return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_catalog_id - a.pk_catalog_id));
-}, [rows, search, filters, sortAsc]);useEffect(() => {
+return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
+}, [rows, search, filters]);useEffect(() => {
     setIdx((i) => (filtered.length ? Math.min(i, filtered.length - 1) : 0));
   }, [filtered.length]);
+
+  const previousCandidate = useCallback(() => setIdx((i) => Math.max(0, i - 1)), []);
+  const nextCandidate = useCallback(() => setIdx((i) => Math.max(0, Math.min(filtered.length - 1, i + 1))), [filtered.length]);
+
+  useEffect(() => {
+    if (!open || mode !== 'manual') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+      const focus = document.activeElement;
+      // Portalled filter menus and controls outside this dialog own their keys.
+      if (focus && focus !== document.body && (
+        !dialogRef.current?.contains(focus) ||
+        focus.closest('input, select, textarea, [contenteditable]:not([contenteditable="false"]), [aria-label="Catalog search and filters"]')
+      )) return;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        if (event.key === 'ArrowLeft') previousCandidate();
+        else nextCandidate();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, mode, previousCandidate, nextCandidate]);
+
+  useEffect(() => {
+    const viewer = catalogViewerRef.current;
+    if (!open || mode !== 'manual' || !viewer) return;
+    let distance = 0;
+    let lastEvent = -Infinity;
+    let advanced = false;
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      // Consume horizontal gestures only; vertical scrolling remains native.
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastEvent > 220) { distance = 0; advanced = false; }
+      lastEvent = now;
+      if (advanced) return; // Includes momentum until the gesture becomes idle.
+      const pixels = event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewer.clientWidth : 1);
+      distance += pixels;
+      if (Math.abs(distance) < 45) return;
+      advanced = true;
+      if (distance > 0) nextCandidate();
+      else previousCandidate();
+    };
+    viewer.addEventListener('wheel', onWheel, { passive: false });
+    return () => viewer.removeEventListener('wheel', onWheel);
+  }, [open, mode, previousCandidate, nextCandidate]);
 
   async function cleanupBefore(action: () => void) {
     if (actionLockRef.current) return;
@@ -213,7 +251,8 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4" role="presentation">
       <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
       <div
-        className="relative bg-white w-[min(1280px,96vw)] max-h-[92vh] rounded shadow overflow-hidden"
+        className="relative bg-white w-[min(1600px,96vw)] max-h-[92vh] rounded shadow overflow-hidden"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="find-match-title"
@@ -253,24 +292,24 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 max-h-[calc(92vh-112px)] overflow-auto">
-          <div className="border rounded p-3 bg-white">
-            <div className="text-sm font-medium mb-2">Selected manta photo</div>
-            <div className="w-full rounded bg-gray-50 grid place-items-center" style={{ height: IMG_BOX_H }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(200px,1fr)] gap-3 p-3 max-h-[calc(92vh-112px)] overflow-auto">
+          <div className="min-w-0 border rounded p-3 bg-white">
+            <div className="text-sm font-medium mb-2">Submitted photo</div>
+            <div className={IMAGE_FRAME}>
               <img
                 src={tempUrl || '/manta-logo.svg'}
-                alt="Selected manta ventral photo"
-                className="max-w-full max-h-full object-contain"
+                alt="Submitted manta photo"
+                className="w-full h-full min-h-0 object-contain"
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg'; }}
               />
             </div>
             <div className="mt-3 text-xs text-gray-600 space-y-1">
-              <div>Temp name: {aMeta?.name ?? '—'}</div>
+              <div>Proposed name: {aMeta?.name ?? '—'}</div>
               <div>Gender: {aMeta?.gender ?? '—'}</div>
               <div>Age class: {aMeta?.ageClass ?? '—'}</div>
-              <div>Mean size: {aMeta?.meanSize != null ? `${aMeta.meanSize} cm` : '—'}</div>
+              {aMeta?.meanSize != null && <div>Mean size: {aMeta.meanSize} m</div>}
             </div>
           </div>
 
@@ -341,61 +380,65 @@ return base.sort((a, b) => (sortAsc ? a.pk_catalog_id - b.pk_catalog_id : b.pk_c
               </div>
             </div>
           ) : (
-          <div className="border rounded p-3 bg-white flex flex-col" role="tabpanel">
-            <div style={{ minHeight: TOOLBAR_H, overflow: 'auto' }}>
-              <input
-                className="border rounded px-3 py-2 text-sm w-full mb-2"
-                placeholder="Search by Catalog ID or name…"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setIdx(0); }}
-              />
-              <div className="scale-[0.95] origin-top-left"><CatalogFilterBox
-                catalog={rows}
-                filters={filters}
-                setFilters={(f) => { setFilters(f); setIdx(0); }}
-                sortAsc={sortAsc}
-                setSortAsc={setSortAsc}
-                onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setSortAsc(true); setIdx(0); }}
-              /></div>
-              <div className="text-xs text-gray-600 mt-2">
-  {filtered.length ? `${idx + 1} of ${filtered.length} total` : "0 of 0 total"}{filteredSummaryClean ? ` (filtered by: ${filteredSummaryClean})` : ""}
-</div>
-            </div>
-
-            <div className="mt-3 w-full rounded bg-gray-50 grid place-items-center" style={{ height: IMG_BOX_H }}>
+          <div className="min-w-0 border rounded p-3 bg-white flex flex-col" role="tabpanel">
+            <div className="text-sm font-medium mb-2">Catalog photo</div>
+            <div ref={catalogViewerRef} className={IMAGE_FRAME}>
               <img
                 src={imgFromRow(current)}
                 alt={current?.name ?? 'catalog'}
-                className="max-w-full max-h-full object-contain"
+                className="w-full h-full min-h-0 object-contain"
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/manta-logo.svg'; }}
               />
             </div>
 
+            <div className="flex gap-2 overflow-x-auto py-2 mt-2" aria-label="Catalog candidates" tabIndex={0}>
+              {filtered.map((candidate, candidateIndex) => (
+                <button key={candidate.pk_catalog_id} type="button"
+                  aria-label={`Catalog ${candidate.pk_catalog_id}${candidate.name ? `: ${candidate.name}` : ''}`}
+                  aria-pressed={candidateIndex === idx}
+                  onClick={() => setIdx(candidateIndex)}
+                  className={`shrink-0 w-20 rounded border-2 p-1 text-xs ${candidateIndex === idx ? 'border-sky-600 bg-sky-50' : 'border-transparent bg-gray-50 hover:border-gray-300'}`}>
+                  <img src={imgFromRow(candidate)} alt="" loading="lazy" className="h-16 w-full object-contain" referrerPolicy="no-referrer"
+                    onError={(event) => { event.currentTarget.src = '/manta-logo.svg'; }} />
+                  {candidate.pk_catalog_id}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500" role="status">{filtered.length ? `${idx + 1} of ${filtered.length} candidates` : loading ? 'Loading…' : '0 candidates'}</div>
             <div className="mt-3 text-xs text-gray-700 min-h-[40px]">
               {current ? (
                 <div>
                   <div>Catalog {current.pk_catalog_id}{current.name ? `: ${current.name}` : ''}</div>
-                  <div>{current.species || '—'} · {current.gender || '—'} · {current.age_class || '—'}</div>
+                  <div>{current.gender || '—'} · {current.age_class || '—'}</div>
+                  <div>{current.locations?.join(', ') || current.sitelocation || current.populations?.join(', ') || current.population || ''}</div>
                 </div>
               ) : (
                 <div className="text-gray-500">{loading ? 'Loading…' : 'No records.'}</div>
               )}
             </div>
 
-            <div className="mt-auto pt-3 border-t flex items-center justify-between">
+            <div className="mt-3 pt-3 border-t flex flex-wrap gap-3 items-center justify-between">
               <div className="flex gap-2">
-                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={() => setIdx((i) => Math.max(0, i - 1))} disabled={idx <= 0 || !filtered.length}>Prev</button>
-                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={() => setIdx((i) => Math.min(filtered.length - 1, i + 1))} disabled={idx >= filtered.length - 1 || !filtered.length}>Next</button>
+                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={previousCandidate} disabled={idx <= 0 || !filtered.length}>Prev</button>
+                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={nextCandidate} disabled={idx >= filtered.length - 1 || !filtered.length}>Next</button>
               </div>
               <div className="flex gap-2">
-                <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current || actionBusy} onClick={() => current && chooseMatch(current.pk_catalog_id)}>This Matches</button>
-                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Matches Found</button>
+                <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current || actionBusy} onClick={() => current && chooseMatch(current.pk_catalog_id)}>This is a match</button>
+                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Match / New Individual</button>
               </div>
             </div>
           </div>
           )}
+          <aside className="min-w-0 border rounded p-3" aria-label="Catalog search and filters">
+            <input className="border rounded px-3 py-2 text-sm w-full mb-3"
+              aria-label="Search Catalog ID or name" placeholder="Search Catalog ID or name"
+              value={search} onChange={(event) => { setSearch(event.target.value); setIdx(0); }} />
+            <CatalogFilterBox compact catalog={rows} filters={filters}
+              setFilters={(next) => { setFilters(next); setIdx(0); }}
+              onClearAll={() => { setSearch(''); setFilters(EMPTY_FILTERS); setIdx(0); }} />
+          </aside>
         </div>
       </div>
     </div>

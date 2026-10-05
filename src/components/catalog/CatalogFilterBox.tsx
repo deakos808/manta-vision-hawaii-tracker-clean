@@ -48,6 +48,11 @@ interface Props {
   isAdmin?: boolean;
 }
 
+// Compact matching uses only the existing multi-select filters.
+type FilterBoxProps = (Props & { compact?: false }) | (
+  Pick<Props, "catalog" | "filters" | "setFilters" | "onClearAll"> & Partial<Props> & { compact: true }
+);
+
 const GENDERS = ["Male", "Female", "Unknown"] as const;
 const AGES = ["Adult", "Juvenile", "Yearling", "Unknown"] as const;
 const MPRF_OPTIONS = ["MPRF", "HAMER"] as const;
@@ -101,7 +106,8 @@ export default function CatalogFilterBox({
   setNamePrefix,
   onOpenStats,
   isAdmin = false,
-}: Props) {
+  compact = false,
+}: FilterBoxProps) {
   const toggle = (key: keyof FiltersState, value: string) => {
     const next = filters[key].includes(value)
       ? filters[key].filter((v) => v !== value)
@@ -228,7 +234,7 @@ export default function CatalogFilterBox({
   ) => (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="text-sm">
+        <Button variant="outline" className={compact ? "h-8 w-full justify-between text-xs" : "text-sm"}>
           {label}
           {Array.isArray(filters[key]) && filters[key].length > 0 && (
             <span className="ml-1">({filters[key].length})</span>
@@ -236,7 +242,7 @@ export default function CatalogFilterBox({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-60 p-2 space-y-2">
+      <PopoverContent className={compact ? "w-60 max-h-80 overflow-y-auto p-2 space-y-2" : "w-60 p-2 space-y-2"}>
         <div className="flex items-center justify-between px-1">
           <span className="font-medium text-sm">{label}</span>
           <Button
@@ -275,20 +281,20 @@ export default function CatalogFilterBox({
   );
 
   return (
-    <div className="bg-white shadow p-4 rounded border mb-4">
+    <div className={compact ? "space-y-3" : "bg-white shadow p-4 rounded border mb-4"}>
       <div className="flex justify-between items-center mb-3">
-        <div className="text-sm font-medium">Filter Catalog Records by:</div>
+        {!compact && <div className="text-sm font-medium">Filter Catalog Records by:</div>}
         <div className="flex items-center gap-3">
           <Button variant="link" size="sm" onClick={onClearAll}>
-            Clear All Filters
+            {compact ? "Clear Filters" : "Clear All Filters"}
           </Button>
-          <Button variant="outline" size="sm" onClick={onOpenStats}>
+          {!compact && <Button variant="outline" size="sm" onClick={onOpenStats}>
             Catalog Stats
-          </Button>
+          </Button>}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className={compact ? "grid grid-cols-2 lg:grid-cols-1 gap-2" : "flex flex-wrap gap-2"}>
         {renderMenu("Species", "species", speciesOptions, speciesCounts)}
         {renderMenu("Population", "population", populationOptions, populationCounts)}
         {renderMenu("Island", "island", islandOptions, islandCounts)}
@@ -297,7 +303,7 @@ export default function CatalogFilterBox({
         {renderMenu("Age Class", "age_class", [...AGES], ageCounts)}
         {isAdmin && renderMenu("HAMER", "mprf", [...MPRF_OPTIONS], mprfCounts)}
 
-        <Popover>
+        {!compact && <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="text-sm">
               Photo View <span className="ml-2">({viewMode})</span>
@@ -328,9 +334,10 @@ export default function CatalogFilterBox({
               <span className="text-xs text-muted-foreground">{viewCounts.dorsal}</span>
             </label>
           </PopoverContent>
-        </Popover>
+        </Popover>}
       </div>
 
+      {!compact && <>
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
         <div>
           <div className="text-xs text-gray-600 mb-1">Catalog ID (starts with)</div>
@@ -401,6 +408,7 @@ export default function CatalogFilterBox({
           </div>
         </div>
       </div>
+      </>}
     </div>
   );
 }
