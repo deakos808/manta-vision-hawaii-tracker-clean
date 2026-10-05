@@ -43,6 +43,7 @@ type Props = {
   sightingId: string;
   onSave: (m: MantaDraft) => void;
   existingManta?: MantaDraft | null;
+  automaticName?: string;
   onApplyExifMetadata?: (meta: { date?: string; time?: string; lat?: number; lon?: number }) => void;
   needsExifPrompt?: boolean;
   onApplyExifMetadata?: (meta: { date?: string; time?: string; lat?: number; lon?: number }) => void;
@@ -80,10 +81,13 @@ export default function UnifiedMantaModal({
   sightingId,
   onSave,
   existingManta,
+  automaticName,
   onApplyExifMetadata,
   needsExifPrompt = false,
 }: Props) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => (existingManta?.name ?? automaticName ?? "").trim());
+  const proposedNameFlow = automaticName !== undefined;
+  const [nameTouched, setNameTouched] = useState(false);
   const [gender, setGender] = useState<string | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
@@ -105,7 +109,8 @@ export default function UnifiedMantaModal({
 
   useEffect(() => {
     if (!open) return;
-    setName((existingManta?.name || "").trim());
+    setName((existingManta?.name ?? automaticName ?? "").trim());
+    setNameTouched(false);
     setGender(existingManta?.gender ?? null);
     setAgeClass(existingManta?.ageClass ?? null);
     setSize(existingManta?.size ?? null);
@@ -114,7 +119,7 @@ export default function UnifiedMantaModal({
     setPotentialNoMatch(existingManta?.potentialNoMatch ?? false);
     setNoPhotos(existingManta?.noPhotos ?? false);
     setFirstExifMeta(existingManta?.firstExifMeta ?? null);
-  }, [open, existingManta]);
+  }, [open, existingManta, automaticName]);
 
   useEffect(() => {
     return () => {
@@ -303,7 +308,7 @@ export default function UnifiedMantaModal({
   function save() {
     const draft: MantaDraft = {
       id: mantaId,
-      name: (name || "").trim(),
+      name: name.trim(),
       gender,
       ageClass,
       size: size ?? null,
@@ -326,7 +331,7 @@ export default function UnifiedMantaModal({
         className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center"
       >
         <div
-          className="bg-white rounded-lg border w-[min(1100px,95vw)] pointer-events-auto relative"
+          className="bg-white rounded-lg border w-[min(1100px,95vw)] max-h-[90dvh] overflow-y-auto pointer-events-auto relative"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -339,21 +344,57 @@ export default function UnifiedMantaModal({
           </button>
 
           <div className="px-4 pt-4 text-center">
-            <h3 className="text-lg font-medium">Add Manta</h3>
+            <h3 className="text-lg font-medium">{proposedNameFlow && name.trim() ? `Add Manta ${name.trim()}` : "Add Manta"}</h3>
             <div className="text-[11px] text-gray-500 mt-1">sighting: {sightingId.slice(0, 8)}</div>
           </div>
 
           <div className="px-4 pb-4">
-            <div className="grid md:grid-cols-12 gap-3">
+            <div className="mt-4 mb-6">
+              <div
+                className="min-h-[200px] sm:min-h-[240px] border-dashed border-2 border-sky-300 rounded-lg bg-sky-50/60 p-6 text-slate-600 flex flex-col items-center justify-center"
+                onDrop={onDrop}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                <div className="text-lg sm:text-xl font-medium text-slate-800 text-center">Drop a manta photo here</div>
+                <div className="my-2">or</div>
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className="px-5 py-2.5 rounded-md bg-sky-700 text-white font-medium hover:bg-sky-800 disabled:opacity-50"
+                  disabled={busy}
+                >
+                  Choose Photo
+                </button>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.heic,.heif"
+                  className="hidden"
+                  onChange={onBrowse}
+                />
+              </div>
+
+              {photos.length === 0 && (
+                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" checked={noPhotos} onChange={(e) => setNoPhotos(e.target.checked)} />
+                  No photos taken (allow save without photos)
+                </label>
+              )}
+            </div>
+
+            <div className={"grid md:grid-cols-12 gap-3 " + (proposedNameFlow ? "text-sm text-slate-500" : "")}>
               <div className="md:col-span-5 col-span-12">
-                <label className="text-sm block mb-1">Temp Name</label>
+                <label htmlFor={`manta-name-${mantaId}`} className="text-sm block mb-1">{proposedNameFlow ? "Proposed Name" : "Temp Name"}</label>
                 <input
                   className="w-full border rounded px-3 py-2"
+                  id={`manta-name-${mantaId}`}
                   value={name}
+                  onBlur={() => setNameTouched(true)}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., A, B, C"
+                  placeholder={proposedNameFlow ? "e.g., A, Kai, Luna" : "e.g., A, B, C"}
                 />
-                {!name.trim() && <div className="text-xs text-red-500 mt-1">Please provide a temporary name</div>}
+                {!name.trim() && (!proposedNameFlow || nameTouched) && <div className="text-xs text-red-500 mt-1">Please provide a temporary name</div>}
               </div>
 
               <div className="md:col-span-2 col-span-12">
@@ -397,39 +438,6 @@ export default function UnifiedMantaModal({
               </div>
             </div>
 
-            <div className="mt-4">
-              <div
-                className="border-dashed border-2 rounded p-4 text-sm text-gray-600 flex flex-col items-center justify-center"
-                onDrop={onDrop}
-                onDragOver={(e) => e.preventDefault()}
-              >
-                <div>Drag &amp; drop photos here</div>
-                <div className="my-2">or</div>
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.click()}
-                  className="px-3 py-1 border rounded"
-                  disabled={busy}
-                >
-                  Browse…
-                </button>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  multiple
-                  accept="image/*,.heic,.heif"
-                  className="hidden"
-                  onChange={onBrowse}
-                />
-              </div>
-
-              {photos.length === 0 && (
-                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" checked={noPhotos} onChange={(e) => setNoPhotos(e.target.checked)} />
-                  No photos taken (allow save without photos)
-                </label>
-              )}
-            </div>
 
             <div className="mt-4 space-y-3">
               {photos.map((p) => {

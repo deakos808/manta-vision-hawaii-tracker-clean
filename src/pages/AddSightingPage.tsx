@@ -17,6 +17,14 @@ function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Mat
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
 
+function mantaLabel(sequence: number): string {
+  let label = "";
+  for (let n = sequence + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+    label = String.fromCharCode(65 + (n - 1) % 26) + label;
+  }
+  return label;
+}
+
 // helpers
 const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (Array.isArray(m?.photos) ? m.photos.length : 0), 0);
 type LocRec = { id: string; name: string; island?: string; latitude?: number|null; longitude?: number|null };
@@ -63,8 +71,16 @@ export default function AddSightingPage() {
 
   // Mantas
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
+  // Advance only on add, never derive identity from the remaining array positions.
+  const [nextMantaSequence, setNextMantaSequence] = useState(0);
   const totalPhotos = useMemo(() => useTotalPhotos(mantas as any), [mantas]);
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(() => {
+    // Decide before review hydration so existing submissions never auto-open.
+    const windowParams = new URLSearchParams(window.location.search);
+    return !((location.state as { reviewId?: string } | null)?.reviewId
+      || searchParams.get("review") || searchParams.get("reviewId")
+      || windowParams.get("review") || windowParams.get("reviewId"));
+  });
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
   // Sighting details
@@ -418,6 +434,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     console.log("[AddSighting][onAddSave] received manta", m);
 
     setAddOpen(false);
+    if (!isReview) setNextMantaSequence(sequence => sequence + 1);
     setMantas(prev => {
       const incomingId = (m as any).id ? String((m as any).id) : "";
       const exists = incomingId && prev.some(p => String(p.id) === incomingId);
@@ -563,12 +580,14 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   onClose={()=>setAddOpen(false)}
   sightingId={formSightingId}
   onSave={onAddSave}
+  automaticName={isReview ? undefined : mantaLabel(nextMantaSequence)}
 />
 <UnifiedMantaModal
   open={!!editingManta}
   onClose={()=>setEditingManta(null)}
   sightingId={formSightingId}
   existingManta={editingManta || undefined}
+  automaticName={isReview ? undefined : editingManta?.name}
   onSave={onEditSave}
 />
 
