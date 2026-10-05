@@ -59,8 +59,13 @@ export default function AddSightingPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const [reviewId, setReviewId] = useState<string | null>(null);
+  const reviewId = (location.state as { reviewId?: string } | null)?.reviewId
+    || searchParams.get("review") || searchParams.get("reviewId") || null;
   const isReview = !!reviewId;
+  const canReview = !access.loading && access.isActive === true && access.role === "admin";
+  const [loadedReviewId, setLoadedReviewId] = useState<string | null>(null);
+  const [reviewLoadError, setReviewLoadError] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   // return path (Admin review queue by default)
   const returnPath = useMemo(() => {
@@ -187,25 +192,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // Hydrate reviewId from state/query/window (robust)
-  useEffect(() => {
-    if (reviewId) return;
-    let rid: string | null = null;
-    try {
-      const stateRid = (location as any)?.state?.reviewId ?? null;
-      const queryRid = searchParams.get("review") || searchParams.get("reviewId");
-      const winRid = (() => {
-        try { const sp = new URLSearchParams(window.location.search); return sp.get("review") || sp.get("reviewId"); }
-        catch { return null; }
-      })();
-      rid = (stateRid as any) || (queryRid as any) || (winRid as any) || null;
-    } catch {}
-    if (rid) { console.info("[AddSighting][review] init rid", rid); setReviewId(String(rid)); }
-  }, [reviewId, location.state, location.search, searchParams]);
-
   // Fetch review payload
   useEffect(() => {
-    if (!reviewId) return;
+    if (!reviewId || !canReview) return;
+    let cancelled = false;
+    setLoadedReviewId(null);
+    setReviewLoadError(false);
     (async () => {
       console.info("[AddSighting][review] fetch start", reviewId);
       try {
@@ -214,7 +206,8 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           .select("id,email,sighting_date,submitted_at,status,payload")
           .eq("id", reviewId)
           .single();
-        if (error || !data) { console.warn("[AddSighting][review] fetch error", error?.message); return; }
+        if (cancelled) return;
+        if (error || !data) { setReviewLoadError(true); return; }
         const anyd: any = data;
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
@@ -247,28 +240,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             biopsy: m.biopsy ?? null,
           })));
         }
-        console.info("[AddSighting][review] hydrated", anyd.email, anyd.sighting_date);
+        setLoadedReviewId(reviewId);
       } catch (e:any) {
-        console.warn("[AddSighting][review] exception", e?.message || e);
+        if (!cancelled) setReviewLoadError(true);
       }
     })();
-  }, [reviewId]);
-
-  // Secondary loaders for reviewId (state/search)
-  useEffect(() => {
-    try {
-      const st = (location as any)?.state as any;
-      const rid = st?.reviewId;
-      if (rid && rid !== reviewId) setReviewId(String(rid));
-    } catch {}
-  }, [location.state]);
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(location.search);
-      const rv = sp.get("review") || sp.get("reviewId");
-      if (rv && rv !== reviewId) setReviewId(rv);
-    } catch {}
-  }, [location.search]);
+    return () => { cancelled = true; };
+  }, [reviewId, canReview]);
 
   // Load islands (distinct from sightings)
   // Load locations for selected island (location_defaults, fallback to sightings)
@@ -506,67 +484,80 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     setEditingManta(null);
   };
 
-  async function handleSaveReview() {
-    if (!reviewId) { window.alert("Not in review mode"); return; }
-    if (needsTimeReview) { window.alert("Review the sighting date and survey times for photos spanning multiple dates."); return; }
-    const payload:any = {
-      date, startTime, stopTime,
-      photographer, email, phone,
-      island, locationId, locationName,
-      latitude: lat, longitude: lng,
-      mantas,
-      methods,
-      standardize_survey: standardizeSurvey,
-      notes
+  function currentReviewPayload() {
+    return {
+      date, startTime, stopTime, photographer, email, phone,
+      island, locationId, locationName, latitude: lat, longitude: lng,
+      mantas, methods, standardize_survey: standardizeSurvey, notes
     };
+  }
+
+  function reviewIsValid() {
+    if (!reviewId || !canReview || loadedReviewId !== reviewId || reviewBusy) return false;
+    if (needsTimeReview) {
+      window.alert("Review the sighting date and survey times for photos spanning multiple dates.");
+      return false;
+    }
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
     if (invalidBiopsy) {
       window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function handleSaveReview() {
+    if (!reviewIsValid()) return;
+    setReviewBusy(true);
     try {
-      await saveReviewServer(reviewId, payload);
+      await saveReviewServer(reviewId, currentReviewPayload());
       window.alert("Saved ✓");
-    } catch (e) {
-      console.error("[SaveReview] failed", e);
-      window.alert("Save failed");
+    } catch {
+      window.alert("Save failed. Review changes were not confirmed saved.");
+    } finally {
+      setReviewBusy(false);
     }
   }
 
-
-  // Review actions
+  // Both approval paths save current reviewed values before invoking the RPC.
   async function handleCommitReview() {
-    if (!reviewId) return;
-    if (needsTimeReview) { window.alert("Review the sighting date and survey times for photos spanning multiple dates."); return; }
+    if (!reviewIsValid()) return;
     if (!window.confirm("Commit this submission to final tables?")) return;
+    setReviewBusy(true);
     try {
-      const commitFunction = hasOrganicBiopsies(mantas)
+      const payload = currentReviewPayload();
+      await saveReviewServer(reviewId, payload);
+      const commitFunction = hasOrganicBiopsies(payload.mantas)
         ? "commit_sighting_submission_with_biopsies"
         : "commit_sighting_submission";
       const { error } = await supabase.rpc(commitFunction, { sub_id: reviewId });
-      if (error) { throw error; }
+      if (error) throw error;
       window.alert("Committed.");
-    } catch (e) {
-      console.warn("[CommitReview] RPC not available or failed; falling back to status update.", (e && (e.message||e)) || e);
-      if (hasOrganicBiopsies(mantas)) {
-        window.alert("Commit failed. No sighting or biopsy was created.");
-        return;
-      }
-      await supabase.from("sighting_submissions")
-        .update({ status: "committed", committed_at: new Date().toISOString() })
-        .eq("id", reviewId);
-      window.alert("Marked committed.");
+      navigate(returnPath);
+    } catch {
+      window.alert("Approval failed. Commit was not confirmed. Review the submission before retrying.");
+    } finally {
+      setReviewBusy(false);
     }
-    navigate(returnPath);
   }
+
   async function handleRejectReview() {
-    if (!reviewId) return;
+    if (!reviewId || !canReview || loadedReviewId !== reviewId || reviewBusy) return;
     if (!window.confirm("Are you sure you want to reject this submission?")) return;
-    await supabase.from("sighting_submissions")
-      .update({ status: "rejected", rejected_at: new Date().toISOString() })
-      .eq("id", reviewId);
-    window.alert("Submission rejected.");
-    navigate(returnPath);
+    setReviewBusy(true);
+    try {
+      const { data, error } = await supabase.from("sighting_submissions")
+        .update({ status: "rejected", rejected_at: new Date().toISOString() })
+        .eq("id", reviewId).eq("status", "pending")
+        .select("id").single();
+      if (error || !data) throw error || new Error("Submission was not updated");
+      window.alert("Submission rejected.");
+      navigate(returnPath);
+    } catch {
+      window.alert("Rejection failed. The submission was not confirmed rejected.");
+    } finally {
+      setReviewBusy(false);
+    }
   }
 
   // MantasList hooks
@@ -582,6 +573,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   };
 
   // UI
+  if (isReview && access.loading) return <Layout><p role="status">Checking administrator access…</p></Layout>;
+  if (isReview && !canReview) return <Layout><p role="alert">Active administrator access is required to review submissions.</p></Layout>;
+  if (isReview && reviewLoadError) return <Layout><p role="alert">Could not load this submission for review.</p></Layout>;
+  if (isReview && loadedReviewId !== reviewId) return <Layout><p role="status">Loading submission…</p></Layout>;
+
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-4 py-3 text-sm">
@@ -843,10 +839,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <div className="flex justify-center mt-6 gap-2">
           {isReview ? (
             <>
-              <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
+              <Button variant="destructive" disabled={reviewBusy} onClick={handleRejectReview}>Reject</Button>
             <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
-            <Button variant="secondary" onClick={handleSaveReview}>Save Changes</Button>
-                        <Button onClick={handleCommitReview}>Commit Review</Button>
+            <Button variant="secondary" disabled={reviewBusy} onClick={handleSaveReview}>Save Changes</Button>
+                        <Button disabled={reviewBusy} onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
             <>

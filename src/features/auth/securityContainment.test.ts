@@ -368,7 +368,7 @@ test("organic biopsy entry uses stable correlation and retires the CSV importer"
   }
 
   assert.match(page, /commit_sighting_submission_with_biopsies/);
-  assert.match(page, /hasOrganicBiopsies\(mantas\)/);
+  assert.match(page, /hasOrganicBiopsies\(payload\.mantas\)/);
   assert.match(list, /allowBiopsyEntry &&/);
   assert.match(list, /Biopsy collected for/);
 

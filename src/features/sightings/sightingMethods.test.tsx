@@ -40,7 +40,9 @@ test("summary hides and restores size and biopsy without mutating scientific dat
 test("both payloads persist methods; review defaults old payloads; toggles only set methods", () => {
   const page = readFileSync(new URL("../../pages/AddSightingPage.tsx", import.meta.url), "utf8");
   const payloads = [...page.matchAll(/const payload(?::any)? = \{([\s\S]*?)\n    \};/g)];
-  assert.equal(payloads.length, 2);
+  assert.equal(payloads.length, 1);
+  const reviewPayload = page.match(/function currentReviewPayload\(\) \{([\s\S]*?)\n  \}/)?.[1] ?? "";
+  assert.match(reviewPayload, /\bmethods\b/);
   for (const [, body] of payloads) assert.match(body, /\bmethods\b/);
   assert.match(page, /setMethods\(readSightingMethods\(p.methods\)\)/);
   assert.match(page, /setMethods\(\(current\) => \(\{ \.\.\.current, \[key\]: checked \}\)\)/);

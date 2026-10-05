@@ -23,18 +23,21 @@ export async function saveReviewServer(reviewId: string, overrides?: any) {
   if (!reviewId) throw new Error("saveReviewServer: missing reviewId");
   const { data, error } = await supabase
     .from("sighting_submissions")
-    .select("payload")
+    .select("payload,sighting_date")
     .eq("id", reviewId)
     .single();
   if (error) throw error;
 
   const existing = (data as any)?.payload ?? {};
   const merged = deepMerge({}, existing, overrides ?? {});
-  const { error: uerr } = await supabase
+  const { data: saved, error: uerr } = await supabase
     .from("sighting_submissions")
-    .update({ payload: merged })
-    .eq("id", reviewId);
-  if (uerr) throw uerr;
+    .update({ payload: merged, sighting_date: merged.date === undefined ? data?.sighting_date : merged.date || null })
+    .eq("id", reviewId)
+    .eq("status", "pending")
+    .select("id")
+    .single();
+  if (uerr || !saved) throw uerr || new Error("Review was not saved");
 
   return merged;
 }
