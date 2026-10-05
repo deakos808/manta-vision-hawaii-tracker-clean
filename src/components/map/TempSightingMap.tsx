@@ -4,6 +4,10 @@ import "leaflet/dist/leaflet.css";
 import type { Map as MLMap, Marker as MLMarker } from "maplibre-gl";
 import type * as LeafletNS from "leaflet";
 
+// Public cached imagery; attribution follows the service's copyrightText.
+const IMAGERY_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const IMAGERY_ATTRIBUTION = 'Source: <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer" target="_blank" rel="noopener noreferrer">Esri, Vantor, Earthstar Geographics, and the GIS User Community</a>';
+
 type Props = { lat?: number; lon?: number; onPick?: (lat:number, lon:number)=>void; };
 
 export default function TempSightingMap({ lat, lon, onPick }: Props) {
@@ -14,7 +18,6 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
   const mlMarker = useRef<MLMarker | null>(null);
 
   // Leaflet state
-  const Lref = useRef<typeof LeafletNS | null>(null);
   const lfMap = useRef<LeafletNS.Map | null>(null);
   const lfMarker = useRef<LeafletNS.Marker | null>(null);
 
@@ -34,24 +37,40 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
       // Try MapLibre first
       try {
         const maplibregl = (await import("maplibre-gl")).default;
+        if (cancelled || !divRef.current) return;
         const map = new maplibregl.Map({
           container: divRef.current,
-          style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+          style: {
+            version: 8,
+            sources: { imagery: { type: "raster", tiles: [IMAGERY_TILES], tileSize: 256, maxzoom: 19, attribution: IMAGERY_ATTRIBUTION } },
+            layers: [{ id: "imagery", type: "raster", source: "imagery" }],
+          },
           center: center(),
           zoom: (typeof lon === "number" && typeof lat === "number") ? 9 : 5,
-          attributionControl: true,
-          failIfMajorPerformanceCaveat: false
+          attributionControl: { compact: false },
+          canvasContextAttributes: { failIfMajorPerformanceCaveat: false }
         });
+        mlMap.current = map;
+        map.getCanvas().style.cursor = "crosshair";
+        const makeMarker = (lat: number, lng: number) => {
+          const marker = new maplibregl.Marker({ color: "#1d4ed8", draggable: true }).setLngLat([lng, lat]).addTo(map);
+          marker.on("drag", () => {
+            const point = marker.getLngLat().wrap();
+            setHasPick(true);
+            onPick?.(point.lat, point.lng);
+          });
+          return marker;
+        };
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
         if (typeof lon === "number" && typeof lat === "number") {
-          mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lon, lat]).addTo(map);
+          mlMarker.current = makeMarker(lat, lon);
         }
 
         map.on("click", (e:any) => {
-          const { lng, lat } = e.lngLat;
+          const { lng, lat } = e.lngLat.wrap();
           if (!mlMarker.current) {
-            mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lng, lat]).addTo(map);
+            mlMarker.current = makeMarker(lat, lng);
           } else {
             mlMarker.current.setLngLat([lng, lat]);
           }
@@ -64,13 +83,16 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         return;
       } catch (err:any) {
         if (cancelled) return;
+        try { mlMap.current?.remove(); } catch {}
+        mlMap.current = null;
+        mlMarker.current = null;
         setErrMsg(err?.message || "MapLibre init failed; falling back to Leaflet.");
       }
 
       // Leaflet fallback
       try {
         const L = await import("leaflet");
-        Lref.current = L as unknown as typeof LeafletNS;
+        if (cancelled || !divRef.current) return;
 
         // Fix default marker icons in Vite
         // @ts-ignore
@@ -82,29 +104,29 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         });
 
         const map = L.map(divRef.current!).setView([center()[1], center()[0]], (typeof lon==="number"&&typeof lat==="number")? 9 : 5);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap contributors",
+        L.tileLayer(IMAGERY_TILES, {
+          attribution: IMAGERY_ATTRIBUTION,
           maxZoom: 19
         }).addTo(map);
 
-        // crosshair until first pick
-        (map.getContainer() as HTMLElement).style.cursor = hasPick ? "grab" : "crosshair";
+        // Keep the selection cue even after placing a pin.
+        (map.getContainer() as HTMLElement).style.cursor = "crosshair";
 
         if (typeof lon === "number" && typeof lat === "number") {
           lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(map);
-          lfMarker.current.on("dragend", () => {
-            const ll = (lfMarker.current as any).getLatLng();
+          lfMarker.current.on("drag", () => {
+            const ll = (lfMarker.current as any).getLatLng().wrap();
             setHasPick(true);
             onPick?.(ll.lat, ll.lng);
           });
         }
 
         map.on("click", (e:any) => {
-          const { lat, lng } = e.latlng;
+          const { lat, lng } = e.latlng.wrap();
           if (!lfMarker.current) {
             lfMarker.current = L.marker([lat, lng], { draggable: true }).addTo(map);
-            lfMarker.current.on("dragend", () => {
-              const ll = (lfMarker.current as any).getLatLng();
+            lfMarker.current.on("drag", () => {
+              const ll = (lfMarker.current as any).getLatLng().wrap();
               setHasPick(true);
               onPick?.(ll.lat, ll.lng);
             });
@@ -132,50 +154,21 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
       try { lfMap.current?.remove(); } catch {}
       mlMap.current = null;
       lfMap.current = null;
+      mlMarker.current = null;
+      lfMarker.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Prop updates -> move marker / fly map
-  useEffect(() => {
-    // MapLibre update
-    if (mlMap.current && typeof lon === "number" && typeof lat === "number") {
-      import("maplibre-gl").then(({ default: maplibregl }) => {
-        if (!mlMarker.current) {
-          mlMarker.current = new maplibregl.Marker({ color: "#1d4ed8" }).setLngLat([lon, lat]).addTo(mlMap.current!);
-        } else {
-          mlMarker.current.setLngLat([lon, lat]);
-        }
-        mlMap.current!.easeTo({ center: [lon, lat], essential: true });
-      });
-      setHasPick(true);
-    }
-    // Leaflet update
-    if (lfMap.current && typeof lon === "number" && typeof lat === "number") {
-      const L = Lref.current!;
-      if (!lfMarker.current) {
-        lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(lfMap.current!);
-        lfMarker.current.on("dragend", () => {
-          const ll = (lfMarker.current as any).getLatLng();
-          setHasPick(true);
-          onPick?.(ll.lat, ll.lng);
-        });
-      } else {
-        (lfMarker.current as any).setLatLng([lat, lon]);
-      }
-      lfMap.current!.panTo([lat, lon]);
-      setHasPick(true);
-    }
-  }, [lat, lon, onPick]);
+  // The containing modal supplies an opening snapshot; clicks/drags move the
+  // marker directly without panning/reinitializing the map on every draft update.
 
   return (
     <div className="relative w-full h-64 rounded border overflow-hidden">
-      <div ref={divRef} className="w-full h-full" />
-      {!hasPick && (
-        <div className="pointer-events-none absolute top-2 left-2 bg-white/85 px-2 py-1 rounded border text-xs text-gray-700">
-          Click map to drop pin
-        </div>
-      )}
+      <div ref={divRef} className="w-full h-full" style={{ cursor: "crosshair" }} />
+      <div className="pointer-events-none absolute top-2 left-2 bg-white/85 px-2 py-1 rounded border text-xs text-gray-700">
+          {hasPick ? "Click map or drag pin to adjust" : "Click map to drop pin"}
+      </div>
       {errMsg && (
         <div className="pointer-events-none absolute bottom-2 left-2 text-xs bg-white/80 px-2 py-1 rounded border text-gray-600">
           {usingLeaflet ? "Leaflet fallback active" : errMsg}

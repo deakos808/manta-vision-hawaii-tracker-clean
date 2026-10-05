@@ -9,7 +9,8 @@ import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedM
 import { readSightingMethods } from "@/features/sightings/sightingMethods";
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
-import TempSightingMap from "@/components/map/TempSightingMap";
+import LocationPickerModal from "@/components/map/LocationPickerModal";
+import { initialLocationPoint, formatLocationPoint, locationPoint } from "@/components/map/locationSelection";
 import { saveReviewServer } from "@/utils/reviewSave";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useUserAccess } from "@/hooks/useUserAccess";
@@ -149,6 +150,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
   const [coordSource, setCoordSource] = useState<string>("");
+  const [savedMapPoint, setSavedMapPoint] = useState<{ lat: string; lng: string } | null>(null);
+  useEffect(() => {
+    setSavedMapPoint((saved) => saved && (saved.lat !== lat || saved.lng !== lng || coordSource !== "map picker") ? null : saved);
+  }, [lat, lng, coordSource]);
+
 
   const [confirmExifOpen, setConfirmExifOpen] = useState(false);
   const [exifSuggestion, setExifSuggestion] = useState<ExifSuggestion | null>(null);
@@ -404,7 +410,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     };
     if (rec && rec.latitude != null && rec.longitude != null) { apply(Number(rec.latitude), Number(rec.longitude), "location defaults"); return; }
     if (!island || !displayName) return;
-    fetchEarliestCoords(island, displayName).then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
+    let cancelled = false;
+    fetchEarliestCoords(island, displayName).then((res)=>{ if(!cancelled && res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
+    return () => { cancelled = true; };
   },[locationId, locList, island]);
 
   // Submit (user mode)
@@ -709,11 +717,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     {/* Location select + small link underneath */}
     <div className="space-y-1">
   <select
-    value={locationId}
+    value={!locationId && !locationName && locationPoint(lat, lng) ? "__custom_coordinates__" : locationId}
     onChange={(e)=>setLocationId(e.target.value)}
     className="border rounded px-3 py-2"
   >
     <option value="">{island ? 'Select location' : 'Select island first'}</option>
+    {!locationId && !locationName && locationPoint(lat, lng) && <option value="__custom_coordinates__" disabled>Custom</option>}
     {locList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
   </select>
   {!addingLoc ? (
@@ -777,6 +786,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   </div>
 
   <div className="text-xs text-slate-500">coords source: {coordSource || "—"}</div>
+  {savedMapPoint && <div role="status" className="text-xs text-emerald-700">✓ Location saved from map</div>}
   <button
     type="button"
     className="px-3 py-2 border rounded"
@@ -869,19 +879,23 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         }}
       />
 
-      {/* Map modal */}
+      {/* Map modal: only Save commits the draft coordinates. */}
       {mapOpen && (
-        <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
-          <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
-            <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
-            <h3 className="text-lg font-medium mb-3">Pick Location</h3>
-            <TempSightingMap
-              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
-              lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
-              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); setCoordSource("map pick"); }}
-            />
-          </div>
-        </div>
+        <LocationPickerModal
+          initialPoint={initialLocationPoint(lat, lng, locList.find((location) => location.id === locationId || location.name === locationId))}
+          onCancel={() => setMapOpen(false)}
+          initialLocation={{ locationId, locationName, coordSource }}
+          onSave={(point, names) => {
+            setLocationId(names.locationId);
+            setLocationName(names.locationName);
+            const saved = formatLocationPoint(point);
+            setLat(saved.lat);
+            setLng(saved.lng);
+            setCoordSource("map picker");
+            setSavedMapPoint(saved);
+            setMapOpen(false);
+          }}
+        />
       )}
 
       <Dialog
