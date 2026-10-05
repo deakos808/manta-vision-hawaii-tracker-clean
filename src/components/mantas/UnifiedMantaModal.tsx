@@ -45,6 +45,7 @@ export type MantaDraft = {
 
 type Props = {
   open: boolean;
+  showSize: boolean;
   onClose: () => void;
   sightingId: string;
   onSave: (m: MantaDraft) => void;
@@ -83,6 +84,7 @@ function formatExifTime(value: unknown): string | undefined {
 
 export default function UnifiedMantaModal({
   open,
+  showSize,
   onClose,
   sightingId,
   onSave,
@@ -424,7 +426,7 @@ export default function UnifiedMantaModal({
                 </select>
               </div>
 
-              <div className="md:col-span-2 col-span-12">
+              {showSize && <div className="md:col-span-2 col-span-12">
                 <label className="text-sm block mb-1">Mean Size (m)</label>
                 <input
                   type="number"
@@ -433,7 +435,7 @@ export default function UnifiedMantaModal({
                   onChange={(e) => setSize(e.target.value || null)}
                   placeholder="m"
                 />
-              </div>
+              </div>}
             </div>
 
 
@@ -501,7 +503,7 @@ export default function UnifiedMantaModal({
                           Best dorsal
                         </label>
 
-                        {p.measure && (
+                        {showSize && p.measure && (
                           <div className="text-xs text-slate-600 mt-1">
                             <div className="text-[12px] text-slate-700">
                               DL: {((p.measure?.dlCm ?? 0) / 100).toFixed(2)} m · DW: {((p.measure?.dwCm ?? 0) / 100).toFixed(2)} m
@@ -519,14 +521,14 @@ export default function UnifiedMantaModal({
                         title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"}
                         onClick={() => void editCrop(p)}
                       >Edit Crop</button>
-                      <button
+                      {showSize && <button
                         type="button"
                         className="px-2 py-1 rounded bg-sky-600 text-white"
                         disabled={intakeActive}
                         onClick={() => setMeasureOpen(p)}
                       >
                         Size
-                      </button>
+                      </button>}
                       <button type="button" className="text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
                     </div>
                   </div>
@@ -574,7 +576,7 @@ export default function UnifiedMantaModal({
         />
       )}
 
-      {measureOpen && (
+      {showSize && measureOpen && (
         <MeasureModal
           open={true}
           src={measureOpen.previewUrl || measureOpen.url}

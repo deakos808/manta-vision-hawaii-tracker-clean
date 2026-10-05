@@ -25,6 +25,7 @@ type Props = {
   sightingDate: string;
   allowBiopsyEntry: boolean;
   allowMatching: boolean;
+  showSize: boolean;
 };
 
 const TILE_W=128;
@@ -75,10 +76,13 @@ export default function MantasList({
   sightingDate,
   allowBiopsyEntry,
   allowMatching,
+  showSize,
 }: Props){
   // compact grid that fits inside the card with no horizontal scroll in normal widths
   // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
-  const GRID="grid grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3";
+  const GRID = showSize
+    ? "grid grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3"
+    : "grid grid-cols-[128px_128px_64px_120px_100px_120px_84px] items-center gap-3";
   const TH="text-[12px] font-medium text-slate-600 whitespace-nowrap text-center leading-tight";
   const TD = "text-[13px] text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis text-center";
 
@@ -92,7 +96,7 @@ export default function MantasList({
         <div className={TH}>Temp Name</div>
         <div className={TH}>Gender</div>
         <div className={TH}>Age Class</div>
-        <div className={TH}>Size (m)</div>
+        {showSize && <div className={TH}>Size (m)</div>}
         <div className={TH}>Actions</div>
       </div>
 
@@ -177,7 +181,7 @@ export default function MantasList({
               <div className={TD}>{tempName(m)}</div>
               <div className={TD}>{m?.gender || "—"}</div>
               <div className={TD}>{m?.ageClass || "—"}</div>
-              <div className={TD}>{fmtMeters(m?.size)}</div>
+              {showSize && <div className={TD}>{fmtMeters(m?.size)}</div>}
 
               {/* Actions inside column */}
               <div className="flex items-center gap-3">

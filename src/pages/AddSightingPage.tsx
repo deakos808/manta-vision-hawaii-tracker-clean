@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import { readSightingMethods } from "@/features/sightings/sightingMethods";
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
 import TempSightingMap from "@/components/map/TempSightingMap";
@@ -16,6 +18,11 @@ import { hasOrganicBiopsies, validateOrganicBiopsy } from "@/features/biopsies/o
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
 const TIME_OPTIONS = buildTimes(5);
+const METHOD_OPTIONS = [
+  ["pairedLaser", "Paired-laser photogrammetry", "Paired laser"],
+  ["biopsySampling", "Biopsy sampling", "Biopsy"],
+  ["tagDeployment", "Tag deployment", "Tag deployment"],
+] as const;
 
 function mantaLabel(sequence: number): string {
   let label = "";
@@ -69,6 +76,8 @@ export default function AddSightingPage() {
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
   const [pageMatchFor, setPageMatchFor] = useState<string | null>(null);
 
+  const [methods, setMethods] = useState(() => readSightingMethods());
+
   // Mantas
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
   // Advance only on add, never derive identity from the remaining array positions.
@@ -81,6 +90,10 @@ export default function AddSightingPage() {
       || searchParams.get("review") || searchParams.get("reviewId")
       || windowParams.get("review") || windowParams.get("reviewId"));
   });
+  // addOpen's initial value already excludes every supported review entry route.
+  const [methodsConfirmed, setMethodsConfirmed] = useState(() => !addOpen);
+  const [editMethodsOpen, setEditMethodsOpen] = useState(false);
+  const methodsDialogOpen = editMethodsOpen || (addOpen && !methodsConfirmed && !isReview);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
   // Sighting details
@@ -181,6 +194,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
         const p = (anyd.payload || {}) as any;
+        setMethods(readSightingMethods(p.methods));
         if (p.startTime) setStartTime(String(p.startTime));
         if (p.stopTime) setStopTime(String(p.stopTime));
         if (p.locationId) setLocationId(String(p.locationId));
@@ -407,7 +421,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       date, startTime, stopTime, photographer, email, phone,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
-      mantas
+      mantas, methods
     };
 
     try {
@@ -501,6 +515,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       island, locationId, locationName,
       latitude: lat, longitude: lng,
       mantas,
+      methods,
       notes
     };
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
@@ -576,6 +591,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
 <UnifiedMantaModal
+  showSize={methods.pairedLaser}
   open={addOpen}
   onClose={()=>setAddOpen(false)}
   sightingId={formSightingId}
@@ -583,6 +599,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   automaticName={isReview ? undefined : mantaLabel(nextMantaSequence)}
 />
 <UnifiedMantaModal
+  showSize={methods.pairedLaser}
   open={!!editingManta}
   onClose={()=>setEditingManta(null)}
   sightingId={formSightingId}
@@ -591,6 +608,41 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   onSave={onEditSave}
 />
 
+<Dialog open={methodsDialogOpen} onOpenChange={(open) => {
+  // Initial setup requires Continue, including when no methods are selected.
+  if (methodsConfirmed) setEditMethodsOpen(open);
+}}>
+  <DialogPrimitive.Portal>
+    <DialogPrimitive.Overlay className="fixed inset-0 z-[300001] bg-black/30" />
+    <DialogPrimitive.Content
+      className="fixed left-1/2 top-1/2 z-[300002] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
+      aria-describedby={undefined}
+      onEscapeKeyDown={(event) => { if (!methodsConfirmed) event.preventDefault(); }}
+      onPointerDownOutside={(event) => event.preventDefault()}
+    >
+      <DialogTitle>Methods used during this sighting</DialogTitle>
+      <div className="my-5 space-y-3 text-sm">
+        {METHOD_OPTIONS.map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={methods[key]}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setMethods((current) => ({ ...current, [key]: checked }));
+              }}
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      <Button type="button" className="w-full" onClick={() => {
+        setMethodsConfirmed(true);
+        setEditMethodsOpen(false);
+      }}>Continue</Button>
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+</Dialog>
 
 {isReview && (
   <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm" data-clean-id="review-crumb">
@@ -622,6 +674,15 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             </select>
           </CardContent>
         </Card>
+
+        {methodsConfirmed && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>Methods: {METHOD_OPTIONS.filter(([key]) => methods[key]).map(([, , label]) => label).join(", ") || "None"}</span>
+            <button type="button" className="text-sky-700 underline" onClick={() => setEditMethodsOpen(true)}>
+              Edit Methods
+            </button>
+          </div>
+        )}
 
         {/* Photographer & Contact */}
         <Card>
@@ -739,6 +800,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
           <CardContent>
             <MantasList
+              showSize={methods.pairedLaser}
               mantas={mantas}
               setMantas={setMantas}
               onEdit={onEdit}
@@ -746,7 +808,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               openMatch={openMatch}
               totalPhotosAll={totalPhotosAll}
               sightingDate={date}
-              allowBiopsyEntry={access.isActive === true && (access.role === "user" || access.role === "admin")}
+              allowBiopsyEntry={methods.biopsySampling && access.isActive === true && (access.role === "user" || access.role === "admin")}
               allowMatching={allowMatching}
             />
             <div className="mt-3">
