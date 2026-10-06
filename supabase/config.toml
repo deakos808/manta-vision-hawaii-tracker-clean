@@ -92,3 +92,6 @@ verify_jwt = false
 [functions.embeddings-sighting]
 enabled = false
 verify_jwt = false
+
+[functions.notify-admin]
+verify_jwt = true

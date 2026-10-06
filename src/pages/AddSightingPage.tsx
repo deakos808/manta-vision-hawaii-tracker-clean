@@ -1,3 +1,4 @@
+import { notifySubmission } from "@/features/sightings/submissionNotification";
 import { getSubmissionIssues, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
 import React, { useEffect, useMemo, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -433,20 +434,25 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       mantas, methods, standardize_survey: standardizeSurvey
     };
 
+    let submissionId: string | undefined;
     try {
-      const { error } = await supabase.from("sighting_submissions").insert({
+      const { data, error } = await supabase.from("sighting_submissions").insert({
         email: email || null,
         sighting_date: date || null,
         manta_count: mantas.length,
         photo_count: totalPhotos,
         payload,
         status: "pending"
-      });
+      }).select("id").single();
       if (error) throw error;
+      submissionId = data?.id;
     } catch (error: unknown) {
       window.alert(error instanceof Error ? error.message : "Sighting submission failed.");
       return;
     }
+
+    if (submissionId) await notifySubmission(submissionId);
+    else console.warn("Admin notification skipped: saved submission ID unavailable.");
 
     setSuccessMessage(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
     setSuccessOpen(true);
