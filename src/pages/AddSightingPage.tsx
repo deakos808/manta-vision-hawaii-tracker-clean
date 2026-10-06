@@ -431,7 +431,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       location_unknown: locationUnknown,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
-      mantas, methods, standardize_survey: standardizeSurvey
+      mantas, methods, standardize_survey: standardizeSurvey, notes
     };
 
     let submissionId: string | undefined;
