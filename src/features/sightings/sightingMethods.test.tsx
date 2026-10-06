@@ -73,7 +73,7 @@ test("setup confirmation is local, once per new sighting, with review excluded",
   assert.ok(page.includes("setMethodsConfirmed(true)"));
   const payloads = [...page.matchAll(/const payload(?::any)? = \{([\s\S]*?)\n    \};/g)];
   for (const [, body] of payloads) assert.doesNotMatch(body, /methodsConfirmed|editMethodsOpen/);
-  assert.doesNotMatch(page, /<fieldset/);
+  assert.doesNotMatch(page, /<fieldset[^>]*>[\s\S]*?<legend[^>]*>Methods/);
   assert.ok(page.includes("onClick={() => setEditMethodsOpen(true)}"));
 });
 

@@ -1,3 +1,4 @@
+import { getSubmissionIssues, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
 import React, { useEffect, useMemo, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
@@ -129,8 +130,6 @@ export default function AddSightingPage() {
   // Contact
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
-  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
-  const dateValid  = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState<string>("");
 
@@ -173,6 +172,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
+  const [locationUnknown, setLocationUnknown] = useState(false);
+  const submissionIssues = getSubmissionIssues({ date, email, startTime, stopTime, standardizeSurvey, needsTimeReview, locationUnknown, locationId, locationName, latitude: lat, longitude: lng });
+  const emailValid = !submissionIssues.some(issue => issue.field === "email");
+  const showFieldIssue = (field: SubmissionField) => !isReview
+    && submissionIssues.some(issue => issue.field === field);
   const [coordSource, setCoordSource] = useState<string>("");
   const [savedMapPoint, setSavedMapPoint] = useState<{ lat: string; lng: string } | null>(null);
   useEffect(() => {
@@ -218,6 +222,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         setTimeChoiceMade(true);
         if (p.startTime) setStartTime(String(p.startTime));
         if (p.stopTime) setStopTime(String(p.stopTime));
+        setLocationUnknown(p.location_unknown ?? false);
         if (p.locationId) setLocationId(String(p.locationId));
         if (p.locationName) setLocationName(String(p.locationName));
         if (p.notes) setNotes(p.notes);
@@ -413,8 +418,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // Submit (user mode)
   const handleSubmit = async () => {
-    if (!dateValid || needsTimeReview) return;
-    if (!emailValid) return;
+    if (submissionIssues.length > 0) return;
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
     if (invalidBiopsy) {
       window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
@@ -423,6 +427,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
     const payload = {
       date, startTime, stopTime, photographer, email, phone,
+      location_unknown: locationUnknown,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
       mantas, methods, standardize_survey: standardizeSurvey
@@ -487,6 +492,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   function currentReviewPayload() {
     return {
       date, startTime, stopTime, photographer, email, phone,
+      location_unknown: locationUnknown,
       island, locationId, locationName, latitude: lat, longitude: lng,
       mantas, methods, standardize_survey: standardizeSurvey, notes
     };
@@ -670,15 +676,30 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <Card>
           <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-3">
-            <input aria-label="Sighting Date" type="date" value={date} onChange={(e)=>editTime("date", e.target.value)} className="border rounded px-3 py-2" />
-            <label className="text-sm">Start Time<input aria-label="Start Time" type="time" step="1" value={startTime} onChange={(e)=>editTime("start", e.target.value)} className="block w-full border rounded px-3 py-2" /></label>
-            <label className="text-sm">Stop Time<input aria-label="Stop Time" type="time" step="1" value={stopTime} onChange={(e)=>editTime("stop", e.target.value)} className="block w-full border rounded px-3 py-2" /></label>
+            <div>
+              <input aria-label="Sighting Date" type="date" value={date} onChange={(e)=>editTime("date", e.target.value)}
+                aria-invalid={showFieldIssue("date")} aria-describedby={showFieldIssue("date") ? "date-required" : undefined}
+                className={"w-full border rounded px-3 py-2 " + (showFieldIssue("date") ? "border-red-500" : "")} />
+              {showFieldIssue("date") && <div id="date-required" className="text-xs text-red-600 mt-1">Sighting date is required.</div>}
+            </div>
+            <label className="text-sm">Start Time{!isReview && standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+              <input aria-label="Start Time" type="time" step="1" value={startTime} onChange={(e)=>editTime("start", e.target.value)}
+                aria-invalid={showFieldIssue("startTime")} aria-describedby={showFieldIssue("startTime") ? "start-required" : undefined}
+                className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("startTime") ? "border-red-500" : "")} />
+              {showFieldIssue("startTime") && <span id="start-required" className="text-xs text-red-600">Start time is required.</span>}
+            </label>
+            <label className="text-sm">Stop Time{!isReview && standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+              <input aria-label="Stop Time" type="time" step="1" value={stopTime} onChange={(e)=>editTime("stop", e.target.value)}
+                aria-invalid={showFieldIssue("stopTime")} aria-describedby={showFieldIssue("stopTime") ? "stop-required" : undefined}
+                className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("stopTime") ? "border-red-500" : "")} />
+              {showFieldIssue("stopTime") && <span id="stop-required" className="text-xs text-red-600">Stop time is required.</span>}
+            </label>
             <div className="md:col-span-3 text-xs text-slate-600 space-y-1">
               <div>{standardizeSurvey === "Yes" ? "Systematic survey — actual survey effort times" : standardizeSurvey === "No" ? (timesManuallyEdited ? "Opportunistic sighting — manually adjusted times" : "Opportunistic sighting — times from photo metadata") : "Survey type not specified"}</div>
               {photoBounds && <div>Photo timestamps: {photoBounds.first.replace("T", " ")} – {photoBounds.last.replace("T", " ")}</div>}
               {photoBounds?.multipleDates && (
                 <div role="status" className="text-amber-800">
-                  Photos span multiple dates. Review the sighting date, Start Time, and Stop Time manually.
+                  {MULTI_DATE_REVIEW_MESSAGE}
                   {needsTimeReview && <button type="button" className="ml-2 underline disabled:opacity-50"
                     disabled={!date || !startTime || !stopTime}
                     onClick={() => { retainEffort(); setReviewedPhotoDates(multiDateKey); }}>
@@ -705,16 +726,27 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-3">
             <input placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className="border rounded px-3 py-2" />
-            <input id="contact-email-field" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className={"border rounded px-3 py-2 " + (email && !emailValid ? "border-red-500" : "")} />
+            <div>
+              <input id="contact-email-field" aria-label="Email" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)}
+                aria-invalid={showFieldIssue("email")} aria-describedby={showFieldIssue("email") ? "email-required" : undefined}
+                className={"w-full border rounded px-3 py-2 " + ((isReview ? email && !emailValid : showFieldIssue("email")) ? "border-red-500" : "")} />
+              {showFieldIssue("email") && <div id="email-required" className="text-xs text-red-600 mt-1">Enter a valid email address.</div>}
+            </div>
             <input placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} className="border rounded px-3 py-2" />
-            {!emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
+            {isReview && !emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
           </CardContent>
         </Card>
 
         {/* Location */}
-        <Card>
+        <Card className={showFieldIssue("location") ? "border-red-500" : ""}>
           <CardHeader><CardTitle>Location</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={locationUnknown} onChange={(e) => setLocationUnknown(e.target.checked)} />
+              Location unknown
+            </label>
+            <fieldset disabled={locationUnknown} className="space-y-3 disabled:opacity-50" aria-describedby={showFieldIssue("location") ? "location-required" : undefined}>
+
   <div className="grid md:grid-cols-2 gap-3">
     {/* Island select */}
     <select value={island} onChange={(e)=>setIsland(e.target.value)} className="border rounded px-3 py-2">
@@ -802,6 +834,8 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   >
     Use Map for Location
   </button>
+            </fieldset>
+            {showFieldIssue("location") && <div id="location-required" className="text-xs text-red-600">Select a location, choose a point on the map, or check “Location unknown.”</div>}
 </CardContent>
         </Card>
 
@@ -836,6 +870,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         </Card>
 
         {/* Footer buttons */}
+        {!isReview && submissionIssues.length > 0 && (
+          <div id="submission-issues" role="status" className="text-sm text-slate-600 text-center">
+            <span className="font-medium">Still needed:</span>{" "}
+            {submissionIssues.map(issue => issue.message).join(" · ")}
+          </div>
+        )}
         <div className="flex justify-center mt-6 gap-2">
           {isReview ? (
             <>
@@ -847,7 +887,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           ) : (
             <>
               <Button variant="outline" onClick={() => navigate("/dashboard")}>Cancel</Button>
-              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid || needsTimeReview}>
+              <Button data-clean-id="submit-sighting" onClick={handleSubmit} aria-describedby={submissionIssues.length ? "submission-issues" : undefined} disabled={submissionIssues.length > 0}>
                 Submit Sighting
               </Button>
             </>

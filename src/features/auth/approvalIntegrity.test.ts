@@ -20,7 +20,7 @@ function harness(options: Record<string, any> = {}) {
     needsTimeReview: false, mantas: [{ id: 'stable-manta', name: 'Kai', photos: [{ id: 'photo', originalPath: 'original' }] }],
     date: '2026-10-05', startTime: '10:00:01', stopTime: '11:00:02', photographer: 'Researcher',
     email: 'test@example.invalid', phone: '', island: 'Hawaii', locationId: '1', locationName: 'Site',
-    lat: '19', lng: '-156', methods: { tagDeployment: true }, standardizeSurvey: 'Yes', notes: 'current notes',
+    locationUnknown: false, lat: '19', lng: '-156', methods: { tagDeployment: true }, standardizeSurvey: 'Yes', notes: 'current notes',
     returnPath: '/admin/review',
     window: { confirm: () => true, alert: (s: string) => alerts.push(s) },
     setReviewBusy: (value: boolean) => { context.reviewBusy = value; },
@@ -51,7 +51,7 @@ for (const biopsies of [false, true]) {
     assert.equal(h.saved().notes, 'current notes');
     assert.equal(h.saved().mantas[0].photos[0].originalPath, 'original');
     assert.equal(h.saved().standardize_survey, 'Yes');
-    assert.deepEqual(Object.keys(h.saved()).sort(), ['date','startTime','stopTime','photographer','email','phone','island','locationId','locationName','latitude','longitude','mantas','methods','standardize_survey','notes'].sort());
+    assert.deepEqual(Object.keys(h.saved()).sort(), ['date','startTime','stopTime','photographer','email','phone','island','locationId','locationName','latitude','longitude','location_unknown','mantas','methods','standardize_survey','notes'].sort());
   });
 }
 test('save failure prevents approval RPC and navigation', async () => {
@@ -111,4 +111,12 @@ test('review save atomically updates payload/date and rejects zero-row writes', 
     assert.equal(written.payload.date, '2026-10-05'); assert.equal(written.sighting_date, '2026-10-05');
     assert.equal(written.payload.preserved, true); assert.ok(filters.some(([k,v]) => k === 'status' && v === 'pending'));
   }
+});
+
+test('review save retains explicit unknown location', async () => {
+  const h = harness({ state: { locationUnknown: true } });
+  await h.context.handleSaveReview();
+  assert.equal(h.saved().location_unknown, true);
+  assert.equal(h.saved().latitude, '19');
+  assert.equal(h.saved().locationName, 'Site');
 });
