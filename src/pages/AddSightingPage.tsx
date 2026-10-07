@@ -1,6 +1,6 @@
 import { notifySubmission } from "@/features/sightings/submissionNotification";
 import { getSubmissionIssues, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -178,6 +178,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const emailValid = !submissionIssues.some(issue => issue.field === "email");
   const showFieldIssue = (field: SubmissionField) => !isReview
     && submissionIssues.some(issue => issue.field === field);
+  const preserveLocationCoordinates = useRef(isReview);
   const [coordSource, setCoordSource] = useState<string>("");
   const [savedMapPoint, setSavedMapPoint] = useState<{ lat: string; lng: string } | null>(null);
   useEffect(() => {
@@ -217,6 +218,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
         const p = (anyd.payload || {}) as any;
+        preserveLocationCoordinates.current = true;
         setMethods(readSightingMethods(p.methods));
         setStandardizeSurvey(readSurveyType(p.standardize_survey));
         setTimesManuallyEdited(true); // Preserve hydrated review values until explicitly changed.
@@ -400,11 +402,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // On location change, autofill coords
   useEffect(()=>{
-    if(!locationId) return;
+    if(preserveLocationCoordinates.current || !locationId) return;
     const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
     const displayName = rec?.name ?? locationName ?? locationId;
     if (rec && rec.name) setLocationName(rec.name);
     const apply = (la:number, lo:number, src?:string) => {
+      if (preserveLocationCoordinates.current) return;
+      if (isReview) preserveLocationCoordinates.current = true;
       setLat(String(Number(la).toFixed(5)));
       setLng(String(Number(lo).toFixed(5)));
       if (src) setCoordSource(src);
@@ -415,7 +419,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     let cancelled = false;
     fetchEarliestCoords(island, displayName).then((res)=>{ if(!cancelled && res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
     return () => { cancelled = true; };
-  },[locationId, locList, island]);
+  },[locationId, locList, island, isReview]);
 
   // Submit (user mode)
   const handleSubmit = async () => {
@@ -764,7 +768,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     <div className="space-y-1">
   <select
     value={!locationId && !locationName && locationPoint(lat, lng) ? "__custom_coordinates__" : locationId}
-    onChange={(e)=>setLocationId(e.target.value)}
+    onChange={(e)=>{ preserveLocationCoordinates.current = false; setLocationId(e.target.value); }}
     className="border rounded px-3 py-2"
   >
     <option value="">{island ? 'Select location' : 'Select island first'}</option>
@@ -964,6 +968,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           onCancel={() => setMapOpen(false)}
           initialLocation={{ locationId, locationName, coordSource }}
           onSave={(point, names) => {
+            preserveLocationCoordinates.current = true;
             setLocationId(names.locationId);
             setLocationName(names.locationName);
             const saved = formatLocationPoint(point);

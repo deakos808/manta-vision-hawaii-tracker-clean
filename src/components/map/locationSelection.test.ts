@@ -85,7 +85,7 @@ test("Custom is a display-only option; save retains island and named choices sti
   assert.ok(page.includes("setLocationName(names.locationName)"));
   const save = page.slice(page.indexOf("onSave={(point, names)"), page.indexOf("<Dialog", page.indexOf("onSave={(point, names)")));
   assert.doesNotMatch(save, /setIsland|insert|update/);
-  assert.match(page, /onChange=\{\(e\)=>setLocationId\(e.target.value\)\}/);
-  assert.match(page, /if\(!locationId\) return/);
+  assert.match(page, /onChange=\{\(e\)=>\{ preserveLocationCoordinates.current = false; setLocationId\(e.target.value\); \}\}/);
+  assert.match(page, /if\(preserveLocationCoordinates.current \|\| !locationId\) return/);
   assert.match(page, /if\(!cancelled && res\)/);
 });

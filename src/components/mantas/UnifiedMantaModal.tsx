@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
@@ -121,7 +121,9 @@ export default function UnifiedMantaModal({
     setSize(existingManta?.size ?? null);
     setPhotos(existingManta?.photos ?? []);
     setPotentialCatalogId(existingManta?.potentialCatalogId ?? null);
-    setPotentialNoMatch(existingManta?.potentialNoMatch ?? false);
+    setPotentialNoMatch(existingManta?.noMatch !== undefined
+      ? existingManta.noMatch
+      : existingManta?.potentialNoMatch ?? false);
     setNoPhotos(existingManta?.noPhotos ?? false);
     setFirstExifMeta(existingManta?.firstExifMeta ?? null);
   }, [open, existingManta, automaticName]);
@@ -131,14 +133,6 @@ export default function UnifiedMantaModal({
       // blob previews are revoked on delete; avoid revoking on every photos state change
     };
   }, []);
-
-  const meanDW = useMemo(() => meanDiscWidthMeters(photos), [photos]);
-
-  useEffect(() => {
-    // Keep the existing precedence: a changed measured mean updates the editable
-    // size field; manual edits remain until the measured mean changes again.
-    if (meanDW !== null) setSize(meanDW.toFixed(2));
-  }, [meanDW]);
 
   if (!open) return null;
 
@@ -252,34 +246,35 @@ export default function UnifiedMantaModal({
     );
   }
 
+  // Recalculate only after a measurement-changing action, never hydration.
+  function updateMeasuredPhotos(next: Uploaded[]) {
+    setPhotos(next);
+    const meanDW = meanDiscWidthMeters(next);
+    if (meanDW !== null) setSize(meanDW.toFixed(2));
+  }
+
   function deletePhoto(id: string) {
-    setPhotos((prev) => {
-      const found = prev.find((p) => p.id === id);
-      if (found?.previewUrl && found.previewUrl.startsWith("blob:")) {
-        try { URL.revokeObjectURL(found.previewUrl); } catch {}
-      }
-      return prev.filter((p) => p.id !== id);
-    });
+    const found = photos.find((p) => p.id === id);
+    if (found?.previewUrl?.startsWith("blob:")) {
+      try { URL.revokeObjectURL(found.previewUrl); } catch {}
+    }
+    const next = photos.filter((p) => p.id !== id);
+    if (found?.measure) updateMeasuredPhotos(next);
+    else setPhotos(next);
   }
 
   function onMeasureApplied(photoId: string, r: MeasureResult) {
-    setPhotos((prev) =>
-      prev.map((p) =>
-        p.id === photoId
-          ? {
-              ...p,
-              measure: {
-                dlCm: r.dlCm,
-                dwCm: r.dwCm,
-                discPx: r.discPx,
-                scalePx: r.scalePx,
-                scaleCm: r.scaleCm,
-                points: r.points,
-              },
-            }
-          : p
-      )
-    );
+    const previous = photos.find((p) => p.id === photoId)?.measure;
+    if (previous && previous.dlCm === r.dlCm && previous.dwCm === r.dwCm
+        && previous.discPx === r.discPx && previous.scalePx === r.scalePx
+        && previous.scaleCm === r.scaleCm
+        && JSON.stringify(previous.points) === JSON.stringify(r.points)) return;
+    updateMeasuredPhotos(photos.map((p) => p.id === photoId
+      ? { ...p, measure: {
+          dlCm: r.dlCm, dwCm: r.dwCm, discPx: r.discPx,
+          scalePx: r.scalePx, scaleCm: r.scaleCm, points: r.points,
+        } }
+      : p));
   }
 
   function canSave() {
