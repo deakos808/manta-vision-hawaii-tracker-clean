@@ -1,4 +1,5 @@
 import React from "react";
+import { formatMantaSize } from "@/features/photos/photoPresentation";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 import {
   newOrganicBiopsy,
@@ -25,6 +26,7 @@ type Props = {
   sightingDate: string;
   allowBiopsyEntry: boolean;
   allowMatching: boolean;
+  showSize: boolean;
 };
 
 const TILE_W=128;
@@ -52,20 +54,14 @@ function tempName(m:any){
 
 function ImgTile({url, placeholder}:{url?:string; placeholder:string}){
   return (
-    <div className="overflow-hidden rounded border bg-white grid place-items-center" style={{width:TILE_W, height:TILE_H}}>
-      {url ? <img src={url} alt={placeholder} className="w-full h-full object-cover object-center"/> :
+    <div className="overflow-hidden rounded border bg-white flex items-center justify-center shrink-0" style={{width:TILE_W, height:TILE_H}}>
+      {url ? <img src={url} alt={placeholder} style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", objectPosition: "center", display: "block" }}/> :
         <div className="text-xs text-slate-400 select-none">{placeholder}</div>}
     </div>
   );
 }
 
 
-function fmtMeters(v:any){
-  const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return "0.00 m";
-  const meters = n >= 10 ? (n/100) : n; // assume cm if >=10
-  return meters.toFixed(2) + " m";
-}
 export default function MantasList({
   mantas,
   setMantas,
@@ -75,24 +71,27 @@ export default function MantasList({
   sightingDate,
   allowBiopsyEntry,
   allowMatching,
+  showSize,
 }: Props){
   // compact grid that fits inside the card with no horizontal scroll in normal widths
   // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
-  const GRID="grid grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3";
+  const GRID = showSize
+    ? "grid grid-cols-1 lg:grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3"
+    : "grid grid-cols-1 lg:grid-cols-[128px_128px_64px_120px_100px_120px_84px] items-center gap-3";
   const TH="text-[12px] font-medium text-slate-600 whitespace-nowrap text-center leading-tight";
-  const TD = "text-[13px] text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis text-center";
+  const TD = "text-[13px] text-slate-700 min-w-0 break-words lg:whitespace-nowrap lg:overflow-hidden lg:text-ellipsis text-left lg:text-center";
 
   return (
     <div className="rounded-lg border bg-white">
       {/* Header */}
-      <div className={`${GRID} px-6 py-2 bg-slate-50 rounded-t-lg`}>
+      <div className={`${GRID} hidden lg:grid px-6 py-2 bg-slate-50 rounded-t-lg`}>
         <div className={TH}>Best Ventral</div>
         <div className={TH}>Best Dorsal</div>
         <div className={TH}><div>Total</div><div className="-mt-1">Photos</div></div>
         <div className={TH}>Temp Name</div>
         <div className={TH}>Gender</div>
         <div className={TH}>Age Class</div>
-        <div className={TH}>Size (m)</div>
+        {showSize && <div className={TH}>Size (m)</div>}
         <div className={TH}>Actions</div>
       </div>
 
@@ -123,10 +122,10 @@ export default function MantasList({
 
           return (
             <div key={String(m?.id ?? idx)}>
-            <div className={`${GRID} px-6 py-3 overflow-hidden pr-3`}>
+            <div className={`${GRID} px-3 lg:px-6 py-3 lg:overflow-hidden lg:pr-3`}>
                               {/* Ventral column with baseline-aligned pill */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={ventUrl} placeholder="ventral" />
+                <div className="lg:h-[136px] flex flex-col items-center lg:justify-end">
+                  <span className="lg:hidden text-xs text-slate-600 mb-1">Best Ventral</span><ImgTile url={ventUrl} placeholder="ventral" />
                   {/* 3 compact rows below the tile */}
                   <div className="mt-2 grid gap-1 w-[128px]">
                     <div className="flex items-center justify-center">
@@ -167,27 +166,27 @@ export default function MantasList({
 
                 
                 {/* Dorsal column – always dorsal or placeholder */}
-                <div className="h-[136px] flex flex-col items-center justify-end">
-                  <ImgTile url={dorUrl} placeholder="dorsal" />
-                  <div className="mt-2 min-h-[64px]" />
+                <div className="lg:h-[136px] flex flex-col items-center lg:justify-end">
+                  <span className="lg:hidden text-xs text-slate-600 mb-1">Best Dorsal</span><ImgTile url={dorUrl} placeholder="dorsal" />
+                  <div className="hidden lg:block mt-2 min-h-[64px]" />
                 </div>
 
 
-              <div className={`${TD} text-center`}>{count}</div>
-              <div className={TD}>{tempName(m)}</div>
-              <div className={TD}>{m?.gender || "—"}</div>
-              <div className={TD}>{m?.ageClass || "—"}</div>
-              <div className={TD}>{fmtMeters(m?.size)}</div>
+              <div className={TD}><span className="lg:hidden font-medium">Photos: </span>{count}</div>
+              <div className={TD}><span className="lg:hidden font-medium">Name: </span>{tempName(m)}</div>
+              <div className={TD}><span className="lg:hidden font-medium">Gender: </span>{m?.gender || "—"}</div>
+              <div className={TD}><span className="lg:hidden font-medium">Age Class: </span>{m?.ageClass || "—"}</div>
+              {showSize && <div className={TD}><span className="lg:hidden font-medium">Mean Size: </span>{formatMantaSize(m?.size)}</div>}
 
               {/* Actions inside column */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   aria-label="Edit manta"
-                  className="p-1 rounded hover:bg-slate-100 text-slate-600"
+                  className="min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 p-1 inline-flex items-center justify-center gap-1 rounded hover:bg-slate-100 text-slate-600"
                   onClick={()=>onEdit(m)}
                   title="Edit"
-                >
+                ><span className="lg:hidden">Edit</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
                     <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
                     <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -196,10 +195,10 @@ export default function MantasList({
                 <button
                   type="button"
                   aria-label="Remove manta"
-                  className="p-1 rounded hover:bg-rose-100 text-rose-600"
+                  className="min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 p-1 inline-flex items-center justify-center gap-1 rounded hover:bg-rose-100 text-rose-600"
                   onClick={()=>onRemove(String(m?.id ?? idx))}
                   title="Remove"
-                >
+                ><span className="lg:hidden">Delete</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
                     <path d="M3 6h18" strokeWidth="1.5" strokeLinecap="round"/>
                     <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

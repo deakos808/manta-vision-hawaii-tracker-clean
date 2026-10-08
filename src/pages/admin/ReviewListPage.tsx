@@ -85,15 +85,15 @@ export default function ReviewListPage() {
             const submitted = r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—";
 
             return (
-              <li key={r.id} className="border rounded-lg p-4 flex items-center justify-between">
-                <div>
+              <li key={r.id} className="border rounded-lg p-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 break-words">
                   <div className="text-slate-900 font-medium">{when}</div>
                   <div className="text-sm text-slate-600">{photographer} • {r.email || "no email"}</div>
                   <div className="text-xs text-slate-500">Submitted: {submitted}</div>
                   <div className="text-xs text-slate-500 mt-1">{r.manta_count || 0} mantas • {r.photo_count || 0} photos</div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 sm:shrink-0">
                   <Button
                     variant="outline"
                     onClick={() => {

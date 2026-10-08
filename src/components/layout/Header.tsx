@@ -10,12 +10,12 @@ export default function Header() {
   const authed = !!session?.user;
 
   return (
-    <header className="p-4 border-b flex justify-between items-center">
+    <header className="p-4 border-b flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-center">
       <NavLink to="/" className="flex items-center gap-2 text-lg font-semibold">
         <img src={hamerLogo} alt="HAMER" className="h-7 w-7" />
         <span className="text-sky-700 font-bold">Hawaii Manta Tracker</span>
       </NavLink>
-      <nav className="space-x-4">
+      <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
         {authed && <NavLink to="/dashboard">Dashboard</NavLink>}
         {authed && role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         {!authed && <NavLink to="/signin">Sign In</NavLink>}

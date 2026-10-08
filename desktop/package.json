@@ -1,0 +1,8 @@
+{
+  "name": "mantatracker-development-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": { "package": "zsh package.sh" },
+  "devDependencies": { "electron": "43.1.0" }
+}

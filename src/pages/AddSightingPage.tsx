@@ -1,21 +1,38 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { notifySubmission } from "@/features/sightings/submissionNotification";
+import { getSubmissionIssues, getApprovalIssues, approvalFailureMessage, TIME_ORDER_MESSAGE, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MatchModal from "@/components/mantas/MatchModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import UnifiedMantaModal, { type MantaDraft } from "@/components/mantas/UnifiedMantaModal";
+import { photoTimeBounds, photoTimeUpdate, readSurveyType, type SurveyType } from "@/features/sightings/photoTimes";
+import { readSightingMethods } from "@/features/sightings/sightingMethods";
 import MantasList from "@/components/mantas/MantasList";
 import { supabase } from "@/lib/supabase";
-import TempSightingMap from "@/components/map/TempSightingMap";
+import LocationPickerModal from "@/components/map/LocationPickerModal";
+import { initialLocationPoint, formatLocationPoint, locationPoint } from "@/components/map/locationSelection";
 import { saveReviewServer } from "@/utils/reviewSave";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import { hasOrganicBiopsies, validateOrganicBiopsy } from "@/features/biopsies/organicBiopsy";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
-function buildTimes(stepMin=5){ const out:string[]=[]; for(let h=0;h<24;h++){ for(let m=0;m<60;m+=stepMin){ out.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);} } return out; }
-const TIME_OPTIONS = buildTimes(5);
+const METHOD_OPTIONS = [
+  ["pairedLaser", "Paired-laser photogrammetry", "Paired laser"],
+  ["biopsySampling", "Biopsy sampling", "Biopsy"],
+  ["tagDeployment", "Tag deployment", "Tag deployment"],
+] as const;
+
+function mantaLabel(sequence: number): string {
+  let label = "";
+  for (let n = sequence + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+    label = String.fromCharCode(65 + (n - 1) % 26) + label;
+  }
+  return label;
+}
 
 // helpers
 const useTotalPhotos = (mantas:any[]) => (mantas ?? []).reduce((n,m:any)=> n + (Array.isArray(m?.photos) ? m.photos.length : 0), 0);
@@ -44,8 +61,13 @@ export default function AddSightingPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const [reviewId, setReviewId] = useState<string | null>(null);
+  const reviewId = (location.state as { reviewId?: string } | null)?.reviewId
+    || searchParams.get("review") || searchParams.get("reviewId") || null;
   const isReview = !!reviewId;
+  const canReview = !access.loading && access.isActive === true && access.role === "admin";
+  const [loadedReviewId, setLoadedReviewId] = useState<string | null>(null);
+  const [reviewLoadError, setReviewLoadError] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   // return path (Admin review queue by default)
   const returnPath = useMemo(() => {
@@ -61,22 +83,54 @@ export default function AddSightingPage() {
   const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
   const [pageMatchFor, setPageMatchFor] = useState<string | null>(null);
 
+  const [methods, setMethods] = useState(() => readSightingMethods());
+
   // Mantas
   const [mantas, setMantas] = useState<MantaDraft[]>([]);
+  // Advance only on add, never derive identity from the remaining array positions.
+  const [nextMantaSequence, setNextMantaSequence] = useState(0);
   const totalPhotos = useMemo(() => useTotalPhotos(mantas as any), [mantas]);
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(() => {
+    // Decide before review hydration so existing submissions never auto-open.
+    const windowParams = new URLSearchParams(window.location.search);
+    return !((location.state as { reviewId?: string } | null)?.reviewId
+      || searchParams.get("review") || searchParams.get("reviewId")
+      || windowParams.get("review") || windowParams.get("reviewId"));
+  });
+  // addOpen's initial value already excludes every supported review entry route.
+  const [methodsConfirmed, setMethodsConfirmed] = useState(() => !addOpen);
+  const [editMethodsOpen, setEditMethodsOpen] = useState(false);
+  const methodsDialogOpen = editMethodsOpen || (addOpen && !methodsConfirmed && !isReview);
   const [editingManta, setEditingManta] = useState<MantaDraft|null>(null);
 
   // Sighting details
   const [date, setDate] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [stopTime, setStopTime] = useState<string>("");
+  const [standardizeSurvey, setStandardizeSurvey] = useState<SurveyType>(isReview ? null : "No");
+  const [timesManuallyEdited, setTimesManuallyEdited] = useState(false);
+  const [timeChoiceMade, setTimeChoiceMade] = useState(false);
+  const [reviewedPhotoDates, setReviewedPhotoDates] = useState("");
+  const photoBounds = useMemo(() => photoTimeBounds(mantas), [mantas]);
+  const multiDateKey = photoBounds?.multipleDates ? `${photoBounds.first}/${photoBounds.last}` : "";
+  const needsTimeReview = !!multiDateKey && reviewedPhotoDates !== multiDateKey;
+  const retainEffort = () => { setTimesManuallyEdited(true); setTimeChoiceMade(true); };
+  const editTime = (field: "date" | "start" | "stop", value: string) => {
+    setTimesManuallyEdited(true);
+    setReviewedPhotoDates("");
+    if (field === "date") setDate(value);
+    else if (field === "start") setStartTime(value);
+    else setStopTime(value);
+  };
+  useEffect(() => {
+    const update = photoTimeUpdate(standardizeSurvey, timesManuallyEdited, photoBounds);
+    if (update) { setDate(update.date); setStartTime(update.start); setStopTime(update.stop); }
+  }, [standardizeSurvey, timesManuallyEdited, photoBounds]);
+
 
   // Contact
   const [photographer, setPhotographer] = useState("");
   const [email, setEmail] = useState("");
-  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
-  const dateValid  = /^\d{4}-\d{2}-\d{2}$/.test(String(date || "").trim());
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState<string>("");
 
@@ -119,7 +173,20 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
+  const [locationUnknown, setLocationUnknown] = useState(false);
+  const submissionIssues = getSubmissionIssues({ date, email, startTime, stopTime, standardizeSurvey, needsTimeReview, locationUnknown, locationId, locationName, latitude: lat, longitude: lng });
+  const approvalIssues = getApprovalIssues({ standardizeSurvey, startTime, stopTime, mantas });
+  const readinessMessages = isReview ? approvalIssues : submissionIssues.map(issue => issue.message);
+  const emailValid = !submissionIssues.some(issue => issue.field === "email");
+  const showFieldIssue = (field: SubmissionField) => (!isReview || field === "startTime" || field === "stopTime")
+    && submissionIssues.some(issue => issue.field === field);
+  const preserveLocationCoordinates = useRef(isReview);
   const [coordSource, setCoordSource] = useState<string>("");
+  const [savedMapPoint, setSavedMapPoint] = useState<{ lat: string; lng: string } | null>(null);
+  useEffect(() => {
+    setSavedMapPoint((saved) => saved && (saved.lat !== lat || saved.lng !== lng || coordSource !== "map picker") ? null : saved);
+  }, [lat, lng, coordSource]);
+
 
   const [confirmExifOpen, setConfirmExifOpen] = useState(false);
   const [exifSuggestion, setExifSuggestion] = useState<ExifSuggestion | null>(null);
@@ -133,25 +200,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
-  // Hydrate reviewId from state/query/window (robust)
-  useEffect(() => {
-    if (reviewId) return;
-    let rid: string | null = null;
-    try {
-      const stateRid = (location as any)?.state?.reviewId ?? null;
-      const queryRid = searchParams.get("review") || searchParams.get("reviewId");
-      const winRid = (() => {
-        try { const sp = new URLSearchParams(window.location.search); return sp.get("review") || sp.get("reviewId"); }
-        catch { return null; }
-      })();
-      rid = (stateRid as any) || (queryRid as any) || (winRid as any) || null;
-    } catch {}
-    if (rid) { console.info("[AddSighting][review] init rid", rid); setReviewId(String(rid)); }
-  }, [reviewId, location.state, location.search, searchParams]);
-
   // Fetch review payload
   useEffect(() => {
-    if (!reviewId) return;
+    if (!reviewId || !canReview) return;
+    let cancelled = false;
+    setLoadedReviewId(null);
+    setReviewLoadError(false);
     (async () => {
       console.info("[AddSighting][review] fetch start", reviewId);
       try {
@@ -160,13 +214,20 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           .select("id,email,sighting_date,submitted_at,status,payload")
           .eq("id", reviewId)
           .single();
-        if (error || !data) { console.warn("[AddSighting][review] fetch error", error?.message); return; }
+        if (cancelled) return;
+        if (error || !data) { setReviewLoadError(true); return; }
         const anyd: any = data;
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
         const p = (anyd.payload || {}) as any;
+        preserveLocationCoordinates.current = true;
+        setMethods(readSightingMethods(p.methods));
+        setStandardizeSurvey(readSurveyType(p.standardize_survey));
+        setTimesManuallyEdited(true); // Preserve hydrated review values until explicitly changed.
+        setTimeChoiceMade(true);
         if (p.startTime) setStartTime(String(p.startTime));
         if (p.stopTime) setStopTime(String(p.stopTime));
+        setLocationUnknown(p.location_unknown ?? false);
         if (p.locationId) setLocationId(String(p.locationId));
         if (p.locationName) setLocationName(String(p.locationName));
         if (p.notes) setNotes(p.notes);
@@ -189,28 +250,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             biopsy: m.biopsy ?? null,
           })));
         }
-        console.info("[AddSighting][review] hydrated", anyd.email, anyd.sighting_date);
+        setLoadedReviewId(reviewId);
       } catch (e:any) {
-        console.warn("[AddSighting][review] exception", e?.message || e);
+        if (!cancelled) setReviewLoadError(true);
       }
     })();
-  }, [reviewId]);
-
-  // Secondary loaders for reviewId (state/search)
-  useEffect(() => {
-    try {
-      const st = (location as any)?.state as any;
-      const rid = st?.reviewId;
-      if (rid && rid !== reviewId) setReviewId(String(rid));
-    } catch {}
-  }, [location.state]);
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(location.search);
-      const rv = sp.get("review") || sp.get("reviewId");
-      if (rv && rv !== reviewId) setReviewId(rv);
-    } catch {}
-  }, [location.search]);
+    return () => { cancelled = true; };
+  }, [reviewId, canReview]);
 
   // Load islands (distinct from sightings)
   // Load locations for selected island (location_defaults, fallback to sightings)
@@ -328,8 +374,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     }
 
     const suggestion: ExifSuggestion = {
-      date: meta.date,
-      time: meta.time,
       lat: meta.lat,
       lon: meta.lon,
       suggestedIsland: bestIsland,
@@ -345,8 +389,6 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   function applyExifMetadata(meta: ExifSuggestion) {
     console.log("[AddSighting][EXIF] applyExifMetadata", meta);
 
-    if (meta.date && !String(date || "").trim()) setDate(meta.date);
-    if (meta.time && !String(startTime || "").trim()) setStartTime(meta.time);
     if (typeof meta.lat === "number" && !String(lat || "").trim()) setLat(String(Number(meta.lat).toFixed(5)));
     if (typeof meta.lon === "number" && !String(lng || "").trim()) setLng(String(Number(meta.lon).toFixed(5)));
 
@@ -362,11 +404,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
   // On location change, autofill coords
   useEffect(()=>{
-    if(!locationId) return;
+    if(preserveLocationCoordinates.current || !locationId) return;
     const rec = locList.find(l => l.id === locationId) || locList.find(l => l.name === locationId);
     const displayName = rec?.name ?? locationName ?? locationId;
     if (rec && rec.name) setLocationName(rec.name);
     const apply = (la:number, lo:number, src?:string) => {
+      if (preserveLocationCoordinates.current) return;
+      if (isReview) preserveLocationCoordinates.current = true;
       setLat(String(Number(la).toFixed(5)));
       setLng(String(Number(lo).toFixed(5)));
       if (src) setCoordSource(src);
@@ -374,13 +418,14 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     };
     if (rec && rec.latitude != null && rec.longitude != null) { apply(Number(rec.latitude), Number(rec.longitude), "location defaults"); return; }
     if (!island || !displayName) return;
-    fetchEarliestCoords(island, displayName).then((res)=>{ if(res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
-  },[locationId, locList, island]);
+    let cancelled = false;
+    fetchEarliestCoords(island, displayName).then((res)=>{ if(!cancelled && res){ apply(res.lat, res.lon, "earliest sighting"); } }).catch(()=>{});
+    return () => { cancelled = true; };
+  },[locationId, locList, island, isReview]);
 
   // Submit (user mode)
   const handleSubmit = async () => {
-    if (!dateValid) return;
-    if (!emailValid) return;
+    if (submissionIssues.length > 0) return;
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
     if (invalidBiopsy) {
       window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
@@ -389,25 +434,31 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
     const payload = {
       date, startTime, stopTime, photographer, email, phone,
+      location_unknown: locationUnknown,
       island, locationId, locationName,
       latitude: lat, longitude: lng,
-      mantas
+      mantas, methods, standardize_survey: standardizeSurvey, notes
     };
 
+    let submissionId: string | undefined;
     try {
-      const { error } = await supabase.from("sighting_submissions").insert({
+      const { data, error } = await supabase.from("sighting_submissions").insert({
         email: email || null,
         sighting_date: date || null,
         manta_count: mantas.length,
         photo_count: totalPhotos,
         payload,
         status: "pending"
-      });
+      }).select("id").single();
       if (error) throw error;
+      submissionId = data?.id;
     } catch (error: unknown) {
       window.alert(error instanceof Error ? error.message : "Sighting submission failed.");
       return;
     }
+
+    if (submissionId) await notifySubmission(submissionId);
+    else console.warn("Admin notification skipped: saved submission ID unavailable.");
 
     setSuccessMessage(`Your sighting has been submitted for review with ${mantas.length} mantas and ${totalPhotos} photos. Thank you!`);
     setSuccessOpen(true);
@@ -418,6 +469,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     console.log("[AddSighting][onAddSave] received manta", m);
 
     setAddOpen(false);
+    if (!isReview) setNextMantaSequence(sequence => sequence + 1);
     setMantas(prev => {
       const incomingId = (m as any).id ? String((m as any).id) : "";
       const exists = incomingId && prev.some(p => String(p.id) === incomingId);
@@ -427,37 +479,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       return next;
     });
 
-    const surveyHasDate = !!String(date || "").trim();
     const surveyHasLocation = !!String(locationId || locationName || "").trim();
-    const exif = (m as any)?.firstExifMeta ?? null;
-
-    console.log("[AddSighting][onAddSave] survey state", {
-      surveyHasDate,
-      surveyHasLocation,
-      date,
-      locationId,
-      locationName,
-      exif,
-    });
-
-    if ((!surveyHasDate || !surveyHasLocation) && exif) {
-      console.log("[AddSighting][onAddSave] calling prepareExifSuggestion", exif);
-
-      const suggestion = await prepareExifSuggestion(exif);
-
-      console.log("[AddSighting][onAddSave] prepareExifSuggestion result", suggestion);
-
-      if (suggestion) {
-        setPendingExif(suggestion.meta);
-        setSuggestedExifIsland(suggestion.bestIsland ?? null);
-        setSuggestedExifLocation(suggestion.bestLocation ?? null);
-        setConfirmExifOpen(true);
-      }
-    } else {
-      console.log("[AddSighting][onAddSave] not prompting", {
-        missingSurveyField: !surveyHasDate || !surveyHasLocation,
-        hasExif: !!exif,
-      });
+    const exif = m.firstExifMeta;
+    if (!surveyHasLocation && typeof exif?.lat === "number" && typeof exif?.lon === "number") {
+      await prepareExifSuggestion(exif);
     }
   };
   const onEditSave = (m:MantaDraft) => {
@@ -476,63 +501,85 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     setEditingManta(null);
   };
 
-  async function handleSaveReview() {
-    if (!reviewId) { window.alert("Not in review mode"); return; }
-    const payload:any = {
-      date, startTime, stopTime,
-      photographer, email, phone,
-      island, locationId, locationName,
-      latitude: lat, longitude: lng,
-      mantas,
-      notes
+  function currentReviewPayload() {
+    return {
+      date, startTime, stopTime, photographer, email, phone,
+      location_unknown: locationUnknown,
+      island, locationId, locationName, latitude: lat, longitude: lng,
+      mantas, methods, standardize_survey: standardizeSurvey, notes
     };
+  }
+
+  function reviewIsValid() {
+    if (!reviewId || !canReview || loadedReviewId !== reviewId || reviewBusy) return false;
+    if (needsTimeReview) {
+      window.alert("Review the sighting date and survey times for photos spanning multiple dates.");
+      return false;
+    }
     const invalidBiopsy = mantas.find((m) => validateOrganicBiopsy(m.biopsy));
     if (invalidBiopsy) {
       window.alert(`${invalidBiopsy.name || "Manta"}: ${validateOrganicBiopsy(invalidBiopsy.biopsy)}`);
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function handleSaveReview() {
+    if (!reviewIsValid()) return;
+    setReviewBusy(true);
     try {
-      await saveReviewServer(reviewId, payload);
+      await saveReviewServer(reviewId, currentReviewPayload());
       window.alert("Saved ✓");
-    } catch (e) {
-      console.error("[SaveReview] failed", e);
-      window.alert("Save failed");
+    } catch {
+      window.alert("Save failed. Review changes were not confirmed saved.");
+    } finally {
+      setReviewBusy(false);
     }
   }
 
-
-  // Review actions
+  // Both approval paths save current reviewed values before invoking the RPC.
   async function handleCommitReview() {
-    if (!reviewId) return;
+    if (!reviewIsValid()) return;
+    if (approvalIssues.length > 0) {
+      window.alert(approvalIssues.join("\n"));
+      return;
+    }
     if (!window.confirm("Commit this submission to final tables?")) return;
+    setReviewBusy(true);
     try {
-      const commitFunction = hasOrganicBiopsies(mantas)
+      const payload = currentReviewPayload();
+      await saveReviewServer(reviewId, payload);
+      const commitFunction = hasOrganicBiopsies(payload.mantas)
         ? "commit_sighting_submission_with_biopsies"
         : "commit_sighting_submission";
       const { error } = await supabase.rpc(commitFunction, { sub_id: reviewId });
-      if (error) { throw error; }
+      if (error) throw error;
       window.alert("Committed.");
-    } catch (e) {
-      console.warn("[CommitReview] RPC not available or failed; falling back to status update.", (e && (e.message||e)) || e);
-      if (hasOrganicBiopsies(mantas)) {
-        window.alert("Commit failed. No sighting or biopsy was created.");
-        return;
-      }
-      await supabase.from("sighting_submissions")
-        .update({ status: "committed", committed_at: new Date().toISOString() })
-        .eq("id", reviewId);
-      window.alert("Marked committed.");
+      navigate(returnPath);
+    } catch (error) {
+      window.alert(approvalFailureMessage(error));
+    } finally {
+      setReviewBusy(false);
     }
-    navigate(returnPath);
   }
+
   async function handleRejectReview() {
-    if (!reviewId) return;
+    if (!reviewId || !canReview || loadedReviewId !== reviewId || reviewBusy) return;
     if (!window.confirm("Are you sure you want to reject this submission?")) return;
-    await supabase.from("sighting_submissions")
-      .update({ status: "rejected", rejected_at: new Date().toISOString() })
-      .eq("id", reviewId);
-    window.alert("Submission rejected.");
-    navigate(returnPath);
+    setReviewBusy(true);
+    try {
+      const { data, error } = await supabase.from("sighting_submissions")
+        .update({ status: "rejected", rejected_at: new Date().toISOString() })
+        .eq("id", reviewId).eq("status", "pending")
+        .select("id").single();
+      if (error || !data) throw error || new Error("Submission was not updated");
+      window.alert("Submission rejected.");
+      navigate(returnPath);
+    } catch {
+      window.alert("Rejection failed. The submission was not confirmed rejected.");
+    } finally {
+      setReviewBusy(false);
+    }
   }
 
   // MantasList hooks
@@ -548,6 +595,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   };
 
   // UI
+  if (isReview && access.loading) return <Layout><p role="status">Checking administrator access…</p></Layout>;
+  if (isReview && !canReview) return <Layout><p role="alert">Active administrator access is required to review submissions.</p></Layout>;
+  if (isReview && reviewLoadError) return <Layout><p role="alert">Could not load this submission for review.</p></Layout>;
+  if (isReview && loadedReviewId !== reviewId) return <Layout><p role="status">Loading submission…</p></Layout>;
+
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-4 py-3 text-sm">
@@ -559,19 +611,67 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
 <UnifiedMantaModal
+  showSize={methods.pairedLaser}
   open={addOpen}
   onClose={()=>setAddOpen(false)}
   sightingId={formSightingId}
   onSave={onAddSave}
+  automaticName={isReview ? undefined : mantaLabel(nextMantaSequence)}
 />
 <UnifiedMantaModal
+  showSize={methods.pairedLaser}
   open={!!editingManta}
   onClose={()=>setEditingManta(null)}
   sightingId={formSightingId}
   existingManta={editingManta || undefined}
+  automaticName={isReview ? undefined : editingManta?.name}
   onSave={onEditSave}
 />
 
+<Dialog open={methodsDialogOpen} onOpenChange={(open) => {
+  // Initial setup requires Continue, including when no methods are selected.
+  if (methodsConfirmed) setEditMethodsOpen(open);
+}}>
+  <DialogPrimitive.Portal>
+    <DialogPrimitive.Overlay className="fixed inset-0 z-[300001] bg-black/30" />
+    <DialogPrimitive.Content
+      className="fixed left-1/2 top-1/2 z-[300002] w-[calc(100%-2rem)] max-w-sm max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
+      aria-describedby={undefined}
+      onEscapeKeyDown={(event) => { if (!methodsConfirmed) event.preventDefault(); }}
+      onPointerDownOutside={(event) => event.preventDefault()}
+    >
+      <DialogTitle>Methods used during this sighting</DialogTitle>
+      <div role="radiogroup" aria-label="Survey type" className="mt-4 space-y-2 text-sm">
+        <div className="font-medium">Survey type</div>
+        {([['No', 'Opportunistic sighting/photos'], ['Yes', 'Systematic survey']] as const).map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2">
+            <input type="radio" name="survey-type" value={value} checked={standardizeSurvey === value}
+              onChange={() => setStandardizeSurvey(value)} />{label}
+          </label>
+        ))}
+      </div>
+      <div className="my-5 space-y-3 text-sm">
+        {METHOD_OPTIONS.map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={methods[key]}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setMethods((current) => ({ ...current, [key]: checked }));
+              }}
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      <Button type="button" className="w-full" onClick={() => {
+        setMethodsConfirmed(true);
+        setEditMethodsOpen(false);
+      }}>Continue</Button>
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+</Dialog>
 
 {isReview && (
   <div className="px-4 sm:px-8 lg:px-16 py-3 text-sm" data-clean-id="review-crumb">
@@ -592,33 +692,77 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <Card>
           <CardHeader><CardTitle>Sighting Details</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-3">
-            <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="border rounded px-3 py-2" />
-            <select value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="border rounded px-3 py-2">
-              <option value="">Start Time</option>
-              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={stopTime} onChange={(e)=>setStopTime(e.target.value)} className="border rounded px-3 py-2">
-              <option value="">Stop Time</option>
-              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
+            <div>
+              <input aria-label="Sighting Date" type="date" value={date} onChange={(e)=>editTime("date", e.target.value)}
+                aria-invalid={showFieldIssue("date")} aria-describedby={showFieldIssue("date") ? "date-required" : undefined}
+                className={"w-full border rounded px-3 py-2 " + (showFieldIssue("date") ? "border-red-500" : "")} />
+              {showFieldIssue("date") && <div id="date-required" className="text-xs text-red-600 mt-1">Sighting date is required.</div>}
+            </div>
+            <label className="text-sm">Start Time{standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+              <input aria-label="Start Time" type="time" step="1" value={startTime} onChange={(e)=>editTime("start", e.target.value)}
+                aria-invalid={showFieldIssue("startTime")} aria-describedby={showFieldIssue("startTime") ? "start-required" : undefined}
+                className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("startTime") ? "border-red-500" : "")} />
+              {showFieldIssue("startTime") && <span id="start-required" className="text-xs text-red-600">Start time is required.</span>}
+            </label>
+            <label className="text-sm">Stop Time{standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+              <input aria-label="Stop Time" type="time" step="1" value={stopTime} onChange={(e)=>editTime("stop", e.target.value)}
+                aria-invalid={showFieldIssue("stopTime")} aria-describedby={showFieldIssue("stopTime") ? "stop-required" : undefined}
+                className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("stopTime") ? "border-red-500" : "")} />
+              {showFieldIssue("stopTime") && <span id="stop-required" className="text-xs text-red-600">{submissionIssues.find(issue => issue.field === "stopTime")?.message === TIME_ORDER_MESSAGE ? TIME_ORDER_MESSAGE : "Stop time is required."}</span>}
+            </label>
+            <div className="md:col-span-3 text-xs text-slate-600 space-y-1">
+              <div>{standardizeSurvey === "Yes" ? "Systematic survey — actual survey effort times" : standardizeSurvey === "No" ? (timesManuallyEdited ? "Opportunistic sighting — manually adjusted times" : "Opportunistic sighting — times from photo metadata") : "Survey type not specified"}</div>
+              {photoBounds && <div>Photo timestamps: {photoBounds.first.replace("T", " ")} – {photoBounds.last.replace("T", " ")}</div>}
+              {photoBounds?.multipleDates && (
+                <div role="status" className="text-amber-800">
+                  {MULTI_DATE_REVIEW_MESSAGE}
+                  {needsTimeReview && <button type="button" className="ml-2 underline disabled:opacity-50"
+                    disabled={!date || !startTime || !stopTime}
+                    onClick={() => { retainEffort(); setReviewedPhotoDates(multiDateKey); }}>
+                    Use reviewed survey times
+                  </button>}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
+
+        {methodsConfirmed && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>Survey type: {standardizeSurvey === "Yes" ? "Systematic survey" : standardizeSurvey === "No" ? "Opportunistic sighting/photos" : "Not specified"}</span>
+            <span>Methods: {METHOD_OPTIONS.filter(([key]) => methods[key]).map(([, , label]) => label).join(", ") || "None"}</span>
+            <button type="button" className="text-sky-700 underline" onClick={() => setEditMethodsOpen(true)}>
+              Edit Methods
+            </button>
+          </div>
+        )}
 
         {/* Photographer & Contact */}
         <Card>
           <CardHeader><CardTitle>Photographer & Contact</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-3">
             <input placeholder="Photographer" value={photographer} onChange={(e)=>setPhotographer(e.target.value)} className="border rounded px-3 py-2" />
-            <input id="contact-email-field" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className={"border rounded px-3 py-2 " + (email && !emailValid ? "border-red-500" : "")} />
+            <div>
+              <input id="contact-email-field" aria-label="Email" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)}
+                aria-invalid={showFieldIssue("email")} aria-describedby={showFieldIssue("email") ? "email-required" : undefined}
+                className={"w-full border rounded px-3 py-2 " + ((isReview ? email && !emailValid : showFieldIssue("email")) ? "border-red-500" : "")} />
+              {showFieldIssue("email") && <div id="email-required" className="text-xs text-red-600 mt-1">Enter a valid email address.</div>}
+            </div>
             <input placeholder="Phone" value={phone} onChange={(e)=>setPhone(e.target.value)} className="border rounded px-3 py-2" />
-            {!emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
+            {isReview && !emailValid && <div className="text-xs text-red-500 md:col-span-3">An email address is required.</div>}
           </CardContent>
         </Card>
 
         {/* Location */}
-        <Card>
+        <Card className={showFieldIssue("location") ? "border-red-500" : ""}>
           <CardHeader><CardTitle>Location</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={locationUnknown} onChange={(e) => setLocationUnknown(e.target.checked)} />
+              Location unknown
+            </label>
+            <fieldset disabled={locationUnknown} className="space-y-3 disabled:opacity-50" aria-describedby={showFieldIssue("location") ? "location-required" : undefined}>
+
   <div className="grid md:grid-cols-2 gap-3">
     {/* Island select */}
     <select value={island} onChange={(e)=>setIsland(e.target.value)} className="border rounded px-3 py-2">
@@ -627,13 +771,14 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 </select>
 
     {/* Location select + small link underneath */}
-    <div className="space-y-1">
+    <div className="space-y-1 min-w-0">
   <select
-    value={locationId}
-    onChange={(e)=>setLocationId(e.target.value)}
-    className="border rounded px-3 py-2"
+    value={!locationId && !locationName && locationPoint(lat, lng) ? "__custom_coordinates__" : locationId}
+    onChange={(e)=>{ preserveLocationCoordinates.current = false; setLocationId(e.target.value); }}
+    className="w-full min-w-0 border rounded px-3 py-2"
   >
     <option value="">{island ? 'Select location' : 'Select island first'}</option>
+    {!locationId && !locationName && locationPoint(lat, lng) && <option value="__custom_coordinates__" disabled>Custom</option>}
     {locList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
   </select>
   {!addingLoc ? (
@@ -697,6 +842,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   </div>
 
   <div className="text-xs text-slate-500">coords source: {coordSource || "—"}</div>
+  {savedMapPoint && <div role="status" className="text-xs text-emerald-700">✓ Location saved from map</div>}
   <button
     type="button"
     className="px-3 py-2 border rounded"
@@ -704,6 +850,8 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   >
     Use Map for Location
   </button>
+            </fieldset>
+            {showFieldIssue("location") && <div id="location-required" className="text-xs text-red-600">Select a location, choose a point on the map, or check “Location unknown.”</div>}
 </CardContent>
         </Card>
 
@@ -720,6 +868,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           <CardHeader><CardTitle>Mantas Added</CardTitle></CardHeader>
           <CardContent>
             <MantasList
+              showSize={methods.pairedLaser}
               mantas={mantas}
               setMantas={setMantas}
               onEdit={onEdit}
@@ -727,7 +876,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               openMatch={openMatch}
               totalPhotosAll={totalPhotosAll}
               sightingDate={date}
-              allowBiopsyEntry={access.isActive === true && (access.role === "user" || access.role === "admin")}
+              allowBiopsyEntry={methods.biopsySampling && access.isActive === true && (access.role === "user" || access.role === "admin")}
               allowMatching={allowMatching}
             />
             <div className="mt-3">
@@ -737,18 +886,24 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         </Card>
 
         {/* Footer buttons */}
-        <div className="flex justify-center mt-6 gap-2">
+        {readinessMessages.length > 0 && (
+          <div id="submission-issues" role="status" className="text-sm text-slate-600 text-center">
+            <span className="font-medium">Still needed:</span>{" "}
+            {readinessMessages.join(" · ")}
+          </div>
+        )}
+        <div className="flex flex-wrap justify-center mt-6 gap-2">
           {isReview ? (
             <>
-              <Button variant="destructive" onClick={handleRejectReview}>Reject</Button>
+              <Button variant="destructive" disabled={reviewBusy} onClick={handleRejectReview}>Reject</Button>
             <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
-            <Button variant="secondary" onClick={handleSaveReview}>Save Changes</Button>
-                        <Button onClick={handleCommitReview}>Commit Review</Button>
+            <Button variant="secondary" disabled={reviewBusy} onClick={handleSaveReview}>Save Changes</Button>
+                        <Button disabled={reviewBusy || approvalIssues.length > 0} aria-describedby={approvalIssues.length ? "submission-issues" : undefined} onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
             <>
               <Button variant="outline" onClick={() => navigate("/dashboard")}>Cancel</Button>
-              <Button data-clean-id="submit-sighting" onClick={handleSubmit} disabled={!emailValid || !dateValid}>
+              <Button data-clean-id="submit-sighting" onClick={handleSubmit} aria-describedby={submissionIssues.length ? "submission-issues" : undefined} disabled={submissionIssues.length > 0}>
                 Submit Sighting
               </Button>
             </>
@@ -788,19 +943,48 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         }}
       />
 
-      {/* Map modal */}
-      {mapOpen && (
-        <div className="fixed inset-0 z-[300000] bg-black/40 flex items-center justify-center" onClick={()=>setMapOpen(false)}>
-          <div className="bg-white w-full max-w-2xl rounded-lg border p-4 relative" onClick={(e)=>e.stopPropagation()}>
-            <button aria-label="Close" className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full border" onClick={()=>setMapOpen(false)}>&times;</button>
-            <h3 className="text-lg font-medium mb-3">Pick Location</h3>
-            <TempSightingMap
-              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : undefined}
-              lon={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : undefined}
-              onPick={(la,lo)=>{ setLat(String(la.toFixed(5))); setLng(String(lo.toFixed(5))); setCoordSource("map pick"); }}
-            />
+      <Dialog open={!!photoBounds && !timeChoiceMade && !isReview && !addOpen && !editingManta && !confirmExifOpen}
+        onOpenChange={(open) => { if (!open) setTimeChoiceMade(true); }}>
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Photo timestamps found</DialogTitle>
+            <DialogDescription>
+              {standardizeSurvey === "Yes" ? "Photo times are reference only. Enter or retain the actual time spent searching for mantas." : "Photo timestamps provide the default sighting times. You can keep or manually adjust the times."}
+            </DialogDescription>
+          </DialogHeader>
+          {photoBounds && <div className="text-sm space-y-2">
+            <div>Capture date: {photoBounds.multipleDates ? `${photoBounds.first.slice(0, 10)} – ${photoBounds.last.slice(0, 10)}` : photoBounds.date}</div>
+            <div>Photo time range: {photoBounds.start} – {photoBounds.stop}</div>
+            {(startTime || stopTime) && <div>Current survey times: {startTime || "—"} – {stopTime || "—"}. {standardizeSurvey === "No" ? "Manual values are retained unless you choose Use Photo Times." : "These effort times are retained."}</div>}
+            {photoBounds.multipleDates && <div className="text-amber-800">Photos span multiple dates. Review the sighting date and survey times manually.</div>}
+          </div>}
+          <div className="flex flex-wrap justify-end gap-2">
+            {standardizeSurvey === "No" && <Button variant="outline" disabled={photoBounds?.multipleDates} autoFocus={!timesManuallyEdited && !photoBounds?.multipleDates} onClick={() => {
+              setTimesManuallyEdited(false); setTimeChoiceMade(true);
+            }}>Use Photo Times</Button>}
+            <Button autoFocus={standardizeSurvey !== "No" || timesManuallyEdited || photoBounds?.multipleDates} onClick={retainEffort}>{standardizeSurvey === "Yes" ? "Enter/Retain Survey Effort Times" : "Keep/Adjust Times"}</Button>
           </div>
-        </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Map modal: only Save commits the draft coordinates. */}
+      {mapOpen && (
+        <LocationPickerModal
+          initialPoint={initialLocationPoint(lat, lng, locList.find((location) => location.id === locationId || location.name === locationId))}
+          onCancel={() => setMapOpen(false)}
+          initialLocation={{ locationId, locationName, coordSource }}
+          onSave={(point, names) => {
+            preserveLocationCoordinates.current = true;
+            setLocationId(names.locationId);
+            setLocationName(names.locationName);
+            const saved = formatLocationPoint(point);
+            setLat(saved.lat);
+            setLng(saved.lng);
+            setCoordSource("map picker");
+            setSavedMapPoint(saved);
+            setMapOpen(false);
+          }}
+        />
       )}
 
       <Dialog
@@ -810,7 +994,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           if (!open) setExifSuggestion(null);
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Use photo metadata?</DialogTitle>
             <DialogDescription>
@@ -859,7 +1043,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           if (!v) navigate("/dashboard");
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Sighting submitted</DialogTitle>
             <DialogDescription>{successMessage}</DialogDescription>
