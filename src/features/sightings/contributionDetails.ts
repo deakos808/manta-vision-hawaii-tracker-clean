@@ -6,11 +6,14 @@ type RecordData = Record<string, any>;
 export type CatalogLink = { label: string; id?: number; name?: string };
 export type PageDetail = { photos: number | null; catalog: CatalogLink[] };
 export type ContributionPhoto = { url?: string; name: string; view: string; bestVentral: boolean; bestDorsal: boolean; heic: boolean };
-export function contributionPage(items: Contribution[], page: number, size: number) {
-  const pageSize = [25, 50, 100].includes(size) ? size : 50;
-  const pages = Math.max(1, Math.ceil(items.length / pageSize));
-  const current = Math.min(Math.max(0, page), pages - 1);
-  return { items: items.slice(current * pageSize, (current + 1) * pageSize), pages, current };
+export const CONTRIBUTION_BATCH_SIZE = 50;
+export function contributionBatches(items: Contribution[], count: number) {
+  const visible = items.slice(0, Math.max(CONTRIBUTION_BATCH_SIZE, count));
+  const batches: Contribution[][] = [];
+  for (let i = 0; i < visible.length; i += CONTRIBUTION_BATCH_SIZE) {
+    batches.push(visible.slice(i, i + CONTRIBUTION_BATCH_SIZE));
+  }
+  return { items: visible, batches, hasMore: visible.length < items.length };
 }
 export function aggregatePhotoCounts(rows: { fk_sighting_id: number }[]) {
   const counts = new Map<number, number>();

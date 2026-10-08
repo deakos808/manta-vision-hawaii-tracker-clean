@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {mergeContributions, type Contribution} from './contributions';
-import {contributionPage, aggregatePhotoCounts, modernCatalogLinks, historicalCatalogLinks, payloadPhotos, loadContributionPhotos, loadContributionDetail, loadContributionCatalog, loadContributionPage, detailFields} from './contributionDetails';
+import {contributionBatches, aggregatePhotoCounts, modernCatalogLinks, historicalCatalogLinks, payloadPhotos, loadContributionPhotos, loadContributionDetail, loadContributionCatalog, loadContributionPage, detailFields} from './contributionDetails';
 const row: Contribution={source:'submission',key:'submission-s1',submissionId:'s1',sightingId:10,island:'Hawaii',date:'2026-10-07',submittedAt:null,location:'Bay',mantas:2,photos:3,status:'Pending'};
 function mock(tables: Record<string,any[]>={}) {
  const calls:any[]=[];
@@ -26,9 +26,24 @@ test('uncommitted New has no fake link and unresolved means Pending decision',()
  assert.deepEqual(modernCatalogLinks([{noMatch:true}],{...row,status:'Rejected'},[]),[{label:'New — not committed'}]);
 });
 test('historical catalog deduplicates individuals without inventing Match/New',()=>assert.deepEqual(historicalCatalogLinks([{fk_catalog_id:4},{fk_catalog_id:5},{fk_catalog_id:4}]),[{label:'Catalog',id:4},{label:'Catalog',id:5}]));
-for(const size of [25,50,100]) test(`pagination ${size} keeps full summary`,()=>{
- const items=Array.from({length:827},(_,i)=>({...row,key:String(i)}));const page=contributionPage(items,1,size);
- assert.equal(page.items.length,size);assert.equal(page.items[0].key,String(size));assert.equal(items.length,827);assert.equal(page.pages,Math.ceil(827/size));
+test('incremental history starts at 50 and appends ordered, disjoint batches through all 827',()=>{
+ const items=Array.from({length:827},(_,i)=>({...row,key:String(i)}));
+ const first=contributionBatches(items,50);assert.equal(first.items.length,50);assert.equal(first.hasMore,true);
+ const second=contributionBatches(items,100);assert.equal(second.items.length,100);assert.equal(second.batches.length,2);
+ assert.deepEqual(second.batches[0],first.batches[0]);assert.equal(second.batches[1][0].key,'50');
+ for(let count=50;count<=850;count+=50){
+   const visible=contributionBatches(items,count);
+   assert.deepEqual(visible.items,items.slice(0,count));assert.equal(items.length,827);
+   assert.ok(visible.batches.every(batch=>batch.length<=50));
+ }
+ assert.equal(contributionBatches(items,850).hasMore,false);
+ assert.equal(contributionBatches(items,850).items.length,827);
+});
+test('empty and short histories have no further loading',()=>{
+ for(const length of [0,1,49,50]){
+   const visible=contributionBatches(Array.from({length},()=>row),50);
+   assert.equal(visible.items.length,length);assert.equal(visible.hasMore,false);
+ }
 });
 test('payload photo uses durable path/URL, view and flags; HEIC remains graceful',()=>{
  const {client}=mock();const out=payloadPhotos(client,{mantas:[{photos:[{name:'original.heic',path:'prepared.jpg',previewUrl:'blob:stale',view:'ventral',isBestVentral:true},{name:'raw.heic',url:'https://example.invalid/raw.heic'}]}]});
@@ -61,10 +76,42 @@ test('visible-page queries batch photo IDs and manta catalogs, and scope submiss
 test('modals are read-only and table has zero-photo/no-link guard',()=>{
  const modals=readFileSync('src/features/sightings/ContributionModals.tsx','utf8');const page=readFileSync('src/pages/MyContributionsPage.tsx','utf8');
  assert.doesNotMatch(modals,/<input|<select|<textarea|\.insert\(|\.update\(|\.delete\(|AddSightingPage|Edit Crop|Save Changes/);
- assert.match(modals,/Historical sighting record/);assert.match(page,/photos != null && photos > 0/);assert.match(page,/overflow-x-auto/);assert.match(page,/useState\(50\)/);
+ assert.match(modals,/Historical sighting record/);assert.match(page,/photos != null && photos > 0/);assert.match(page,/overflow-x-auto/);assert.match(page,/useState\(CONTRIBUTION_BATCH_SIZE\)/);
+ assert.doesNotMatch(page,/Rows per page|>Previous<|>Next<|Page \{/);
+ assert.match(page,/IntersectionObserver/);assert.match(page,/Load more/);
+ assert.match(page,/staleTime: Infinity/);assert.match(page,/visible.batches.map/);
 });
 
 test('existing durable URL wins over legacy path with unspecified bucket',()=>{
  const {client}=mock();const p=payloadPhotos(client,{mantas:[{photos:[{url:'https://example.invalid/temp-images/photo.jpg',path:'photo.jpg',previewUrl:'blob:stale'}]}]});
  assert.equal(p[0].url,'https://example.invalid/temp-images/photo.jpg');
+});
+
+
+test('appended historical range alone is enriched and its Photos, More and Catalog loaders work',async()=>{
+ const items=Array.from({length:100},(_,i)=>({...row,source:'historical' as const,key:`historical-${i+1}`,sightingId:i+1}));
+ const appended=contributionBatches(items,100).batches[1];
+ const {client,calls}=mock({
+   photos:[{pk_photo_id:8,fk_sighting_id:51,storage_path:'photos/8/8.jpg'}],
+   mantas:[{pk_manta_id:7,fk_sighting_id:51,fk_catalog_id:9}],
+   sightings:[{pk_sighting_id:51,notes:'Historical record'}],
+   catalog:[{pk_catalog_id:9,name:'Nine',last_size_m:3}],
+   catalog_with_photo_view:[{pk_catalog_id:9,name:'Nine'}],
+ });
+ const details=await loadContributionPage(client,'owner',appended);
+ assert.equal(details['historical-51'].photos,1);
+ assert.deepEqual(details['historical-51'].catalog,[{label:'Catalog',id:9,name:'Nine'}]);
+ assert.deepEqual(calls.find(c=>c.table==='photos').filters,[['fk_sighting_id',Array.from({length:50},(_,i)=>i+51)]]);
+ assert.equal((await loadContributionPhotos(client,'owner',appended[0])).length,1);
+ assert.equal((await loadContributionDetail(client,'owner',appended[0])).notes,'Historical record');
+ assert.equal((await loadContributionCatalog(client,9)).name,'Nine');
+});
+test('incremental display never changes all-history summary',()=>{
+ const owned:any={id:'pending',status:'pending',sighting_date:'2026-10-07',manta_count:2,photo_count:4};
+ const historical=Array.from({length:826},(_,i)=>({pk_sighting_id:i+1,photographer:'Fixture',sighting_date:'2024-05-02',island:'Maui',sitelocation:'Bay',location:null,total_mantas:1}));
+ const summary=mergeContributions([owned],['Fixture'],historical);
+ for(const count of [50,100,150,850]){
+   contributionBatches(summary.items,count);
+   assert.equal(summary.total,827);assert.equal(summary.latest,'2026-10-07');assert.equal(summary.pending,1);
+ }
 });
