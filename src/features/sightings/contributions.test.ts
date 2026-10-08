@@ -40,8 +40,8 @@ test('only rejected submission displays reason; no identity exposed in presentat
   assert.equal(mergeContributions([submission({ reject_reason: 'unused' })], [], []).items[0].rejectReason, null);
   assert.equal(mergeContributions([submission({ status: 'rejected', reject_reason: 'Please clarify' })], [], []).items[0].rejectReason, 'Please clarify');
 });
-test('location uses unknown, name, valid coordinates, or dash', () => {
-  for (const [row, label] of [[{ location_unknown: 'true', location_name: 'Old draft' }, 'Location unknown'], [{ location_name: 'Bay' }, 'Bay'], [{ latitude: '20', longitude: '-156' }, '20, -156'], [{ latitude: '99', longitude: '0' }, '—']] as const) {
+test('table location uses unknown, name or dash, never coordinates', () => {
+  for (const [row, label] of [[{ location_unknown: 'true', location_name: 'Old draft' }, 'Unknown'], [{ location_name: 'Bay' }, 'Bay'], [{ latitude: '20', longitude: '-156' }, '—'], [{ latitude: '99', longitude: '0' }, '—']] as const) {
     assert.equal(mergeContributions([submission(row)], [], []).items[0].location, label);
   }
 });
