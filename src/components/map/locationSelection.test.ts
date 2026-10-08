@@ -1,3 +1,4 @@
+import { initialMapView, PINNED_LOCATION_ZOOM } from "./locationSelection";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -88,4 +89,29 @@ test("Custom is a display-only option; save retains island and named choices sti
   assert.match(page, /onChange=\{\(e\)=>\{ preserveLocationCoordinates.current = false; setLocationId\(e.target.value\); \}\}/);
   assert.match(page, /if\(preserveLocationCoordinates.current \|\| !locationId\) return/);
   assert.match(page, /if\(!cancelled && res\)/);
+});
+
+
+test("map opening preserves valid saved coordinates instead of fitting the island chain", () => {
+  assert.deepEqual(initialMapView(19.52967, -157.60937), {
+    point: { lat: 19.52967, lon: -157.60937 }, bounds: null,
+  });
+  assert.deepEqual(initialMapView(0, 0).point, { lat: 0, lon: 0 });
+});
+
+test("empty/invalid map starts fit Hawaiian bounds without fabricating a selection", () => {
+  for (const [lat, lon] of [[undefined, undefined], [null, null], ["", ""], [20, undefined], [NaN, -155], [91, -155]]) {
+    const view = initialMapView(lat, lon);
+    assert.equal(view.point, null);
+    assert.deepEqual(view.bounds, [[-160.35, 18.85], [-154.7, 22.35]]);
+  }
+});
+
+
+test("both map engines use the shared regional zoom for unchanged pinned coordinates", () => {
+  assert.equal(PINNED_LOCATION_ZOOM, 7);
+  assert.deepEqual(initialMapView(19.52967, -157.60937).point, { lat: 19.52967, lon: -157.60937 });
+  const source = readFileSync("src/components/map/TempSightingMap.tsx", "utf8");
+  assert.match(source, /zoom: PINNED_LOCATION_ZOOM/);
+  assert.match(source, /setView\(\[initialView.point.lat, initialView.point.lon\], PINNED_LOCATION_ZOOM\)/);
 });

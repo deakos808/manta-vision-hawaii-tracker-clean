@@ -102,7 +102,7 @@ async function start() {
   child.on('exit', () => { if (window && !quitting) void fail(Error('The owned Vite server stopped unexpectedly.')); });
   await waitReady();
   if (quitting) return;
-  window = new BrowserWindow({ width: 1440, height: 960, minWidth: 900, minHeight: 620, title: NAME, show: false,
+  window = new BrowserWindow({ width: 1440, height: 960, minWidth: 360, minHeight: 620, title: NAME, show: false,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -134,7 +134,12 @@ if (!app.requestSingleInstanceLock()) {
     app.setActivationPolicy('regular');
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: NAME, submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
-      { role: 'editMenu' }, { role: 'windowMenu' },
+      { role: 'editMenu' }, { role: 'windowMenu', submenu: [
+        { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
+        ...[[390, 844], [393, 852], [430, 932], [1440, 960]].map(([width, height]) => ({
+          label: `Content ${width} × ${height}`, click: () => { window?.setContentSize(width, height); window?.center(); },
+        })),
+      ] },
     ]));
     return start();
   }).catch(fail);

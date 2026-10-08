@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "leaflet/dist/leaflet.css";
 import type { Map as MLMap, Marker as MLMarker } from "maplibre-gl";
 import type * as LeafletNS from "leaflet";
+import { initialMapView, PINNED_LOCATION_ZOOM } from "./locationSelection";
 
 // Public cached imagery; attribution follows the service's copyrightText.
 const IMAGERY_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -23,10 +24,8 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
 
   const [usingLeaflet, setUsingLeaflet] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
-  const [hasPick, setHasPick] = useState<boolean>(Number.isFinite(lat) && Number.isFinite(lon));
-
-  const center = (): [number, number] =>
-    (typeof lon === "number" && typeof lat === "number") ? [lon, lat] : [-155.5, 20.5];
+  const initialView = useRef(initialMapView(lat, lon)).current;
+  const [hasPick, setHasPick] = useState<boolean>(!!initialView.point);
 
   // Init engine: try MapLibre, else Leaflet
   useEffect(() => {
@@ -45,8 +44,9 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
             sources: { imagery: { type: "raster", tiles: [IMAGERY_TILES], tileSize: 256, maxzoom: 19, attribution: IMAGERY_ATTRIBUTION } },
             layers: [{ id: "imagery", type: "raster", source: "imagery" }],
           },
-          center: center(),
-          zoom: (typeof lon === "number" && typeof lat === "number") ? 9 : 5,
+          ...(initialView.point
+            ? { center: [initialView.point.lon, initialView.point.lat] as [number, number], zoom: PINNED_LOCATION_ZOOM }
+            : { bounds: initialView.bounds!, fitBoundsOptions: { padding: { top: 40, bottom: 48, left: 24, right: 24 }, animate: false } }),
           attributionControl: { compact: false },
           canvasContextAttributes: { failIfMajorPerformanceCaveat: false }
         });
@@ -63,8 +63,8 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         };
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-        if (typeof lon === "number" && typeof lat === "number") {
-          mlMarker.current = makeMarker(lat, lon);
+        if (initialView.point) {
+          mlMarker.current = makeMarker(initialView.point.lat, initialView.point.lon);
         }
 
         map.on("click", (e:any) => {
@@ -103,7 +103,13 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
           shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
         });
 
-        const map = L.map(divRef.current!).setView([center()[1], center()[0]], (typeof lon==="number"&&typeof lat==="number")? 9 : 5);
+        const map = L.map(divRef.current!);
+        if (initialView.point) {
+          map.setView([initialView.point.lat, initialView.point.lon], PINNED_LOCATION_ZOOM);
+        } else {
+          const [sw, ne] = initialView.bounds!;
+          map.fitBounds([[sw[1], sw[0]], [ne[1], ne[0]]], { paddingTopLeft: [24, 40], paddingBottomRight: [24, 48], animate: false });
+        }
         L.tileLayer(IMAGERY_TILES, {
           attribution: IMAGERY_ATTRIBUTION,
           maxZoom: 19
@@ -112,8 +118,8 @@ export default function TempSightingMap({ lat, lon, onPick }: Props) {
         // Keep the selection cue even after placing a pin.
         (map.getContainer() as HTMLElement).style.cursor = "crosshair";
 
-        if (typeof lon === "number" && typeof lat === "number") {
-          lfMarker.current = L.marker([lat, lon], { draggable: true }).addTo(map);
+        if (initialView.point) {
+          lfMarker.current = L.marker([initialView.point.lat, initialView.point.lon], { draggable: true }).addTo(map);
           lfMarker.current.on("drag", () => {
             const ll = (lfMarker.current as any).getLatLng().wrap();
             setHasPick(true);

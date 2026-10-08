@@ -167,9 +167,9 @@ export default function PhotoEditModal({ file, exifOrientation, remaining, initi
                   onPointerUp={() => { rotationDrag.current = null; }} onPointerCancel={() => { rotationDrag.current = null; }}
                   onKeyDown={event => { if (["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); setRotation(wrapAngle(rotation + (event.key === "ArrowRight" ? 1 : -1))); setCrop(null); } }}
                 >↻</button>}
-                {step === "crop" && <div className="absolute border-2 border-sky-500 touch-none cursor-move" style={{ left: `${currentCrop.x / size.width * 100}%`, top: `${currentCrop.y / size.height * 100}%`, width: `${currentCrop.width / size.width * 100}%`, height: `${currentCrop.height / size.height * 100}%`, boxShadow: "0 0 0 9999px rgba(15,23,42,.28)", clipPath: "inset(-12px)" }}
+                {step === "crop" && <div className="absolute border-2 border-sky-500 touch-none cursor-move" style={{ left: `${currentCrop.x / size.width * 100}%`, top: `${currentCrop.y / size.height * 100}%`, width: `${currentCrop.width / size.width * 100}%`, height: `${currentCrop.height / size.height * 100}%`, boxShadow: "0 0 0 9999px rgba(15,23,42,.28)", clipPath: "inset(-24px)" }}
                   onPointerDown={event => beginCrop(event, "move")} onPointerMove={moveCrop} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
-                  {handles.map(({ handle, left, top }) => <button type="button" key={handle} aria-label={`Adjust crop ${handle}`} disabled={saving || !!error} className="absolute w-5 h-5 bg-white border-2 border-sky-600 rounded-sm -translate-x-1/2 -translate-y-1/2 touch-none" style={{ left, top, cursor: `${handle}-resize` }}
+                  {handles.map(({ handle, left, top }) => <button type="button" key={handle} aria-label={`Adjust crop ${handle}`} disabled={saving || !!error} className="absolute w-11 h-11 md:w-5 md:h-5 after:content-[''] after:absolute after:w-5 after:h-5 after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:bg-white after:border-2 after:border-sky-600 after:rounded-sm after:pointer-events-none -translate-x-1/2 -translate-y-1/2 touch-none" style={{ left, top, cursor: `${handle}-resize` }}
                     onPointerDown={event => beginCrop(event, handle)}
                     onKeyDown={event => { const delta = event.shiftKey ? 10 : 1; if (event.key.startsWith("Arrow")) { event.preventDefault(); setCrop(dragCrop(currentCrop, handle, event.key === "ArrowLeft" ? -delta : event.key === "ArrowRight" ? delta : 0, event.key === "ArrowUp" ? -delta : event.key === "ArrowDown" ? delta : 0, size.width, size.height)); } }} />)}
                 </div>}
@@ -196,7 +196,7 @@ export default function PhotoEditModal({ file, exifOrientation, remaining, initi
           <button type="button" className="border rounded px-3 py-2 disabled:opacity-50" disabled={saving} onClick={onClose}>Cancel{remaining > 1 ? " / Skip photo" : ""}</button>
           <button type="button" className="border rounded px-3 py-2 disabled:opacity-50" disabled={saving || !image || !!error} onClick={reset}>Reset</button>
           {step === "crop" && <button type="button" className="border rounded px-3 py-2 disabled:opacity-50" disabled={saving || !!error} onClick={() => { setStep("rotate"); setCrop(null); }}>Back to Rotate</button>}
-          <button type="button" className="bg-sky-700 text-white rounded px-3 py-2 disabled:opacity-50" disabled={saving || !image || !!error} onClick={() => step === "rotate" ? setStep("crop") : void save()}>{saving ? "Saving photo…" : step === "rotate" ? "Continue to Crop" : "Save / Continue"}</button>
+          <button type="button" className="w-full sm:w-auto bg-sky-700 text-white rounded px-3 py-2 disabled:opacity-50" disabled={saving || !image || !!error} onClick={() => step === "rotate" ? setStep("crop") : void save()}>{saving ? "Saving photo…" : step === "rotate" ? "Continue to Crop" : "Save / Continue"}</button>
         </div>
       </div>
     </div>

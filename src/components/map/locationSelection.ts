@@ -37,3 +37,17 @@ export function mapLocationNames(start: LocationStart, point: LocationPoint) {
     ? { locationId: "", locationName: "" }
     : { locationId: start.locationId, locationName: start.locationName };
 }
+
+// Southwest/northeast [longitude, latitude], enclosing Hawaiʻi through Kauaʻi
+// (including Niʻihau). View bounds only: never a selected/form location.
+export const MAIN_HAWAIIAN_ISLANDS_BOUNDS: [[number, number], [number, number]] = [
+  [-160.35, 18.85], [-154.7, 22.35],
+];
+
+// Start pinned locations with regional context; users can zoom in for precision.
+export const PINNED_LOCATION_ZOOM = 7;
+
+export function initialMapView(lat: unknown, lon: unknown) {
+  const point = locationPoint(lat, lon);
+  return { point, bounds: point ? null : MAIN_HAWAIIAN_ISLANDS_BOUNDS };
+}

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
 import PhotoEditModal from "./PhotoEditModal";
+import { photoDisplaySource } from "@/features/photos/photoPresentation";
 import { uploadPreparedPair, uploadReeditedPhoto, meanDiscWidthMeters, type EditTransform } from "@/features/photos/photoPreparation";
 import type { BasicExif } from "@/lib/exif";
 import { readBasicExif } from "@/lib/exif";
@@ -425,7 +426,7 @@ export default function UnifiedMantaModal({
                 const dorsalDisabled = p.view !== "dorsal";
 
                 return (
-                  <div key={p.id} className="border rounded p-3 grid grid-cols-[110px,1fr,auto] gap-3 items-center">
+                  <div key={p.id} className="border rounded p-3 grid grid-cols-1 md:grid-cols-[110px_minmax(0,1fr)_auto] gap-3 items-center">
                     <div>
                       {p.isHeicLike ? (
                         <div className="w-[110px] h-[80px] rounded border bg-slate-100 flex flex-col items-center justify-center text-center px-2">
@@ -434,7 +435,7 @@ export default function UnifiedMantaModal({
                         </div>
                       ) : (
                         <img
-                          src={p.previewUrl || p.url}
+                          src={photoDisplaySource(p)}
                           alt={p.name}
                           className="w-[110px] h-[80px] object-cover rounded border"
                         />
@@ -492,23 +493,23 @@ export default function UnifiedMantaModal({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 justify-self-end">
+                    <div className="flex flex-wrap items-center gap-2 md:justify-self-end">
                       <button
                         type="button"
-                        className="px-2 py-1 rounded border disabled:opacity-50"
+                        className="min-h-11 md:min-h-0 px-2 py-1 rounded border disabled:opacity-50"
                         disabled={intakeActive || !p.originalPath || p.storageBucket !== "manta-images"}
                         title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"}
                         onClick={() => void editCrop(p)}
                       >Edit Crop</button>
                       {showSize && <button
                         type="button"
-                        className="px-2 py-1 rounded bg-sky-600 text-white"
+                        className="min-h-11 md:min-h-0 px-2 py-1 rounded bg-sky-600 text-white"
                         disabled={intakeActive}
                         onClick={() => setMeasureOpen(p)}
                       >
                         Size
                       </button>}
-                      <button type="button" className="text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
+                      <button type="button" className="min-h-11 md:min-h-0 px-2 md:px-0 text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
                     </div>
                   </div>
                 );
@@ -558,7 +559,7 @@ export default function UnifiedMantaModal({
       {showSize && measureOpen && (
         <MeasureModal
           open={true}
-          src={measureOpen.previewUrl || measureOpen.url}
+          src={photoDisplaySource(measureOpen) || ""}
           onClose={() => setMeasureOpen(null)}
           onApply={(r) => {
             onMeasureApplied(measureOpen.id, r);
@@ -581,7 +582,7 @@ export default function UnifiedMantaModal({
 
 
       <Dialog open={localExifPromptOpen} onOpenChange={setLocalExifPromptOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Use photo metadata?</DialogTitle>
             <DialogDescription>
@@ -596,7 +597,7 @@ export default function UnifiedMantaModal({
             ) : null}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
               className="px-3 py-2 rounded border"
@@ -622,7 +623,7 @@ export default function UnifiedMantaModal({
         <MatchModal
           open={true}
           onClose={() => setMatchOpen(null)}
-          tempUrl={matchOpen.previewUrl || matchOpen.url}
+          tempUrl={photoDisplaySource(matchOpen) || ""}
           aMeta={{ name, gender, ageClass, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
             setPotentialCatalogId(id);

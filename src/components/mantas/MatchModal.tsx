@@ -420,11 +420,11 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
             </div>
 
             <div className="mt-3 pt-3 border-t flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={previousCandidate} disabled={idx <= 0 || !filtered.length}>Prev</button>
                 <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={nextCandidate} disabled={idx >= filtered.length - 1 || !filtered.length}>Next</button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current || actionBusy} onClick={() => current && chooseMatch(current.pk_catalog_id)}>This is a match</button>
                 <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Match / New Individual</button>
               </div>

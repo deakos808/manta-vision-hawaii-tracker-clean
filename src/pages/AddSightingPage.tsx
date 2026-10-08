@@ -635,7 +635,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className="fixed inset-0 z-[300001] bg-black/30" />
     <DialogPrimitive.Content
-      className="fixed left-1/2 top-1/2 z-[300002] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
+      className="fixed left-1/2 top-1/2 z-[300002] w-[calc(100%-2rem)] max-w-sm max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
       aria-describedby={undefined}
       onEscapeKeyDown={(event) => { if (!methodsConfirmed) event.preventDefault(); }}
       onPointerDownOutside={(event) => event.preventDefault()}
@@ -771,11 +771,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 </select>
 
     {/* Location select + small link underneath */}
-    <div className="space-y-1">
+    <div className="space-y-1 min-w-0">
   <select
     value={!locationId && !locationName && locationPoint(lat, lng) ? "__custom_coordinates__" : locationId}
     onChange={(e)=>{ preserveLocationCoordinates.current = false; setLocationId(e.target.value); }}
-    className="border rounded px-3 py-2"
+    className="w-full min-w-0 border rounded px-3 py-2"
   >
     <option value="">{island ? 'Select location' : 'Select island first'}</option>
     {!locationId && !locationName && locationPoint(lat, lng) && <option value="__custom_coordinates__" disabled>Custom</option>}
@@ -892,7 +892,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             {readinessMessages.join(" · ")}
           </div>
         )}
-        <div className="flex justify-center mt-6 gap-2">
+        <div className="flex flex-wrap justify-center mt-6 gap-2">
           {isReview ? (
             <>
               <Button variant="destructive" disabled={reviewBusy} onClick={handleRejectReview}>Reject</Button>
@@ -945,7 +945,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
       <Dialog open={!!photoBounds && !timeChoiceMade && !isReview && !addOpen && !editingManta && !confirmExifOpen}
         onOpenChange={(open) => { if (!open) setTimeChoiceMade(true); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Photo timestamps found</DialogTitle>
             <DialogDescription>
@@ -994,7 +994,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           if (!open) setExifSuggestion(null);
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Use photo metadata?</DialogTitle>
             <DialogDescription>
@@ -1043,7 +1043,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           if (!v) navigate("/dashboard");
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Sighting submitted</DialogTitle>
             <DialogDescription>{successMessage}</DialogDescription>

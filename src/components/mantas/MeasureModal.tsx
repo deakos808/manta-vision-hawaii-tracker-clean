@@ -195,7 +195,7 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
               <div><span className="text-slate-600">DL (m):</span> <span className="font-medium">{to2(dlCm/100)}</span></div>
               <div><span className="text-slate-600">DW (m):</span> <span className="font-medium">{to2(dwCm/100)}</span></div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               {stage !== "scale" && <button className="px-3 py-2 rounded border" onClick={back}>Back</button>}
               <button className="px-3 py-2 rounded border" onClick={reset}>Reset</button>
               {stage === "complete" ? (
