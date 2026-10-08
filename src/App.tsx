@@ -3,6 +3,7 @@ import CalibrationLandingPage from "./pages/admin/CalibrationLandingPage";
 import AddCalibrationPage from "./pages/admin/AddCalibrationPage";
 import React from "react";
 
+import MyContributionsPage from "@/pages/MyContributionsPage";
 import AddSightingPage from "@/pages/AddSightingPage";
 import SightingQuickForm from "@/pages/SightingQuickForm";
 import Layout from "@/components/layout/Layout";
@@ -89,6 +90,7 @@ function App() {
 
       <Route path="/test-match-ui" element={<MatchingPage />} />
 
+      <Route path="/my-contributions" element={<RequireAuth><MyContributionsPage /></RequireAuth>} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/import" element={<RequireAuth><ImportPage /></RequireAuth>} />
 

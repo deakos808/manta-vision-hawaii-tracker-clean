@@ -17,6 +17,7 @@ export default function Header() {
       </NavLink>
       <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
         {authed && <NavLink to="/dashboard">Dashboard</NavLink>}
+        {authed && <NavLink to="/my-contributions">My Contributions</NavLink>}
         {authed && role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         {!authed && <NavLink to="/signin">Sign In</NavLink>}
         {authed && <NavLink to="/signout" className="text-red-600">Sign Out</NavLink>}
