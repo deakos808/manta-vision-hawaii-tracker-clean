@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { getApprovalIssues, approvalFailureMessage } from '../sightings/submissionValidation';
 
 const page = readFileSync('src/pages/AddSightingPage.tsx', 'utf8');
 const handlers = page.slice(page.indexOf('  function currentReviewPayload()'), page.indexOf('  // MantasList hooks'));
@@ -17,7 +18,7 @@ function harness(options: Record<string, any> = {}) {
   };
   const context: any = {
     reviewId: 'review', canReview: true, loadedReviewId: 'review', reviewBusy: false,
-    needsTimeReview: false, mantas: [{ id: 'stable-manta', name: 'Kai', photos: [{ id: 'photo', originalPath: 'original' }] }],
+    approvalFailureMessage, needsTimeReview: false, mantas: [{ id: 'stable-manta', name: 'Kai', noMatch: true, photos: [{ id: 'photo', originalPath: 'original' }] }],
     date: '2026-10-05', startTime: '10:00:01', stopTime: '11:00:02', photographer: 'Researcher',
     email: 'test@example.invalid', phone: '', island: 'Hawaii', locationId: '1', locationName: 'Site',
     locationUnknown: false, lat: '19', lng: '-156', methods: { tagDeployment: true }, standardizeSurvey: 'Yes', notes: 'current notes',
@@ -31,12 +32,13 @@ function harness(options: Record<string, any> = {}) {
       if (options.saveFails) throw new Error('save failed');
     },
     supabase: {
-      rpc: async (name: string) => { events.push(name); return { error: options.rpcFails ? new Error('RPC failed') : null }; },
+      rpc: async (name: string) => { events.push(name); return { error: options.rpcError ?? (options.rpcFails ? new Error('RPC failed') : null) }; },
       from: () => chain,
     },
     navigate: () => events.push('navigate'),
     ...options.state,
   };
+  Object.defineProperty(context, 'approvalIssues', { get: () => getApprovalIssues(context) });
   vm.createContext(context);
   vm.runInContext(ts.transpileModule(handlers, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
   return { context, events, alerts, saved: () => saved };
@@ -119,4 +121,32 @@ test('review save retains explicit unknown location', async () => {
   assert.equal(h.saved().location_unknown, true);
   assert.equal(h.saved().latitude, '19');
   assert.equal(h.saved().locationName, 'Site');
+});
+
+test('incomplete review can be saved and reopened, but cannot be committed until corrected', async () => {
+  const h = harness({ state: { stopTime: '09:00', mantas: [{ name: 'TestA', matchedCatalogId: null, noMatch: false }] } });
+  await h.context.handleCommitReview();
+  assert.deepEqual(h.events, []);
+  assert.match(h.alerts[0], /Stop time must be after start time/);
+  assert.match(h.alerts[0], /TestA: select a catalog match or No Match/);
+  await h.context.handleSaveReview();
+  assert.deepEqual(h.events, ['save']);
+  assert.equal(h.saved().mantas[0].noMatch, false);
+  const reopened = harness({ state: h.saved() });
+  await reopened.context.handleCommitReview();
+  assert.deepEqual(reopened.events, []);
+  reopened.context.stopTime = '12:00';
+  reopened.context.mantas[0].noMatch = true;
+  await reopened.context.handleCommitReview();
+  assert.deepEqual(reopened.events, ['save', 'commit_sighting_submission', 'navigate']);
+});
+test('known catalog backend failure is translated without internal identifiers', async () => {
+  const h = harness({ rpcError: { message: 'Cannot commit submission secret-id manta internal-id has no resolved catalog match and is not marked noMatch' } });
+  await h.context.handleCommitReview();
+  assert.equal(h.alerts[0], 'Approval failed. Select a catalog match or No Match for every manta.');
+  assert.deepEqual(h.events, ['save', 'commit_sighting_submission']);
+});
+test('only Commit Review button gains readiness gating', () => {
+  assert.match(page, /disabled=\{reviewBusy \|\| approvalIssues.length > 0\}/);
+  assert.match(page, /disabled=\{reviewBusy\} onClick=\{handleSaveReview\}/);
 });

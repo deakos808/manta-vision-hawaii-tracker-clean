@@ -1,5 +1,5 @@
 import { notifySubmission } from "@/features/sightings/submissionNotification";
-import { getSubmissionIssues, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
+import { getSubmissionIssues, getApprovalIssues, approvalFailureMessage, TIME_ORDER_MESSAGE, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
@@ -175,8 +175,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [lng, setLng] = useState<string>("");
   const [locationUnknown, setLocationUnknown] = useState(false);
   const submissionIssues = getSubmissionIssues({ date, email, startTime, stopTime, standardizeSurvey, needsTimeReview, locationUnknown, locationId, locationName, latitude: lat, longitude: lng });
+  const approvalIssues = getApprovalIssues({ standardizeSurvey, startTime, stopTime, mantas });
+  const readinessMessages = isReview ? approvalIssues : submissionIssues.map(issue => issue.message);
   const emailValid = !submissionIssues.some(issue => issue.field === "email");
-  const showFieldIssue = (field: SubmissionField) => !isReview
+  const showFieldIssue = (field: SubmissionField) => (!isReview || field === "startTime" || field === "stopTime")
     && submissionIssues.some(issue => issue.field === field);
   const preserveLocationCoordinates = useRef(isReview);
   const [coordSource, setCoordSource] = useState<string>("");
@@ -538,6 +540,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // Both approval paths save current reviewed values before invoking the RPC.
   async function handleCommitReview() {
     if (!reviewIsValid()) return;
+    if (approvalIssues.length > 0) {
+      window.alert(approvalIssues.join("\n"));
+      return;
+    }
     if (!window.confirm("Commit this submission to final tables?")) return;
     setReviewBusy(true);
     try {
@@ -550,8 +556,8 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       if (error) throw error;
       window.alert("Committed.");
       navigate(returnPath);
-    } catch {
-      window.alert("Approval failed. Commit was not confirmed. Review the submission before retrying.");
+    } catch (error) {
+      window.alert(approvalFailureMessage(error));
     } finally {
       setReviewBusy(false);
     }
@@ -692,17 +698,17 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
                 className={"w-full border rounded px-3 py-2 " + (showFieldIssue("date") ? "border-red-500" : "")} />
               {showFieldIssue("date") && <div id="date-required" className="text-xs text-red-600 mt-1">Sighting date is required.</div>}
             </div>
-            <label className="text-sm">Start Time{!isReview && standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+            <label className="text-sm">Start Time{standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
               <input aria-label="Start Time" type="time" step="1" value={startTime} onChange={(e)=>editTime("start", e.target.value)}
                 aria-invalid={showFieldIssue("startTime")} aria-describedby={showFieldIssue("startTime") ? "start-required" : undefined}
                 className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("startTime") ? "border-red-500" : "")} />
               {showFieldIssue("startTime") && <span id="start-required" className="text-xs text-red-600">Start time is required.</span>}
             </label>
-            <label className="text-sm">Stop Time{!isReview && standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
+            <label className="text-sm">Stop Time{standardizeSurvey === "Yes" && <span className="text-slate-500"> (required)</span>}
               <input aria-label="Stop Time" type="time" step="1" value={stopTime} onChange={(e)=>editTime("stop", e.target.value)}
                 aria-invalid={showFieldIssue("stopTime")} aria-describedby={showFieldIssue("stopTime") ? "stop-required" : undefined}
                 className={"block w-full border rounded px-3 py-2 " + (showFieldIssue("stopTime") ? "border-red-500" : "")} />
-              {showFieldIssue("stopTime") && <span id="stop-required" className="text-xs text-red-600">Stop time is required.</span>}
+              {showFieldIssue("stopTime") && <span id="stop-required" className="text-xs text-red-600">{submissionIssues.find(issue => issue.field === "stopTime")?.message === TIME_ORDER_MESSAGE ? TIME_ORDER_MESSAGE : "Stop time is required."}</span>}
             </label>
             <div className="md:col-span-3 text-xs text-slate-600 space-y-1">
               <div>{standardizeSurvey === "Yes" ? "Systematic survey — actual survey effort times" : standardizeSurvey === "No" ? (timesManuallyEdited ? "Opportunistic sighting — manually adjusted times" : "Opportunistic sighting — times from photo metadata") : "Survey type not specified"}</div>
@@ -880,10 +886,10 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         </Card>
 
         {/* Footer buttons */}
-        {!isReview && submissionIssues.length > 0 && (
+        {readinessMessages.length > 0 && (
           <div id="submission-issues" role="status" className="text-sm text-slate-600 text-center">
             <span className="font-medium">Still needed:</span>{" "}
-            {submissionIssues.map(issue => issue.message).join(" · ")}
+            {readinessMessages.join(" · ")}
           </div>
         )}
         <div className="flex justify-center mt-6 gap-2">
@@ -892,7 +898,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               <Button variant="destructive" disabled={reviewBusy} onClick={handleRejectReview}>Reject</Button>
             <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
             <Button variant="secondary" disabled={reviewBusy} onClick={handleSaveReview}>Save Changes</Button>
-                        <Button disabled={reviewBusy} onClick={handleCommitReview}>Commit Review</Button>
+                        <Button disabled={reviewBusy || approvalIssues.length > 0} aria-describedby={approvalIssues.length ? "submission-issues" : undefined} onClick={handleCommitReview}>Commit Review</Button>
             </>
           ) : (
             <>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { getSubmissionIssues, MULTI_DATE_REVIEW_MESSAGE } from './submissionValidation';
+import { getSubmissionIssues, getApprovalIssues, TIME_ORDER_MESSAGE, MULTI_DATE_REVIEW_MESSAGE } from './submissionValidation';
 const complete = { locationUnknown: false, locationId: 'Named site', locationName: '', latitude: '', longitude: '', date: '2026-10-05', email: 'person@example.org', startTime: '10:00:01', stopTime: '11:00:02', standardizeSurvey: 'Yes', needsTimeReview: false };
 const messages = (patch: Partial<typeof complete>) => getSubmissionIssues({ ...complete, ...patch }).map(i => i.message);
 test('blank date with valid email identifies Sighting date', () => assert.deepEqual(messages({ date: '' }), ['Sighting date']));
@@ -18,7 +18,7 @@ test('button, summary, and submit handler use the same issue list; field errors 
   assert.match(source, /disabled=\{submissionIssues.length > 0\}/);
   assert.match(source, /submissionIssues.map\(issue => issue.message\)/);
   assert.match(source, /if \(submissionIssues.length > 0\) return;/);
-  assert.match(source, /const showFieldIssue = \(field: SubmissionField\) => !isReview\s*&& submissionIssues.some\(issue => issue.field === field\)/);
+  assert.match(source, /const showFieldIssue = \(field: SubmissionField\) => \(!isReview \|\| field === "startTime" \|\| field === "stopTime"\)\s*&& submissionIssues.some\(issue => issue.field === field\)/);
   assert.doesNotMatch(source, /touchedFields|touchField/);
   for (const field of ['date','email','startTime','stopTime','location']) assert.ok(source.includes(`showFieldIssue("${field}") ? "border-red-500"` ) || source.includes(`showFieldIssue("${field}")`));
 });
@@ -53,4 +53,34 @@ test('UI preserves location state on toggle and hydrates and saves unknown in bo
   assert.match(source, /onChange=\{\(e\) => setLocationUnknown\(e.target.checked\)\}/);
   assert.match(source, /fieldset disabled=\{locationUnknown\}/);
   assert.equal(source.match(/location_unknown: locationUnknown/g)?.length, 2);
+});
+
+for (const [startTime, stopTime, valid] of [
+  ['15:00', '16:00', true], ['15:00', '14:59', false],
+  ['15:28:26', '15:26:31', false], ['15:00', '15:00', false],
+  ['15:00', '15:00:01', true], ['23:00', '01:00', false],
+] as const) {
+  test(`systematic same-day order ${startTime} → ${stopTime}`, () => {
+    const expected = valid ? [] : [TIME_ORDER_MESSAGE];
+    assert.deepEqual(messages({ startTime, stopTime }), expected);
+    assert.deepEqual(getApprovalIssues({ ...complete, startTime, stopTime, mantas: [] }), expected);
+    assert.deepEqual(messages({ startTime, stopTime, standardizeSurvey: 'No' }), []);
+  });
+}
+test('correcting stop time clears time-order guidance', () => {
+  assert.deepEqual(messages({ stopTime: '09:00' }), [TIME_ORDER_MESSAGE]);
+  assert.deepEqual(messages({ stopTime: '11:00' }), []);
+});
+test('approval identifies every unresolved manta, respecting explicit false', () => {
+  const unresolved = { name: 'B', matchedCatalogId: null, noMatch: false };
+  const matched = { name: 'A', matchedCatalogId: 123, noMatch: false };
+  const fresh = { name: 'A', matchedCatalogId: null, noMatch: true };
+  const issues = (mantas: Parameters<typeof getApprovalIssues>[0]['mantas']) => getApprovalIssues({ ...complete, mantas });
+  assert.deepEqual(issues([unresolved]), ['B: select a catalog match or No Match.']);
+  assert.deepEqual(issues([matched]), []);
+  assert.deepEqual(issues([fresh]), []);
+  assert.deepEqual(issues([matched, unresolved]), ['B: select a catalog match or No Match.']);
+  assert.deepEqual(issues([fresh, { ...fresh, name: 'B' }]), []);
+  assert.deepEqual(issues([{ name: 'A' }, unresolved]), ['A: select a catalog match or No Match.', 'B: select a catalog match or No Match.']);
+  assert.deepEqual(issues([{ ...matched, noMatch: true }]), ['A: choose either a catalog match or No Match.']);
 });
