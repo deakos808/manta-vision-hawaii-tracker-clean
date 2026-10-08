@@ -110,7 +110,8 @@ async function start() {
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(NAME); });
   window.once('ready-to-show', focus);
   window.on('closed', () => { window = null; app.quit(); });
-  await window.loadURL(URL);
+  // Let the existing protected route restore auth, rather than showing the public sign-in CTA.
+  await window.loadURL(`${URL}/dashboard`);
   log('Standalone window loaded');
 }
 async function fail(error) {
