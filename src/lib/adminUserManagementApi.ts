@@ -41,8 +41,14 @@ export async function listManagedUsers(): Promise<ManagedUser[]> {
   return result.users;
 }
 
-export function inviteManagedUser(input: { email: string; displayName?: string; reason: string }) {
-  return invoke<{ ok: true }>({ action: "invite", email: input.email, display_name: input.displayName ?? "", reason: input.reason });
+export type { HistoryCandidate } from "../../supabase/functions/_shared/invite-history";
+export function checkHistoricalContributions(displayName: string) {
+  return invoke<{ candidate: import("../../supabase/functions/_shared/invite-history").HistoryCandidate }>({ action: "check_history", display_name: displayName });
+}
+
+export function inviteManagedUser(input: { email: string; displayName?: string; reason: string; legacyPhotographerAlias?: string }) {
+  return invoke<{ ok: true; historical_linked?: boolean; warning?: string }>({ action: "invite", email: input.email, display_name: input.displayName ?? "", reason: input.reason,
+    ...(input.legacyPhotographerAlias ? { legacy_photographer_alias: input.legacyPhotographerAlias } : {}) });
 }
 
 export function updateManagedUserAccess(input: { targetId: string; role: ManagedRole; isActive: boolean; reason: string }) {

@@ -1,5 +1,6 @@
 export const USER_MANAGEMENT_ACTIONS = [
   "list",
+  "check_history",
   "invite",
   "send_recovery",
   "update_access",

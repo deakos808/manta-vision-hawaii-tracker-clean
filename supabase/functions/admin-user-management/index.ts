@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
 import { parseAction, parseManagedRole, requireActiveAdmin } from "../_shared/user-management-policy.ts";
 import { resolvePublishableKey, resolveSecretKey } from "../_shared/server-keys.ts";
 
+import { checkInviteHistory, requireInviteAlias, linkInvitedHistory, LINK_WARNING } from "../_shared/invite-history.ts";
+
 type Json = Record<string, unknown>;
 
 function env(name: string): string {
@@ -52,6 +54,8 @@ serve(async (request) => {
   let actorId: string | null = null;
   let action = "unknown";
   let targetId: string | null = null;
+  let invitedWithHistory = false;
+  let historicalLinked = false;
 
   const audit = async (eventType: string, outcome: "attempted" | "success" | "failure", auditReason: string, details: Json = {}) => {
     if (!admin) return null;
@@ -120,22 +124,37 @@ serve(async (request) => {
       return reply(origin, 200, { users });
     }
 
+    if (action === "check_history") {
+      const name = typeof body.display_name === "string" ? body.display_name : "";
+      return reply(origin, 200, { candidate: await checkInviteHistory(admin, name) });
+    }
+
     if (action === "invite") {
       const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("A valid email is required.");
       if (body.role != null && body.role !== "user") throw new Error("Invitations must start with the user role.");
       const displayName = typeof body.display_name === "string" ? body.display_name.trim().slice(0, 120) : "";
       const auditReason = requiredReason(body.reason);
-      const auditId = await audit("invitation", "attempted", auditReason, { requested_role: "user" });
+      const alias = body.legacy_photographer_alias === undefined ? null : await requireInviteAlias(admin, body.legacy_photographer_alias);
+      const inviteDetails = { requested_role: "user", ...(alias ? { historical_alias_requested: true, photographer_alias: alias } : {}) };
+      const auditId = await audit("invitation", "attempted", auditReason, inviteDetails);
       if (auditId == null) throw new Error("The invitation was not started because its audit entry could not be recorded.");
       const invited = await admin.auth.admin.inviteUserByEmail(email, { data: { display_name: displayName }, redirectTo: approvedRedirect() });
       targetId = invited.data.user?.id ?? null;
+      invitedWithHistory = !!alias && !invited.error && !!targetId;
       await admin.from("user_access_audit").update({
         target_user_id: targetId,
         outcome: invited.error || !targetId ? "failure" : "success",
-        details: invited.error ? { classification: "invite_delivery_rejected" } : { requested_role: "user" },
+        details: invited.error ? { ...inviteDetails, classification: "invite_delivery_rejected" } : inviteDetails,
       }).eq("id", auditId);
       if (invited.error || !targetId) return reply(origin, 409, { error: "Invitation could not be sent. Use recovery for an existing account." });
+      if (alias) {
+        const linked = await linkInvitedHistory(admin, targetId, alias);
+        historicalLinked = linked;
+        const linkAudit = await admin.from("user_access_audit").update({ details: { ...inviteDetails, historical_link_succeeded: linked } }).eq("id", auditId);
+        if (linkAudit.error) throw new Error("Historical link audit update failed.");
+        return reply(origin, 200, { ok: true, historical_linked: linked, ...(linked ? {} : { warning: LINK_WARNING }) });
+      }
       return reply(origin, 200, { ok: true });
     }
 
@@ -177,6 +196,13 @@ serve(async (request) => {
     }
     return reply(origin, 200, { ok: true });
   } catch (error) {
+    // Never turn an already-sent invitation into a failure/retry after a link or audit transport failure.
+    if (invitedWithHistory) {
+      try { await audit("privileged_action_failure", "failure", "Post-invitation history workflow needs review.", { historical_alias_requested: true, historical_link_succeeded: historicalLinked }); } catch { /* Preserve truthful invitation result even if audit transport is unavailable. */ }
+      return reply(origin, 200, { ok: true, historical_linked: historicalLinked, warning: historicalLinked
+        ? "Invitation sent and historical contributions linked, but the audit update failed. Review the user before retrying."
+        : LINK_WARNING });
+    }
     await audit("privileged_action_failure", "failure", "Privileged user-management action failed.", { action, classification: "request_rejected" });
     return reply(origin, 400, { error: error instanceof Error ? error.message : "Request failed." });
   }
