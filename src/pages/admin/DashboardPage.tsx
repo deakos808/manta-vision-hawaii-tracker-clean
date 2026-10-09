@@ -68,11 +68,11 @@ export default function DashboardPage() {
         const { data: latest } = await supabase
           .from('sightings')
           .select('sighting_date')
-          .order('sighting_date', { descending: true })
+          .order('sighting_date', { ascending: false })
           .limit(1)
           .single();
         if (latest?.sighting_date) {
-          latestActivity = format(new Date(latest.sighting_date), 'MMM d, yyyy');
+          latestActivity = format(new Date(`${latest.sighting_date}T12:00:00`), 'MMM d, yyyy');
         }
       } catch {
         latestActivity = 'Error';
