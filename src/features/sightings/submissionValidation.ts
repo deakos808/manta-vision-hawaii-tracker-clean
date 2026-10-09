@@ -41,6 +41,8 @@ export function getApprovalIssues(input: SurveyTimes & {
 
 export function approvalFailureMessage(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+  if (message.startsWith('Species mismatch:')) return 'Approval failed: proposed species conflicts with the matched catalog species. Correct the proposed species or catalog match.';
+  if (message.startsWith('Proposed catalog species must')) return 'Approval failed: select Reef manta, Oceanic manta, or Unknown for proposed species.';
   if (message.includes('has no resolved catalog match and is not marked noMatch')) {
     return 'Approval failed. Select a catalog match or No Match for every manta.';
   }

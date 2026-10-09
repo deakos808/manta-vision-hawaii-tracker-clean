@@ -1,3 +1,4 @@
+import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React from "react";
 import { formatMantaSize } from "@/features/photos/photoPresentation";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
@@ -173,7 +174,7 @@ export default function MantasList({
 
 
               <div className={TD}><span className="lg:hidden font-medium">Photos: </span>{count}</div>
-              <div className={TD}><span className="lg:hidden font-medium">Name: </span>{tempName(m)}</div>
+              <div className={TD}><span className="lg:hidden font-medium">Name: </span>{tempName(m)}<div className="text-xs whitespace-normal">Proposed species: {speciesLabel(m?.species)}</div></div>
               <div className={TD}><span className="lg:hidden font-medium">Gender: </span>{m?.gender || "—"}</div>
               <div className={TD}><span className="lg:hidden font-medium">Age Class: </span>{m?.ageClass || "—"}</div>
               {showSize && <div className={TD}><span className="lg:hidden font-medium">Mean Size: </span>{formatMantaSize(m?.size)}</div>}
