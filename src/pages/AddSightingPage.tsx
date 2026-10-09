@@ -80,7 +80,7 @@ export default function AddSightingPage() {
   // Match modal state
   const [pageMatchOpen, setPageMatchOpen] = useState(false);
   const [pageMatchUrl, setPageMatchUrl] = useState<string>("");
-  const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; meanSize?:number|string|null}>({});
+  const [pageMatchMeta, setPageMatchMeta] = useState<{name?:string; gender?:string|null; ageClass?:string|null; species?:string|null; meanSize?:number|string|null}>({});
   const [pageMatchFor, setPageMatchFor] = useState<string | null>(null);
 
   const [methods, setMethods] = useState(() => readSightingMethods());
@@ -242,6 +242,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             name: m.name || "",
             gender: m.gender ?? null,
             ageClass: m.ageClass ?? null,
+            species: m.species ?? null,
             size: m.size ?? null,
             photos: Array.isArray(m.photos) ? m.photos : [],
             matchedCatalogId: m.matchedCatalogId ?? m.potentialCatalogId ?? null,
@@ -588,7 +589,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const allowMatching = access.isActive === true && (access.role === "user" || access.role === "admin");
   const openMatch = (m: MantaDraft, ventralUrl?: string) => {
     if (!allowMatching || !ventralUrl) return;
-    setPageMatchMeta({ name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
+    setPageMatchMeta({ species: m.species ?? null, name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
     setPageMatchUrl(ventralUrl || "");
     setPageMatchFor(String(m.id));
     setPageMatchOpen(true);

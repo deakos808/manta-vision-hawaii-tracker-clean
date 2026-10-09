@@ -1,3 +1,4 @@
+import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import CatalogFilterBox, { type FiltersState } from '@/components/catalog/CatalogFilterBox';
@@ -37,7 +38,7 @@ type CatalogRow = {
   locations?: string[] | null;
 };
 
-type Meta = { name?: string|null; gender?: string|null; ageClass?: string|null; meanSize?: number|null };
+type Meta = { species?: string|null; name?: string|null; gender?: string|null; ageClass?: string|null; meanSize?: number|null };
 
 interface Props {
   open: boolean;
@@ -307,6 +308,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
             </div>
             <div className="mt-3 text-xs text-gray-600 space-y-1">
               <div>Proposed name: {aMeta?.name ?? '—'}</div>
+              <div>Proposed species: {speciesLabel(aMeta?.species)}</div>
               <div>Gender: {aMeta?.gender ?? '—'}</div>
               <div>Age class: {aMeta?.ageClass ?? '—'}</div>
               {aMeta?.meanSize != null && <div>Mean size: {aMeta.meanSize} m</div>}
@@ -382,6 +384,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
           ) : (
           <div className="min-w-0 border rounded p-3 bg-white flex flex-col" role="tabpanel">
             <div className="text-sm font-medium mb-2">Catalog photo</div>
+            <div className="text-xs text-gray-600 mb-2">Catalog species: {speciesLabel(current?.species)}</div>
             <div ref={catalogViewerRef} className={IMAGE_FRAME}>
               <img
                 src={imgFromRow(current)}

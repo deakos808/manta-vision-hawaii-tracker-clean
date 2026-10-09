@@ -1,3 +1,4 @@
+import { SPECIES_OPTIONS, type CatalogSpecies } from "@/features/sightings/catalogSpecies";
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
@@ -35,6 +36,7 @@ export type MantaDraft = {
   name: string;
   gender?: string | null;
   ageClass?: string | null;
+  species?: CatalogSpecies | null;
   size?: string | null;
   photos: Uploaded[];
   matchedCatalogId?: number | null;
@@ -82,6 +84,7 @@ export default function UnifiedMantaModal({
   const proposedNameFlow = automaticName !== undefined;
   const [nameTouched, setNameTouched] = useState(false);
   const [gender, setGender] = useState<string | null>(null);
+  const [species, setSpecies] = useState<CatalogSpecies | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
   const [noPhotos, setNoPhotos] = useState(false);
@@ -119,6 +122,7 @@ export default function UnifiedMantaModal({
     setNameTouched(false);
     setGender(existingManta?.gender ?? null);
     setAgeClass(existingManta?.ageClass ?? null);
+    setSpecies(existingManta?.species ?? null);
     setSize(existingManta?.size ?? null);
     setPhotos(existingManta?.photos ?? []);
     setPotentialCatalogId(existingManta?.potentialCatalogId ?? null);
@@ -290,6 +294,7 @@ export default function UnifiedMantaModal({
       name: name.trim(),
       gender,
       ageClass,
+      species,
       size: size ?? null,
       photos,
       potentialCatalogId,
@@ -375,6 +380,14 @@ export default function UnifiedMantaModal({
                   placeholder={proposedNameFlow ? "e.g., A, Kai, Luna" : "e.g., A, B, C"}
                 />
                 {!name.trim() && (!proposedNameFlow || nameTouched) && <div className="text-xs text-red-500 mt-1">Please provide a temporary name</div>}
+              </div>
+
+              <div className="md:col-span-5 col-span-12 min-w-0">
+                <label htmlFor={`manta-species-${mantaId}`} className="text-sm block mb-1">Species</label>
+                <select id={`manta-species-${mantaId}`} className="w-full min-w-0 border rounded px-2 py-2 text-slate-900"
+                  value={species ?? ""} onChange={e => setSpecies((e.target.value || null) as CatalogSpecies | null)}>
+                  {SPECIES_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
               </div>
 
               <div className="md:col-span-2 col-span-12">
@@ -624,7 +637,7 @@ export default function UnifiedMantaModal({
           open={true}
           onClose={() => setMatchOpen(null)}
           tempUrl={photoDisplaySource(matchOpen) || ""}
-          aMeta={{ name, gender, ageClass, meanSize: size ? Number(size) : null }}
+          aMeta={{ name, gender, ageClass, species, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
             setPotentialCatalogId(id);
             setPotentialNoMatch(false);
