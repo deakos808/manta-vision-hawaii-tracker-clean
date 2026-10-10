@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,17 +24,8 @@ type Photo = {
   is_best_manta_dorsal_photo: boolean | null;
 };
 
-function resolvePublicUrl(p: Pick<Photo, "thumbnail_url" | "storage_path">) {
-  if (p.thumbnail_url && /^https?:\/\//i.test(p.thumbnail_url)) return p.thumbnail_url!;
-  if (p.thumbnail_url && p.thumbnail_url.length) {
-    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(p.thumbnail_url);
-    if (data?.publicUrl) return data.publicUrl;
-  }
-  if (p.storage_path && p.storage_path.length) {
-    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(p.storage_path);
-    if (data?.publicUrl) return data.publicUrl;
-  }
-  return "/manta-logo.svg";
+function resolvePublicUrl(p: Pick<Photo, "thumbnail_url" | "storage_path">): string {
+  return mantaPhotoSource(p) || "/manta-logo.svg";
 }
 
 export default function CatalogBestPhotoModal({
@@ -185,7 +178,7 @@ export default function CatalogBestPhotoModal({
                 <div className="text-sm font-medium mb-2">Current</div>
                 <div className="border rounded bg-white p-3">
                   <div className="w-full h-64 bg-white flex items-center justify-center">
-                    <img
+                    <MantaImage
                       src={resolvePublicUrl(current || candidates[0])}
                       alt="Current best"
                       className="max-h-60 object-contain"
@@ -205,7 +198,7 @@ export default function CatalogBestPhotoModal({
                 >
                   {candidates.map((p) => (
                     <label key={p.pk_photo_id} className="rounded border bg-white p-2 cursor-pointer">
-                      <img
+                      <MantaImage
                         src={resolvePublicUrl(p)}
                         alt={`Photo ${p.pk_photo_id}`}
                         className="w-full h-28 object-cover rounded"

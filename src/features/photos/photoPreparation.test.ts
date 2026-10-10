@@ -48,7 +48,7 @@ function fixture(failAt = 0) {
       calls.push({ path, body, upsert: options.upsert });
       return { error: calls.length === failAt ? new Error("Synthetic failure") : null };
     },
-    getPublicUrl(path: string) { return { data: { publicUrl: `https://example.invalid/${path}` } }; },
+    getPublicUrl() { throw new Error("Public delivery is unavailable"); },
   };
   return { calls, input, bucket };
 }

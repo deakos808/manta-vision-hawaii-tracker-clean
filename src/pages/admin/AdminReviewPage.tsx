@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/AdminReviewPage.tsx
 
 import { useEffect, useState } from 'react';
@@ -123,7 +124,7 @@ export default function AdminReviewPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
               {(photosByManta[m.id] || []).map((photo, idx) => (
                 <div key={idx} className="relative border p-1 rounded">
-                  <img src={photo.photo_url} alt={`Photo ${idx}`} className="rounded w-full" />
+                  <MantaImage src={photo.photo_url} alt={`Photo ${idx}`} className="rounded w-full" />
                   <p className="text-xs text-center">{photo.photo_type}{photo.is_best_ventral && ' 🌟 Best'}</p>
                 </div>
               ))}

@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -135,7 +136,7 @@ const MantaProfilePage = () => {
         <Card className="lg:col-span-1">
           <CardContent className="p-6">
             {profileImage ? (
-              <img 
+              <MantaImage
                 src={profileImage} 
                 alt={`Manta ${manta.name || manta.id}`}
                 className="w-full h-auto rounded-lg mb-4"
@@ -239,7 +240,7 @@ const MantaProfilePage = () => {
                         <CardContent className="p-4 flex items-center gap-4">
                           <div className="flex-shrink-0 w-20 h-20 bg-muted rounded-md overflow-hidden">
                             {sighting.image_url && (
-                              <img 
+                              <MantaImage
                                 src={getImageUrl(sighting.image_url) || ''} 
                                 alt={`Sighting ${sighting.id}`}
                                 className="w-full h-full object-cover"
@@ -281,7 +282,7 @@ const MantaProfilePage = () => {
                         className="block aspect-square bg-muted rounded-md overflow-hidden hover:opacity-90 transition-opacity"
                       >
                         {sighting.image_url && (
-                          <img 
+                          <MantaImage
                             src={getImageUrl(sighting.image_url) || ''} 
                             alt={`Sighting ${sighting.id}`}
                             className="w-full h-full object-cover"

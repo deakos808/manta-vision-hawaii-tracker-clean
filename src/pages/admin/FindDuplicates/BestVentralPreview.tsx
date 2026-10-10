@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import * as React from "react";
 import { getBestCatalogVentralPhoto } from "./data/catalog.service";
 
@@ -41,7 +42,7 @@ export default function BestVentralPreview({ pkCatalogId, refreshKey, className 
       }
     >
       {photo?.url ? (
-        <img
+        <MantaImage
           src={photo.url}
           alt={`Photo ${photo.pk_photo_id ?? ""}`}
           className="h-full w-full object-contain"

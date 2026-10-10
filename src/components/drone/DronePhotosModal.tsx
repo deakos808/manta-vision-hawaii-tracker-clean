@@ -11,7 +11,7 @@ import {
 export type UploadedDronePhoto = {
   id: string;
   name: string;
-  url: string;
+  storageBucket: "temp-images";
   path: string;
   date?: string;
   time?: string;
@@ -92,9 +92,6 @@ export default function DronePhotosModal({ open, onClose, draftId, onAdd }: Prop
           continue;
         }
 
-        const { data: pub } = supabase.storage.from("temp-images").getPublicUrl(path);
-        const url = pub?.publicUrl || URL.createObjectURL(f);
-
         let takenAt: Date | undefined;
         let lat: number | undefined;
         let lon: number | undefined;
@@ -113,7 +110,7 @@ export default function DronePhotosModal({ open, onClose, draftId, onAdd }: Prop
         const item: UploadedDronePhoto = {
           id,
           name: f.name,
-          url,
+          storageBucket: "temp-images",
           path,
           date: takenAt ? toLocalYmd(takenAt) : undefined,
           time: takenAt ? toLocalHm(takenAt) : undefined,

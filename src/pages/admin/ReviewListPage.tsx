@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import React from "react";
 import Layout from "@/components/layout/Layout";
 import { useNavigate, Link } from "react-router-dom";
@@ -51,9 +53,10 @@ export default function ReviewListPage() {
     for (const m of mantas) {
       const mPhotos = Array.isArray(m?.photos) ? m.photos : [];
       for (const p of mPhotos) {
-        if (!p?.url) continue;
+        const source = mantaPhotoSource(p || {});
+        if (!source) continue;
         out.push({
-          url: String(p.url),
+          url: source,
           name: String(p.name || p.path || "photo"),
           view: p.view ?? null,
         });
@@ -153,7 +156,7 @@ export default function ReviewListPage() {
                     <div className="text-xs text-slate-500 mt-1 break-all">{p.name}</div>
                   </div>
                 ) : (
-                  <img src={p.url} alt={p.name} className="w-full h-52 object-contain bg-white" />
+                  <MantaImage src={p.url} alt={p.name} className="w-full h-52 object-contain bg-white" />
                 )}
                   <div className="p-3 text-xs">
                     <div className="font-medium break-all">{p.name}</div>

@@ -1,3 +1,4 @@
+import { MantaImage } from '@/features/photos/MantaImage';
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Input } from '@/components/ui/input';
@@ -207,7 +208,7 @@ export default function TestMatchPage() {
                   return (
                     <li key={m.id} className="text-sm border rounded p-3 bg-gray-50 shadow-sm flex items-start gap-4">
                       {m.thumb_url ? (
-                        <img
+                        <MantaImage
                           src={m.thumb_url}
                           alt={`Catalog ${m.id}`}
                           className="w-20 h-20 object-cover rounded border"

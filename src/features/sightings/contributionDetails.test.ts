@@ -47,7 +47,7 @@ test('empty and short histories have no further loading',()=>{
 });
 test('payload photo uses durable path/URL, view and flags; HEIC remains graceful',()=>{
  const {client}=mock();const out=payloadPhotos(client,{mantas:[{photos:[{name:'original.heic',path:'prepared.jpg',previewUrl:'blob:stale',view:'ventral',isBestVentral:true},{name:'raw.heic',url:'https://example.invalid/raw.heic'}]}]});
- assert.equal(out[0].url,'https://example.invalid/manta-images/prepared.jpg');assert.equal(out[0].heic,false);assert.equal(out[0].bestVentral,true);assert.equal(out[1].heic,true);
+ assert.equal(out[0].url,'manta-images/prepared.jpg');assert.equal(out[0].heic,false);assert.equal(out[0].bestVentral,true);assert.equal(out[1].heic,true);
 });
 test('Photos for uncommitted row reads only owner payload',async()=>{
  const {client,calls}=mock({sighting_submissions:[{id:'s1',submitted_by:'owner',payload:{mantas:[{photos:[{url:'https://example.invalid/p.jpg',view:'dorsal'}]}]}}]});
@@ -56,7 +56,7 @@ test('Photos for uncommitted row reads only owner payload',async()=>{
 });
 test('historical Photos queries only selected sighting and preserves full path',async()=>{
  const {client,calls}=mock({photos:[{pk_photo_id:3,fk_sighting_id:10,file_name2:'3.jpg',storage_path:'manta-images/photos/3/3.jpg',photo_view:'ventral'}]});
- const p=await loadContributionPhotos(client,'owner',{...row,source:'historical'});assert.equal(p[0].url,'https://example.invalid/manta-images/photos/3/3.jpg');assert.deepEqual(calls[0].filters,[['fk_sighting_id',10]]);
+ const p=await loadContributionPhotos(client,'owner',{...row,source:'historical'});assert.equal(p[0].url,'manta-images/photos/3/3.jpg');assert.deepEqual(calls[0].filters,[['fk_sighting_id',10]]);
 });
 test('More queries selected owner payload or selected permanent sighting without mutation',async()=>{
  const {client,calls}=mock({sighting_submissions:[{id:'s1',submitted_by:'owner',payload:{notes:'original'}}],sightings:[{pk_sighting_id:10,notes:'historical'}]});
@@ -114,4 +114,17 @@ test('incremental display never changes all-history summary',()=>{
    contributionBatches(summary.items,count);
    assert.equal(summary.total,827);assert.equal(summary.latest,'2026-10-07');assert.equal(summary.pending,1);
  }
+});
+
+test('historical legacy filename is display metadata and never a Storage key', async () => {
+ const filename='remote:pk490_Maui mask.jpg\vsize:500,424\vJPEG:Secure/legacy';
+ const {client}=mock({photos:[{pk_photo_id:6128,fk_sighting_id:10,file_name2:filename,storage_bucket:'manta-images',storage_path:'photos/6128/6128.jpg',thumbnail_url:'https://example.invalid/wrong.jpg'}]});
+ client.storage.from=()=>({getPublicUrl(){throw Error('public delivery disabled');}});
+ const photos=await loadContributionPhotos(client,'owner',{...row,source:'historical'});
+ assert.equal(photos[0].url,'manta-images/photos/6128/6128.jpg');assert.equal(photos[0].name,filename);
+});
+test('Phoenix catalog detail uses the durable path instead of its public thumbnail',async()=>{
+ const {client}=mock({catalog_with_photo_view:[{pk_catalog_id:1,name:'Phoenix',best_catalog_ventral_path:'photos/6128/6128.jpg',best_catalog_ventral_thumb_url:'https://example.invalid/wrong.jpg'}],catalog:[{pk_catalog_id:1,last_size_m:3}]});
+ client.storage.from=()=>({getPublicUrl(){throw Error('public delivery disabled');}});
+ assert.equal((await loadContributionCatalog(client,1)).image,'manta-images/photos/6128/6128.jpg');
 });

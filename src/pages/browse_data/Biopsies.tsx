@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -943,7 +944,7 @@ function Card({ row, onOpenDetails }: { row: Row; onOpenDetails: (catId: number 
   return (
     <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
       <div className="bg-gray-100 h-[140px] w-full flex items-center justify-center overflow-hidden">
-        {photo ? <img src={photo} alt={String(c?.name ?? "")} className="w-full h-full object-cover rounded" /> : <div className="text-gray-400 text-[12px]">No photo</div>}
+        {photo ? <MantaImage src={photo} alt={String(c?.name ?? "")} className="w-full h-full object-cover rounded" /> : <div className="text-gray-400 text-[12px]">No photo</div>}
       </div>
       <div className="p-2 text-xs leading-5">
         <div className="font-semibold text-blue-600">{c?.name ?? "Unknown name"}</div>

@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useState } from 'react';
 import fallbackImage from '@/assets/hamer_logo_1.png';
 import { Loader2 } from 'lucide-react';
@@ -13,7 +15,7 @@ export default function PhotoCardImage({ storagePath, photoId }: PhotoCardImageP
   const [isError, setIsError] = useState(false);
 
   const photoUrl = storagePath
-    ? supabase.storage.from('manta-images').getPublicUrl(storagePath).data.publicUrl
+    ? mantaPhotoSource({storage_path: storagePath})
     : fallbackImage;
 
   return (
@@ -23,7 +25,7 @@ export default function PhotoCardImage({ storagePath, photoId }: PhotoCardImageP
           <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
         </div>
       )}
-      <img
+      <MantaImage
         src={isError ? fallbackImage : photoUrl}
         alt={`Photo ${photoId}`}
         className={`w-full h-full object-cover transition-opacity duration-300 ${

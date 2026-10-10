@@ -1,0 +1,375 @@
+{
+  "phase": "3A",
+  "contractorMigrationApplied": "20261009175810",
+  "privateMantaMigration": "20261010074017_private_manta_photo_reading",
+  "privateMantaMigrationApplied": false,
+  "readerCallsites": [
+    {
+      "file": "src/features/photos/MantaImage.tsx",
+      "lines": [
+        6,
+        29,
+        35
+      ]
+    },
+    {
+      "file": "src/components/catalog/CatalogCardImage.tsx",
+      "lines": [
+        36
+      ]
+    },
+    {
+      "file": "src/components/mantas/MantaPhotosModal.tsx",
+      "lines": [
+        161
+      ]
+    },
+    {
+      "file": "src/components/mantas/MantaPhotosViewer.tsx",
+      "lines": [
+        113
+      ]
+    },
+    {
+      "file": "src/components/mantas/MantasList.tsx",
+      "lines": [
+        60
+      ]
+    },
+    {
+      "file": "src/components/mantas/MatchModal.tsx",
+      "lines": [
+        301,
+        354,
+        390,
+        407
+      ]
+    },
+    {
+      "file": "src/components/mantas/MeasureModal.tsx",
+      "lines": [
+        19
+      ]
+    },
+    {
+      "file": "src/components/mantas/UnifiedMantaModal.tsx",
+      "lines": [
+        451
+      ]
+    },
+    {
+      "file": "src/components/matching/SearchCatalogModal.tsx",
+      "lines": [
+        90
+      ]
+    },
+    {
+      "file": "src/components/photos/MantaPhotosModal.tsx",
+      "lines": [
+        162
+      ]
+    },
+    {
+      "file": "src/components/photos/PhotoCardImage.tsx",
+      "lines": [
+        28
+      ]
+    },
+    {
+      "file": "src/components/sightings/MantasInSightingModal.tsx",
+      "lines": [
+        147
+      ]
+    },
+    {
+      "file": "src/components/sightings/MantasSummaryList.tsx",
+      "lines": [
+        88,
+        99,
+        111
+      ]
+    },
+    {
+      "file": "src/components/sightings/SightingCard.tsx",
+      "lines": [
+        39
+      ]
+    },
+    {
+      "file": "src/components/tools/PhotoMeasureModal.tsx",
+      "lines": [
+        18
+      ]
+    },
+    {
+      "file": "src/features/sightings/ContributionModals.tsx",
+      "lines": [
+        19
+      ]
+    },
+    {
+      "file": "src/pages/ImageTestPage.tsx",
+      "lines": [
+        166
+      ]
+    },
+    {
+      "file": "src/pages/MantaProfilePage.tsx",
+      "lines": [
+        139,
+        243,
+        285
+      ]
+    },
+    {
+      "file": "src/pages/admin/AdminPhotoTestPage.tsx",
+      "lines": [
+        120,
+        138
+      ]
+    },
+    {
+      "file": "src/pages/admin/AdminReviewPage.tsx",
+      "lines": [
+        127
+      ]
+    },
+    {
+      "file": "src/pages/admin/BestCatalogImageDiagnostics.tsx",
+      "lines": [
+        598,
+        660
+      ]
+    },
+    {
+      "file": "src/pages/admin/BestMantaImageDiagnostics.tsx",
+      "lines": [
+        395,
+        457
+      ]
+    },
+    {
+      "file": "src/pages/admin/ChooseBestMantaPhotoPage.tsx",
+      "lines": [
+        99
+      ]
+    },
+    {
+      "file": "src/pages/admin/FindDuplicates/BestVentralPreview.tsx",
+      "lines": [
+        45
+      ]
+    },
+    {
+      "file": "src/pages/admin/FindDuplicates/ColumnPreview.tsx",
+      "lines": [
+        35
+      ]
+    },
+    {
+      "file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx",
+      "lines": [
+        88,
+        107
+      ]
+    },
+    {
+      "file": "src/pages/admin/FindDuplicates/modals/SightingsListModal.tsx",
+      "lines": [
+        228,
+        229
+      ]
+    },
+    {
+      "file": "src/pages/admin/MantaPhotoDiagnosticsPage.tsx",
+      "lines": [
+        67
+      ]
+    },
+    {
+      "file": "src/pages/admin/MissingCatalogPhotosPage.tsx",
+      "lines": [
+        79
+      ]
+    },
+    {
+      "file": "src/pages/admin/MissingSightingPhotosPage.tsx",
+      "lines": [
+        175
+      ]
+    },
+    {
+      "file": "src/pages/admin/ReviewListPage.tsx",
+      "lines": [
+        159
+      ]
+    },
+    {
+      "file": "src/pages/admin/ReviewSightingDetailsPage.tsx",
+      "lines": [
+        191
+      ]
+    },
+    {
+      "file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx",
+      "lines": [
+        181,
+        201
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/Biopsies.tsx",
+      "lines": [
+        947
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/Catalog.tsx",
+      "lines": [
+        580
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/Mantas.tsx",
+      "lines": [
+        920
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/Photos.tsx",
+      "lines": [
+        782,
+        906
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/Sizes.tsx",
+      "lines": [
+        480
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx",
+      "lines": [
+        222
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx",
+      "lines": [
+        207
+      ]
+    },
+    {
+      "file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx",
+      "lines": [
+        205
+      ]
+    },
+    {
+      "file": "src/pages/matching/TestMatchPage.tsx",
+      "lines": [
+        211
+      ]
+    }
+  ],
+  "phaseFiles": [
+    "docs/security/storage_privacy_audit.json",
+    "src/features/photos/MantaImage.tsx",
+    "src/features/photos/authenticatedPhotoUrl.test.ts",
+    "src/features/photos/authenticatedPhotoUrl.ts",
+    "supabase/migrations/20261009175810_contain_anonymous_contractor_storage.sql",
+    "supabase/migrations/20261010074017_private_manta_photo_reading.sql",
+    "supabase/rollback/20261009175810_contain_anonymous_contractor_storage_rollback.sql",
+    "supabase/rollback/20261010074017_private_manta_photo_reading_rollback.sql",
+    "supabase/tests/anonymous_contractor_storage.test.ts",
+    "supabase/tests/private_manta_photo_reading.test.ts",
+    "src/components/catalog/CatalogCardImage.tsx",
+    "src/components/mantas/MantaPhotosModal.tsx",
+    "src/components/mantas/MantaPhotosViewer.tsx",
+    "src/components/mantas/MantasList.tsx",
+    "src/components/mantas/MatchModal.tsx",
+    "src/components/mantas/MeasureModal.tsx",
+    "src/components/mantas/UnifiedMantaModal.tsx",
+    "src/components/matching/SearchCatalogModal.tsx",
+    "src/components/photos/MantaPhotosModal.tsx",
+    "src/components/photos/PhotoCardImage.tsx",
+    "src/components/sightings/MantasInSightingModal.tsx",
+    "src/components/sightings/MantasSummaryList.tsx",
+    "src/components/sightings/SightingCard.tsx",
+    "src/components/tools/PhotoMeasureModal.tsx",
+    "src/features/photos/photoPreparation.test.ts",
+    "src/features/photos/photoPreparation.ts",
+    "src/features/photos/photoPresentation.test.ts",
+    "src/features/photos/photoPresentation.ts",
+    "src/features/sightings/ContributionModals.tsx",
+    "src/features/sightings/catalogSpecies.test.ts",
+    "src/features/sightings/contributionDetails.test.ts",
+    "src/features/sightings/contributionDetails.ts",
+    "src/features/sightings/reviewDataIntegrity.test.ts",
+    "src/lib/catalogImage.ts",
+    "src/pages/ImageTestPage.tsx",
+    "src/pages/MantaProfilePage.tsx",
+    "src/pages/admin/AdminPhotoTestPage.tsx",
+    "src/pages/admin/AdminReviewPage.tsx",
+    "src/pages/admin/BestCatalogImageDiagnostics.tsx",
+    "src/pages/admin/BestMantaImageDiagnostics.tsx",
+    "src/pages/admin/ChooseBestMantaPhotoPage.tsx",
+    "src/pages/admin/FindDuplicates/BestVentralPreview.tsx",
+    "src/pages/admin/FindDuplicates/ColumnPreview.tsx",
+    "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx",
+    "src/pages/admin/FindDuplicates/modals/SightingsListModal.tsx",
+    "src/pages/admin/MantaPhotoDiagnosticsPage.tsx",
+    "src/pages/admin/MissingCatalogPhotosPage.tsx",
+    "src/pages/admin/MissingSightingPhotosPage.tsx",
+    "src/pages/admin/ReviewListPage.tsx",
+    "src/pages/admin/ReviewSightingDetailsPage.tsx",
+    "src/pages/admin/modals/CatalogBestPhotoModal.tsx",
+    "src/pages/browse_data/Biopsies.tsx",
+    "src/pages/browse_data/Catalog.tsx",
+    "src/pages/browse_data/Mantas.tsx",
+    "src/pages/browse_data/Photos.tsx",
+    "src/pages/browse_data/Sizes.tsx",
+    "src/pages/browse_data/components/AllMantasInSightingModal.tsx",
+    "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx",
+    "src/pages/browse_data/modals/SightingMantasQuickModal.tsx",
+    "src/pages/matching/TestMatchPage.tsx"
+  ],
+  "acceptedAuthSecurityFilesByteIdentical": true,
+  "verification": {
+    "sourceTests": "230 passed",
+    "sqlContractsAndMockedNotification": "95 passed",
+    "credentialGuardTests": "6 passed",
+    "productionBuild": "passed; existing chunk-size warning",
+    "credentialScan": "passed",
+    "diffCheck": "passed",
+    "typescript": "no new diagnostics compared with pre-task baseline; existing global errors remain",
+    "visual": "UNVERIFIED: native Electron inspection blank; awaiting Mark admin/ordinary-user/phone feedback",
+    "contractorRuntime": "SQL role/RLS SELECT and metadata INSERT checks inside rollback-only transactions; no HTTP upload or persistent object",
+    "scientificFingerprints": "all seven tables unchanged",
+    "storageObjects": 7673,
+    "storageFingerprint": "862715b8b08911c70a5784dbe20ea34c",
+    "publicBuckets": [
+      "manta-images",
+      "drone-photo",
+      "temp-images"
+    ],
+    "privateBuckets": [
+      "contractor-docs",
+      "calibration-images",
+      "csv-uploads",
+      "pdfs"
+    ]
+  },
+  "remainingLegacyPublicUrlBuilders": [
+    "src/lib/mantaImageManager.ts: legacy upload/list helpers; not used by new submission upload",
+    "src/pages/ImageTestPage.tsx: legacy diagnostic uploader; rendering uses signed reader",
+    "src/pages/admin/AdminReviewPage.tsx: legacy commit path URL builder retained; rendering uses signed reader",
+    "src/pages/admin/FindDuplicates/data/catalog.service.ts: legacy public-reference strings normalized by display reader",
+    "src/pages/admin/AdminExportsPage.tsx: historical export URL format unchanged; not an application image renderer"
+  ],
+  "payload": "new uploads omit url; path/storageBucket/originalPath/editTransform/photo UUID retained; save strips blob previews and signed URLs; historical public URLs may remain but path wins",
+  "rpc": "unchanged; provenance branch uses path, not url",
+  "originalPrivacy": "future general permanent SELECT excludes original_storage_path; existing owner/admin submission policies preserved, including owner access beyond pending status",
+  "noCommitPushOrProductionDeployment": true
+}

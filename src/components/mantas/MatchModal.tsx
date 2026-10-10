@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -62,7 +63,7 @@ const EMPTY_FILTERS: FiltersState = {
 
 function imgFromRow(r?: CatalogRow): string {
   if (!r) return '/manta-logo.svg';
-  return r.best_catalog_ventral_thumb_url || r.best_catalog_ventral_path || r.thumbnail_url || '/manta-logo.svg';
+  return r.best_catalog_ventral_path || r.best_catalog_ventral_thumb_url || r.thumbnail_url || '/manta-logo.svg';
 }
 
 
@@ -297,7 +298,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
           <div className="min-w-0 border rounded p-3 bg-white">
             <div className="text-sm font-medium mb-2">Submitted photo</div>
             <div className={IMAGE_FRAME}>
-              <img
+              <MantaImage
                 src={tempUrl || '/manta-logo.svg'}
                 alt="Submitted manta photo"
                 className="w-full h-full min-h-0 object-contain"
@@ -350,7 +351,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
                 <div className="mt-3 space-y-3 overflow-auto" aria-label="Ranked catalog candidates">
                   {ranked.matches.map((candidate, rank) => (
                     <article key={`${candidate.catalog_id}-${rank}`} className="flex gap-3 rounded border p-3">
-                      <img
+                      <MantaImage
                         src={candidate.thumb_url || '/manta-logo.svg'}
                         alt={candidate.name || `Catalog ${candidate.catalog_id}`}
                         className="h-24 w-24 rounded border object-cover"
@@ -386,7 +387,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
             <div className="text-sm font-medium mb-2">Catalog photo</div>
             <div className="text-xs text-gray-600 mb-2">Catalog species: {speciesLabel(current?.species)}</div>
             <div ref={catalogViewerRef} className={IMAGE_FRAME}>
-              <img
+              <MantaImage
                 src={imgFromRow(current)}
                 alt={current?.name ?? 'catalog'}
                 className="w-full h-full min-h-0 object-contain"
@@ -403,7 +404,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
                   aria-pressed={candidateIndex === idx}
                   onClick={() => setIdx(candidateIndex)}
                   className={`shrink-0 w-20 rounded border-2 p-1 text-xs ${candidateIndex === idx ? 'border-sky-600 bg-sky-50' : 'border-transparent bg-gray-50 hover:border-gray-300'}`}>
-                  <img src={imgFromRow(candidate)} alt="" loading="lazy" className="h-16 w-full object-contain" referrerPolicy="no-referrer"
+                  <MantaImage src={imgFromRow(candidate)} alt="" loading="lazy" className="h-16 w-full object-contain" referrerPolicy="no-referrer"
                     onError={(event) => { event.currentTarget.src = '/manta-logo.svg'; }} />
                   {candidate.pk_catalog_id}
                 </button>

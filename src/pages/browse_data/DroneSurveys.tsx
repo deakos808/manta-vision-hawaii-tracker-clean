@@ -1,3 +1,5 @@
+import { MantaImage } from "@/features/photos/MantaImage";
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { supabase } from "@/lib/supabase";
@@ -18,7 +20,6 @@ type SurveyRow = {
 type PhotoRow = {
   id: string;
   path: string;
-  url: string;
   ts: string | null;
   pilot: string | null;
   total_mantas: number | null;
@@ -256,12 +257,10 @@ export default function DroneSurveysPage() {
 
                             const list = (data ?? []).map((p: any) => {
                               const path = p.pk_drone_photo as string;
-                              const url = supabase.storage.from("drone-photo").getPublicUrl(path).data.publicUrl;
 
                               return {
                                 id: p.pk_drone_photo as string,
                                 path,
-                                url,
                                 ts: p.drone_photo_timestamp as string | null,
                                 pilot: p.drone_pilot as string | null,
                                 total_mantas: p.total_mantas as number | null,
@@ -319,8 +318,8 @@ export default function DroneSurveysPage() {
                   {photoList.map((p) => (
                     <div key={p.id} className="border rounded p-3 bg-white text-sm">
                       <div className="overflow-hidden rounded border bg-white mb-3">
-                        <img
-                          src={p.url}
+                        <MantaImage
+                          src={mantaPhotoSource({ path: p.path, storageBucket: "drone-photo" })}
                           alt={p.path}
                           className="w-full h-56 object-contain bg-white"
                         />

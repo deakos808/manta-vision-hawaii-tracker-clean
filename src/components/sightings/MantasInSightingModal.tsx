@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/components/sightings/MantasInSightingModal.tsx
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -143,7 +144,7 @@ export default function MantasInSightingModal({ open, onOpenChange, sightingId }
                       <td className="px-3 py-2">
                         <div className="h-12 w-12 overflow-hidden rounded border bg-muted">
                           {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                          <img
+                          <MantaImage
                             src={m.best_thumb_url || "/manta-logo.svg"}
                             className="h-full w-full object-cover"
                             onError={(e) =>

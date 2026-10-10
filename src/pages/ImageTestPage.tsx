@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/StorageTestPage.tsx
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -162,7 +163,7 @@ const StorageTestPage = () => {
                   </div>
 
                   <div className="border rounded-md overflow-hidden">
-                    <img src={imageUrl} alt="Uploaded test" className="w-full h-auto max-h-[300px] object-contain" />
+                    <MantaImage src={imageUrl} alt="Uploaded test" className="w-full h-auto max-h-[300px] object-contain" />
                   </div>
 
                   <p className="text-xs text-muted-foreground break-all">

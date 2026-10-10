@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/ReviewSightingDetailsPage.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -187,7 +188,7 @@ export default function ReviewSightingDetailsPage() {
               </h2>
 
               {bestPhoto && (
-                <img src={bestPhoto.photo_url} alt="best ventral" className="w-64 rounded mb-2" />
+                <MantaImage src={bestPhoto.photo_url} alt="best ventral" className="w-64 rounded mb-2" />
               )}
 
               <p><strong>Suggested Catalog ID:</strong> {manta.suggested_catalog_id ?? 'N/A'}</p>

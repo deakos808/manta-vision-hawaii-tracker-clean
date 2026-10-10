@@ -1,3 +1,4 @@
+import { useMantaImageSource } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type Pt = { x: number; y: number };
@@ -14,6 +15,7 @@ function clamp01(v: number) { return Math.max(0, Math.min(1, v)); }
 const to2 = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "—");
 
 export default function PhotoMeasureModal({ open, imageUrl, knownScaleCm=60, onClose, onSave, initial }: Props){
+  const displaySrc = useMantaImageSource(imageUrl);
   const imgRef = useRef<HTMLImageElement|null>(null);
   const [points, setPoints] = useState<Pt[]>(() => initial?.points ?? []);
   const [dragIdx, setDragIdx] = useState<number|null>(null);
@@ -50,7 +52,7 @@ export default function PhotoMeasureModal({ open, imageUrl, knownScaleCm=60, onC
         </div>
         <div className="px-4 pt-3 pb-2 overflow-auto" style={{ maxHeight:"70vh" }}>
           <div className="inline-block relative">
-            <img ref={imgRef} src={imageUrl} alt="Dorsal for sizing" className="block max-h-[65vh] w-auto rounded" draggable={false}/>
+            <img ref={imgRef} src={displaySrc} alt="Dorsal for sizing" className="block max-h-[65vh] w-auto rounded" draggable={false}/>
             <div className="absolute inset-0 cursor-crosshair" onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 {points[0] && <circle cx={px(points[0]).x} cy={px(points[0]).y} r={6} fill="#0ea5e9" />}
@@ -58,7 +60,7 @@ export default function PhotoMeasureModal({ open, imageUrl, knownScaleCm=60, onC
                 {points.length>=3 && <circle cx={px(points[2]).x} cy={px(points[2]).y} r={6} fill="#14b8a6" />}
                 {points.length>=4 && (<><circle cx={px(points[3]).x} cy={px(points[3]).y} r={6} fill="#14b8a6" /><line x1={px(points[2]).x} y1={px(points[2]).y} x2={px(points[3]).x} y2={px(points[3]).y} stroke="#14b8a6" strokeWidth={3}/></>)}
               </svg>
-              {cursor && (()=>{ const P=10; let left=cursor.x+P, top=cursor.y+P; const dispW=imgRef.current?.clientWidth??0, dispH=imgRef.current?.clientHeight??0; if(left+loupe>dispW) left=cursor.x-loupe-P; if(top+loupe>dispH) top=cursor.y-loupe-P; left=Math.max(0,Math.min(dispW-loupe,left)); top=Math.max(0,Math.min(dispH-loupe,top)); const url=imageUrl; return (<div className="pointer-events-none absolute rounded-full border border-slate-400 shadow-sm z-30 bg-white/5" style={{width:loupe,height:loupe,left,top,backgroundImage:`linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),radial-gradient(circle at center, rgba(255,255,255,1) 0 3px, rgba(0,0,0,0.35) 3px 4px, rgba(255,255,255,0) 4px),url(${JSON.stringify(url)})`,backgroundRepeat:'no-repeat',backgroundSize:`1px ${loupe}px, ${loupe}px 1px, 6px 6px, ${dispW*zoom}px ${dispH*zoom}px`,backgroundPosition:`${loupe/2}px 0px, 0px ${loupe/2}px, ${loupe/2-3}px ${loupe/2-3}px, ${-(cursor.x*zoom)+loupe/2}px ${-(cursor.y*zoom)+loupe/2}px`}}/>); })()}
+              {cursor && (()=>{ const P=10; let left=cursor.x+P, top=cursor.y+P; const dispW=imgRef.current?.clientWidth??0, dispH=imgRef.current?.clientHeight??0; if(left+loupe>dispW) left=cursor.x-loupe-P; if(top+loupe>dispH) top=cursor.y-loupe-P; left=Math.max(0,Math.min(dispW-loupe,left)); top=Math.max(0,Math.min(dispH-loupe,top)); const url=displaySrc; return (<div className="pointer-events-none absolute rounded-full border border-slate-400 shadow-sm z-30 bg-white/5" style={{width:loupe,height:loupe,left,top,backgroundImage:`linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.95)),radial-gradient(circle at center, rgba(255,255,255,1) 0 3px, rgba(0,0,0,0.35) 3px 4px, rgba(255,255,255,0) 4px),url(${JSON.stringify(url)})`,backgroundRepeat:'no-repeat',backgroundSize:`1px ${loupe}px, ${loupe}px 1px, 6px 6px, ${dispW*zoom}px ${dispH*zoom}px`,backgroundPosition:`${loupe/2}px 0px, 0px ${loupe/2}px, ${loupe/2-3}px ${loupe/2-3}px, ${-(cursor.x*zoom)+loupe/2}px ${-(cursor.y*zoom)+loupe/2}px`}}/>); })()}
             </div>
           </div>
         </div>

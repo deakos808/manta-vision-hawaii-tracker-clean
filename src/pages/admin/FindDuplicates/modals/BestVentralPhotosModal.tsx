@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -84,7 +85,7 @@ export default function BestVentralPhotosModal({ open, onOpenChange, pk_catalog_
             <div className="h-64 overflow-hidden rounded bg-muted">
               {current?.storage_path ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={publicUrl(current.storage_path)} className="h-full w-full object-contain" alt="Current best" />
+                <MantaImage src={publicUrl(current.storage_path)} className="h-full w-full object-contain" alt="Current best" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">None</div>
               )}
@@ -103,7 +104,7 @@ export default function BestVentralPhotosModal({ open, onOpenChange, pk_catalog_
                     title={`Photo #${p.pk_photo_id}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={publicUrl(p.storage_path)} className="h-full w-full object-cover" alt={`Photo ${p.pk_photo_id}`} />
+                    <MantaImage src={publicUrl(p.storage_path)} className="h-full w-full object-cover" alt={`Photo ${p.pk_photo_id}`} />
                     {selected === p.pk_photo_id && (
                       <span className="absolute bottom-1 right-1 rounded bg-background/80 px-2 text-xs">Selected</span>
                     )}

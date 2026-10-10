@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import BackToTopButton from "@/components/browse/BackToTopButton";
@@ -476,7 +477,7 @@ export default function Sizes() {
           filteredRows.map((r) => (
             <Card key={r.pk_manta_id} className="p-2">
               <div className="w-full">
-                <img
+                <MantaImage
                   src={r.thumbnail_url || "/manta-logo.svg"}
                   alt={r.name ?? `Manta ${r.pk_manta_id}`}
                   className="w-full aspect-square object-contain rounded border"

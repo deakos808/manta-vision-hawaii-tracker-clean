@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from '@/lib/supabase';
 import { Link, useSearchParams } from "react-router-dom";
@@ -778,8 +779,8 @@ const [photos, setPhotos] = useState<Photo[]>([]);
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
             {photoRows.map((photo, index) => (
               <div key={photo.pk_photo_id} className="border rounded p-2">
-                <img
-                  src={photo.thumbnail_url || "/manta-logo.svg"}
+                <MantaImage
+                  src={photo.storage_path || photo.thumbnail_url || "/manta-logo.svg"}
                   alt="manta thumbnail"
                   className="w-full h-[140px] object-cover rounded"
                   loading="lazy"
@@ -902,8 +903,8 @@ const [photos, setPhotos] = useState<Photo[]>([]);
                     className={`rounded border p-1 text-left ${selected ? "ring-2 ring-blue-600" : ""}`}
                     onClick={() => setPickerSelectedId(p.pk_photo_id)}
                   >
-                    <img
-                      src={p.thumbnail_url || "/manta-logo.svg"}
+                    <MantaImage
+                      src={p.storage_path || p.thumbnail_url || "/manta-logo.svg"}
                       alt={`Photo ${p.pk_photo_id}`}
                       className="w-full h-[140px] object-cover rounded"
                       loading="lazy"

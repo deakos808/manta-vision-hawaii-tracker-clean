@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/admin/MissingSightingPhotosPage.tsx
 
 import { useEffect, useState } from 'react';
@@ -171,7 +172,7 @@ export default function MissingSightingPhotosPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredPhotos.map((photo) => (
             <Card key={`photo-${photo.pk_photo_id}`} className="overflow-hidden">
-              <img
+              <MantaImage
                 src={getCleanedStorageUrl(photo.storage_path)}
                 alt="Manta"
                 onError={(e) => (e.currentTarget.src = '/fallback.png')}

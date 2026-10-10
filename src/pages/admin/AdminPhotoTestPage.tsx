@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/AdminPhotoTestPage.tsx
 
 import { useState } from 'react';
@@ -48,7 +50,7 @@ export default function AdminPhotoTestPage() {
       setExistingUrl('');
     } else {
       const valid = data.storage_path && data.storage_path.startsWith('photos/');
-      const url = supabase.storage.from('manta-images').getPublicUrl(data.storage_path).data.publicUrl;
+      const url = mantaPhotoSource({storage_path: data.storage_path});
       setExistingPath(data.storage_path);
       setExistingUrl(url);
       setStatus(valid ? 'exists' : 'fixable');
@@ -90,7 +92,7 @@ export default function AdminPhotoTestPage() {
 
     toast.success(`Photo ${pkPhotoId} uploaded and storage path updated.`);
     setStatus('exists');
-    const url = supabase.storage.from('manta-images').getPublicUrl(storagePath).data.publicUrl;
+    const url = mantaPhotoSource({storage_path: storagePath});
     setExistingUrl(url);
     setExistingPath(storagePath);
   };
@@ -115,7 +117,7 @@ export default function AdminPhotoTestPage() {
             {existingUrl && (
               <div className="mt-4">
                 <Label className="block mb-1">Existing Image</Label>
-                <img
+                <MantaImage
                   src={existingUrl}
                   alt="Existing"
                   className="max-h-64 rounded border"
@@ -133,7 +135,7 @@ export default function AdminPhotoTestPage() {
             {newPreviewUrl && (
               <div className="mt-4">
                 <Label className="block mb-1">Selected Image for Upload</Label>
-                <img src={newPreviewUrl} alt="Selected preview" className="max-h-64 rounded border" />
+                <MantaImage src={newPreviewUrl} alt="Selected preview" className="max-h-64 rounded border" />
               </div>
             )}
 

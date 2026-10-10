@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,7 +64,7 @@ export default function MantaPhotoDiagnosticsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-8">
               {data.map((entry) => (
                 <Card key={entry.pk_manta_id}>
-                  <img src={entry.photo_url} alt="manta" className="w-full h-40 object-cover rounded-t" />
+                  <MantaImage src={entry.photo_url} alt="manta" className="w-full h-40 object-cover rounded-t" />
                   <CardContent className="p-3 space-y-1 text-sm">
                     <div><strong>Manta ID:</strong> {entry.pk_manta_id}</div>
                     <div><strong>Catalog ID:</strong> {entry.fk_catalog_id}</div>

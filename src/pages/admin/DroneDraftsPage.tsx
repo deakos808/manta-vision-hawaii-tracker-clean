@@ -1,3 +1,5 @@
+import { MantaImage } from "@/features/photos/MantaImage";
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import React, { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,8 +235,8 @@ export default function DroneDraftsPage() {
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {photos.map((p) => (
                             <div key={p.id} className="border rounded-lg bg-white overflow-hidden">
-                              {p.url ? (
-                                <img src={p.url} alt={p.path} className="w-full h-40 object-contain bg-white" />
+                              {p.path || p.url ? (
+                                <MantaImage src={mantaPhotoSource({ ...p, storageBucket: "temp-images" })} alt={p.path} className="w-full h-40 object-contain bg-white" />
                               ) : (
                                 <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-xs text-gray-500">
                                   no image

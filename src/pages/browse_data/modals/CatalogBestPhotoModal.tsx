@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // File: src/pages/browse_data/modals/CatalogBestPhotoModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,6 +25,7 @@ type Photo = {
 };
 
 function resolveImageUrl(p: Pick<Photo, "thumbnail_url" | "storage_path">): string {
+  if (p.storage_path) return p.storage_path;
   if (p.thumbnail_url && p.thumbnail_url.length > 0) return p.thumbnail_url;
   return "/manta-logo.svg";
 }
@@ -202,7 +204,7 @@ export default function CatalogBestPhotoModal({
                 view === "ventral" ? !!p.is_best_catalog_ventral_photo : !!p.is_best_catalog_dorsal_photo;
               return (
                 <label key={p.pk_photo_id} className="block cursor-pointer">
-                  <img
+                  <MantaImage
                     src={resolveImageUrl(p)}
                     alt={`Photo ${p.pk_photo_id}`}
                     className="w-full h-40 object-cover rounded border cursor-zoom-in"

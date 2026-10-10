@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import ReviewSubmissionsCard from "@/components/admin/ReviewSubmissionsCard";
 // File: src/pages/admin/BestMantaImageDiagnostics.tsx
 import { useEffect, useMemo, useState } from "react";
@@ -41,16 +43,7 @@ const PAGE_SIZE = 1000;
 const fmt = (n: number) => n.toLocaleString();
 
 function resolveImageUrl(p: Pick<Photo, "thumbnail_url" | "storage_path">): string {
-  if (p.thumbnail_url && /^https?:\/\//i.test(p.thumbnail_url)) return p.thumbnail_url;
-  if (p.thumbnail_url && p.thumbnail_url.length > 0) {
-    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(p.thumbnail_url);
-    if (data?.publicUrl) return data.publicUrl;
-  }
-  if (p.storage_path && p.storage_path.length > 0) {
-    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(p.storage_path);
-    if (data?.publicUrl) return data.publicUrl;
-  }
-  return "/manta-logo.svg";
+  return mantaPhotoSource(p) || "/manta-logo.svg";
 }
 
 /** Fetch ALL photos for a single view (paged) so grid & counts reflect the entire table (within RLS). */
@@ -399,7 +392,7 @@ export default function BestMantaImageDiagnostics() {
                   </div>
 
                   <div className="relative">
-                    <img
+                    <MantaImage
                       src={preview ? resolveImageUrl(preview) : "/manta-logo.svg"}
                       alt={`Manta ${mantaId}`}
                       className="w-full h-40 object-cover rounded border"
@@ -461,7 +454,7 @@ export default function BestMantaImageDiagnostics() {
                     viewFilter === "ventral" ? !!p.is_best_manta_ventral_photo : !!p.is_best_manta_dorsal_photo;
                   return (
                     <label key={p.pk_photo_id} className="block cursor-pointer">
-                      <img
+                      <MantaImage
                         src={resolveImageUrl(p)}
                         alt={`Photo ${p.pk_photo_id}`}
                         className="w-full h-32 object-cover rounded border"
