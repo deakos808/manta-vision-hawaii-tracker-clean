@@ -1,0 +1,950 @@
+{
+  "phase": "3 \u2014 read-only audit and unapplied transition drafts",
+  "project": "apweteosdbgsolmvcmhn",
+  "date": "2026-10-09",
+  "baseHead": "fcfe13c4421fb74a69d42403910f713dfca2f366",
+  "buckets": [
+    {
+      "id": "calibration-images",
+      "public": false,
+      "objects": 49,
+      "bytes": "33624003"
+    },
+    {
+      "id": "contractor-docs",
+      "public": false,
+      "objects": 212,
+      "bytes": "269759996"
+    },
+    {
+      "id": "csv-uploads",
+      "public": false,
+      "objects": 1,
+      "bytes": "0"
+    },
+    {
+      "id": "drone-photo",
+      "public": true,
+      "objects": 2,
+      "bytes": "1656415"
+    },
+    {
+      "id": "manta-images",
+      "public": true,
+      "objects": 6769,
+      "bytes": "382117226"
+    },
+    {
+      "id": "pdfs",
+      "public": false,
+      "objects": 0,
+      "bytes": "0"
+    },
+    {
+      "id": "temp-images",
+      "public": true,
+      "objects": 640,
+      "bytes": "1239551036"
+    }
+  ],
+  "bytesMeaning": "Sum of Storage metadata.size, not an independent scan of object bytes. All populated objects have numeric sizes. csv-uploads object's recorded size is zero.",
+  "policies": [
+    {
+      "policyname": "Public read drone-photo",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon}",
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'drone-photo'::text)",
+      "with_check": null
+    },
+    {
+      "policyname": "Public read for temp-images",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'temp-images'::text)",
+      "with_check": null
+    },
+    {
+      "policyname": "Service role write drone-photo",
+      "permissive": "PERMISSIVE",
+      "roles": "{service_role}",
+      "cmd": "ALL",
+      "qual": "(bucket_id = 'drone-photo'::text)",
+      "with_check": "(bucket_id = 'drone-photo'::text)"
+    },
+    {
+      "policyname": "allow anon read path metadata for contractor-docs",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon}",
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'contractor-docs'::text)",
+      "with_check": null
+    },
+    {
+      "policyname": "allow anon upload to contractor-docs",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id = 'contractor-docs'::text)"
+    },
+    {
+      "policyname": "calibration_admin_delete",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'calibration-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": null
+    },
+    {
+      "policyname": "calibration_admin_insert",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'calibration-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))"
+    },
+    {
+      "policyname": "calibration_admin_select",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'calibration-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": null
+    },
+    {
+      "policyname": "calibration_admin_update",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'calibration-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": "((bucket_id = 'calibration-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))"
+    },
+    {
+      "policyname": "contractor_authenticated_insert",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id = 'contractor-docs'::text)"
+    },
+    {
+      "policyname": "contractor_authenticated_select",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'contractor-docs'::text)",
+      "with_check": null
+    },
+    {
+      "policyname": "csv_uploads_admin_select",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'csv-uploads'::text) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": null
+    },
+    {
+      "policyname": "drone_draft_insert_active",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'temp-images'::text) AND ((storage.foldername(name))[1] = 'drone'::text) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = ( SELECT auth.uid() AS uid)) AND (profiles.is_active IS TRUE) AND (profiles.role = ANY (ARRAY['user'::text, 'admin'::text]))))))"
+    },
+    {
+      "policyname": "manta_admin_insert",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'manta-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))"
+    },
+    {
+      "policyname": "manta_permanent_select",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'manta-images'::text) AND (name <> 'submissions'::text) AND (name !~~ 'submissions/%'::text))",
+      "with_check": null
+    },
+    {
+      "policyname": "manta_submission_insert_own",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'manta-images'::text) AND ((storage.foldername(name))[1] = 'submissions'::text) AND ((storage.foldername(name))[2] = (( SELECT auth.uid() AS uid))::text) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = ( SELECT auth.uid() AS uid)) AND (profiles.is_active IS TRUE) AND (profiles.role = ANY (ARRAY['user'::text, 'admin'::text]))))))"
+    },
+    {
+      "policyname": "manta_submission_select_admin",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'manta-images'::text) AND ((storage.foldername(name))[1] = 'submissions'::text) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": null
+    },
+    {
+      "policyname": "manta_submission_select_own",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'manta-images'::text) AND ((storage.foldername(name))[1] = 'submissions'::text) AND ((storage.foldername(name))[2] = (( SELECT auth.uid() AS uid))::text) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = ( SELECT auth.uid() AS uid)) AND (profiles.is_active IS TRUE) AND (profiles.role = ANY (ARRAY['user'::text, 'admin'::text]))))))",
+      "with_check": null
+    },
+    {
+      "policyname": "temp_admin_diagnostic_delete",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'temp-images'::text) AND (name ~~ 'diagnostics/diagnostic-%.txt'::text) AND (array_length(storage.foldername(name), 1) = 1) AND ( SELECT is_admin_user() AS is_admin_user))",
+      "with_check": null
+    },
+    {
+      "policyname": "temp_admin_insert",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((bucket_id = 'temp-images'::text) AND ( SELECT is_admin_user() AS is_admin_user))"
+    }
+  ],
+  "publicDeliveryProof": [
+    {
+      "bucket": "drone-photo",
+      "request": "Unauthenticated GET with Range: bytes=0-0; no cookies, API key or Authorization",
+      "httpStatus": 206,
+      "bytesRead": 1,
+      "submissionNamespace": false
+    },
+    {
+      "bucket": "manta-images",
+      "request": "Unauthenticated GET with Range: bytes=0-0; no cookies, API key or Authorization",
+      "httpStatus": 206,
+      "bytesRead": 1,
+      "submissionNamespace": true
+    },
+    {
+      "bucket": "temp-images",
+      "request": "Unauthenticated GET with Range: bytes=0-0; no cookies, API key or Authorization",
+      "httpStatus": 206,
+      "bytesRead": 1,
+      "submissionNamespace": false
+    }
+  ],
+  "documentation": [
+    "https://supabase.com/docs/guides/storage/buckets/fundamentals",
+    "https://supabase.com/docs/guides/storage/security/access-control",
+    "https://supabase.com/docs/reference/javascript/storage-from-createsignedurl"
+  ],
+  "historicalRepresentation": [
+    {
+      "rel": "catalog",
+      "field": "best_catalog_photo_url",
+      "representation": "full_public_url",
+      "count": 706
+    },
+    {
+      "rel": "catalog",
+      "field": "best_catalog_photo_url",
+      "representation": "missing",
+      "count": 306
+    },
+    {
+      "rel": "catalog",
+      "field": "best_catalog_ventral_thumb_url",
+      "representation": "full_public_url",
+      "count": 695
+    },
+    {
+      "rel": "catalog",
+      "field": "best_catalog_ventral_thumb_url",
+      "representation": "missing",
+      "count": 317
+    },
+    {
+      "rel": "catalog",
+      "field": "best_photo_url",
+      "representation": "full_public_url",
+      "count": 706
+    },
+    {
+      "rel": "catalog",
+      "field": "best_photo_url",
+      "representation": "missing",
+      "count": 306
+    },
+    {
+      "rel": "photos",
+      "field": "original_storage_path",
+      "representation": "missing",
+      "count": 6699
+    },
+    {
+      "rel": "photos",
+      "field": "storage_bucket",
+      "representation": "relative_or_plain",
+      "count": 6699
+    },
+    {
+      "rel": "photos",
+      "field": "storage_path",
+      "representation": "full_public_url",
+      "count": 1
+    },
+    {
+      "rel": "photos",
+      "field": "storage_path",
+      "representation": "relative_or_plain",
+      "count": 6698
+    },
+    {
+      "rel": "photos",
+      "field": "thumbnail_url",
+      "representation": "full_public_url",
+      "count": 6698
+    },
+    {
+      "rel": "photos",
+      "field": "thumbnail_url",
+      "representation": "missing",
+      "count": 1
+    }
+  ],
+  "historicalCombinations": [
+    {
+      "storage_bucket": "manta-images",
+      "count": 6699,
+      "submission_paths": 0,
+      "path_and_thumbnail": 6698,
+      "originals": 0
+    }
+  ],
+  "historicalPathStyles": [
+    {
+      "canonical_photos_path": 6698,
+      "bucket_prefixed": 0,
+      "browse_prefixed": 0,
+      "full_public": 1,
+      "other_relative": 0,
+      "manta_thumbnails": 6698
+    }
+  ],
+  "objectNamespaces": [
+    {
+      "namespace": "other",
+      "bucket_id": "calibration-images",
+      "count": 49
+    },
+    {
+      "namespace": "other",
+      "bucket_id": "contractor-docs",
+      "count": 212
+    },
+    {
+      "namespace": "other",
+      "bucket_id": "csv-uploads",
+      "count": 1
+    },
+    {
+      "namespace": "surveys/...",
+      "bucket_id": "drone-photo",
+      "count": 2
+    },
+    {
+      "namespace": "other",
+      "bucket_id": "manta-images",
+      "count": 2
+    },
+    {
+      "namespace": "photos/...",
+      "bucket_id": "manta-images",
+      "count": 6703
+    },
+    {
+      "namespace": "submissions/...",
+      "bucket_id": "manta-images",
+      "count": 64
+    },
+    {
+      "namespace": "diagnostics/...",
+      "bucket_id": "temp-images",
+      "count": 62
+    },
+    {
+      "namespace": "drone/...",
+      "bucket_id": "temp-images",
+      "count": 30
+    },
+    {
+      "namespace": "other",
+      "bucket_id": "temp-images",
+      "count": 548
+    }
+  ],
+  "viewDependencies": [
+    {
+      "view": "vw_manta_with_photos_uuid",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "vw_photo_with_manta_uuid",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "vw_photo_with_catalog_uuid",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "photos_with_photo_view",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "catalog_with_photo_view",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "stg_v_photos_missing_fk_manta",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "manta_preferred_thumb",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "manta_preferred_thumb_v2",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "photos_with_photo_view_v4",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "catalog_best_ventral_photos",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "manta_best_ventral_by_catalog",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "manta_best_ventral_photos",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "mantas_preferred_for_browse",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "mantas_with_photo_view",
+      "constructsPublicEndpoint": true
+    },
+    {
+      "view": "mantas_with_preferred_thumb",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "missing_catalog_photos",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "photos_with_catalog_view",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "photos_with_photo_view_v2",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "photos_with_photo_view_v3",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "stg_v_photos_bad_view",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "stg_v_photos_missing_fk",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "stg_v_photos_unusable",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "stg_v_photos_warnings",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "test_url_view",
+      "constructsPublicEndpoint": true
+    },
+    {
+      "view": "v_catalog_best_thumb",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "v_sizes_card_rows",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "v_sizes_card_rows_v3",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "v_sizes_manta_rows_v1",
+      "constructsPublicEndpoint": false
+    },
+    {
+      "view": "vw_catalog_with_photos_uuid",
+      "constructsPublicEndpoint": false
+    }
+  ],
+  "pendingOct3": [
+    {
+      "status": "pending",
+      "sighting_date": "2026-10-03",
+      "bucket": "manta-images",
+      "path_style": "submissions/<user>/<sighting>/<manta>/<photo>/prepared-<edit>.jpg",
+      "public_url": true,
+      "has_original": true,
+      "has_transform": true,
+      "derivative_exists": true,
+      "original_exists": true
+    },
+    {
+      "status": "pending",
+      "sighting_date": "2026-10-03",
+      "bucket": "manta-images",
+      "path_style": "submissions/<user>/<sighting>/<manta>/<photo>/prepared-<edit>.jpg",
+      "public_url": true,
+      "has_original": true,
+      "has_transform": true,
+      "derivative_exists": true,
+      "original_exists": true
+    }
+  ],
+  "scienceBefore": [
+    {
+      "name": "catalog",
+      "count": "1012",
+      "fingerprint": "ef037b17a8eeae956a047ca7ea9781a5"
+    },
+    {
+      "name": "sightings",
+      "count": "6793",
+      "fingerprint": "6b20e9b3c683965fd5c73f903a369820"
+    },
+    {
+      "name": "mantas",
+      "count": "39055",
+      "fingerprint": "4b74970094a8023f900316167167c078"
+    },
+    {
+      "name": "photos",
+      "count": "6699",
+      "fingerprint": "557f1d17645d2bbbd536d7f664f05f87"
+    },
+    {
+      "name": "manta_sizes",
+      "count": "8948",
+      "fingerprint": "b41ddf84df16e02d6536551ef18f5233"
+    },
+    {
+      "name": "sighting_submissions",
+      "count": "37",
+      "fingerprint": "a1c494bb96a06433513f0759dc2ae819"
+    },
+    {
+      "name": "biopsies",
+      "count": "134",
+      "fingerprint": "b6b4b00467556ef2d8c339d1813e82a0"
+    }
+  ],
+  "storageBefore": [
+    {
+      "count": "7673",
+      "fingerprint": "862715b8b08911c70a5784dbe20ea34c"
+    }
+  ],
+  "dataFlow": [
+    "UnifiedMantaModal calls uploadPreparedPair with the authenticated uploader UUID and sighting/manta/photo/edit UUIDs. Two immutable objects in manta-images: submissions/<user>/<sighting>/<manta>/<photo>/original.<ext> and prepared-<edit>.jpg.",
+    "photoPreparation returns id, path, storageBucket, originalPath, editTransform, and a full public url. Crop re-edit downloads originalPath through authenticated Storage, writes a new prepared path, retains logical identity and replaces url.",
+    "UnifiedMantaModal -> MantaDraft -> AddSightingPage mantas state -> handleSubmit directly serializes mantas into sighting_submissions.payload. Review hydration copies m.photos without normalization; reviewSave merges them back.",
+    "MantasList/photoDisplaySource/UnifiedMantaModal/Match submitted-photo viewer consume stored URL/preview directly. A one-line bucket flag change would break these already-stored public URLs.",
+    "My Contributions pending/rejected rows: payloadPhotos prefers stored non-blob url, otherwise builds getPublicUrl from path/bucket. Accepted/historical: loadContributionPhotos queries photos.storage_path/storage_bucket and converts to public URLs. Catalog details also use publicImage.",
+    "Commit Review delegates to base RPC. Provenance branch writes photo.id as pk_photo_uuid, path as storage_path, storageBucket, originalPath and transform; does not move/copy objects or use display url as storage identity. Legacy branch keeps its existing defaults. Nothing in this phase changes either branch.",
+    "Current permanent policy excludes submissions/ paths. Future approval creates permanent photos that still reference that namespace; permanent-read authorization must recognize a committed photos reference (including original path as appropriate), rather than rely only on namespace. SELECT relation visibility must be tested for active contributors and admins.",
+    "Historical thumbnail_url and catalog best-photo URLs are full public URLs; views and photo/catalog triggers propagate these. Normalize at display boundaries without rewriting historical rows; do not save signed URLs through best-photo selection into catalog metadata."
+  ],
+  "recommendation": {
+    "chosen": "Option A \u2014 single private manta-images bucket, later guarded transition",
+    "optionA": "No object moves, no new bucket, no provenance or commit mapping changes. Integrate the display helper across pending photos, summary/measurement/editor/Match, Browse cards/modals/thumbnails, My Contributions, Review, diagnostics/exports/duplicate tools. Preserve bucket/path metadata and old full public URLs. Replace broad permanent SELECT with active-authenticated access and recognize approved submission paths via committed photos references. Keep active own pending and active admin pending policies. Implement all readers and policy tests BEFORE flag flip.",
+    "optionB": "New private manta-submissions bucket requires upload bucket changes, current provenance validation/re-edit/base RPC bucket assumptions to change, and approval copy/move or mixed-bucket readers. Adds recoverability and immutable original/derivative concerns. Leaving approved manta-images public violates the no-anonymous-known-URL goal, so B alone is not acceptable.",
+    "blastRadius": "See exact sourceCallsites below, including passive thumbnail consumers, tests/types, server and script dependencies. Helpers alone do not cover every reader. No reader has been rewired in this phase.",
+    "drone": "drone-photo is public because Browse DroneSurveys/DronePhotosMapModal build public URLs. Service commit-drone-draft downloads temp-images and uploads drone-photo with a server client; private flags need not require moving objects. Add active-user/admin SELECT and convert the two public readers before making private. Existing SELECT targets anon only, so authenticated private signing is not guaranteed by that policy. Preserve service-role policy.",
+    "temp": "temp-images supports DronePhotosModal drafts, older manta photo modals/uploader, diagnostics and disabled ranked-match uploads. Contains 30 drone/, 62 diagnostics/, 548 other objects. Convert public readers and persisted drone draft URL display; replace PUBLIC read with explicit active/owner/admin coverage. Drone/<draft>/ paths do not encode user ownership; use trusted draft ownership relation, audit legacy paths, and do not guess ownership from filenames. Server/matcher URL consumers need explicit private access design; ranked matching stays disabled.",
+    "contractor": "No contractor-docs references in current frontend, functions or scripts; existing authenticated SELECT/INSERT match entire bucket and service access survives. Draft removes ONLY two anon policies. No source integration required for this removal. Authenticated policy does not enforce active-account or per-document ownership; document that separate risk, do not silently broaden this draft.",
+    "other": "calibration-images already uses one-hour signed URLs and admin-only Storage policies; preserve. csv-uploads currently admin listing only; pdfs empty and no ordinary-client policy. Do not change either."
+  },
+  "draftHelper": {
+    "path": "src/features/photos/authenticatedPhotoUrl.ts",
+    "integrated": false,
+    "expirationSeconds": 300,
+    "behavior": "Caller supplies explicit bucket/path and configured project URL. Accept canonical relative, bucket-prefixed, historical public endpoint/full same-project public URLs. Reject foreign/signed/blob/mismatched references. Validate authenticated user then call createSignedUrl under caller RLS. Return display URL only; no DB write/cache/state/public fallback.",
+    "limitations": "Future consuming query/view must refresh on expiry and invalidate on account switch/logout; preserve durable metadata separately, never serialize a signed URL. Signed URLs are bearer links during their usable lifetime, not proof that every byte fetch requires a session. Already-downloaded/cached bytes cannot be recalled. For a stronger no-bearer-share requirement use authenticated downloads/blob display instead.",
+    "pending": "Both Oct 3 photos have intact derivative/original references and can be normalized and signed under the existing owner/admin rules after integration. They remain displayable today because nothing changed. Making the bucket private now without integration would break stored public URLs."
+  },
+  "runtimePlan": [
+    "Before any future apply: fresh exact policies/flags/schema and row/object fingerprints, authenticated contributor/admin sessions supplied by Mark, exact rollback prepared; use only MantaTracker Development.app for local visual checks.",
+    "Low-risk contractor apply (NOT this phase): anon list/download/sign denied; anon upload denied using one unique disposable key, ensure no object exists afterward; if unexpectedly accepted, immediately remove the disposable object through authorized admin and report failure. Authenticated SELECT/INSERT continue; never use real contractor content in output.",
+    "Full privacy transition: test unauthenticated known public endpoints from all three former public buckets return no bytes, including a pending derivative and original. Test anon metadata/list/sign/upload denied; signed URLs intentionally grant temporary bearer access and must be assessed separately.",
+    "Active ordinary user: own pending original+derivative upload/read and crop re-edit; other user's uncommitted objects denied; existing Oct 3 two photos visible read-only in My Contributions; permanent historical and newly approved submission-namespace photos visible. Do not approve the real sighting to test this.",
+    "Admin: all pending photo evidence, original download, Match/catalog thumbnails, Review and calibration load; inactive users/admins denied. Preserve service-role processing. No permanent test objects; all write probes disposable and removed in same approved test.",
+    "URL lifecycle: direct and old stored full URL normalization, thumbnail vs full path, spaces/encoded characters, expiry refresh, logout/account switch, denied/error states, no signed URL persisted in submission/review/catalog or exported durable records.",
+    "After future transition: full regression and exact counts/fingerprints of catalog/sightings/mantas/photos/manta_sizes/sighting_submissions/biopsies and storage objects. No historical path rewrites. Current phase runs static tests only."
+  ],
+  "inventoryScope": "Every occurrence of requested patterns in src, supabase/functions, scripts and desktop source extensions ts/tsx/js/jsx/mjs/cjs/py/sh; multiline storage.from covered. Includes type declarations, tests and dormant code explicitly; not all entries are runtime calls. Source contents and object URLs omitted.",
+  "inventorySummary": {
+    "locations": 307,
+    "files": 74,
+    "frontendLocations": 240,
+    "frontendFiles": 54
+  },
+  "verification": {
+    "sourceTests": 227,
+    "sqlContractTests": 84,
+    "mockedNotificationTests": 6,
+    "credentialGuardTests": 6,
+    "productionBuild": "passed; existing chunk-size warning",
+    "credentialScan": "passed",
+    "diffCheck": "passed",
+    "targetedTypeScript": "passed for helper, helper tests and policy tests",
+    "globalTypeScript": "67 existing diagnostics; no new-file diagnostics",
+    "migrationRollbackPairing": "four mocked static tests passed; SQL not applied or runtime-executed",
+    "preexistingFilesPreservedByteIdentical": 15,
+    "scientificCountsAndFingerprintsUnchanged": true,
+    "storageObjectsCountAndFingerprintUnchanged": true,
+    "bucketFlagsAndPoliciesUnchanged": true,
+    "noLiveMutations": true,
+    "noCommitOrPush": true
+  },
+  "draftFiles": [
+    "docs/security/storage_privacy_audit.json",
+    "src/features/photos/authenticatedPhotoUrl.ts",
+    "src/features/photos/authenticatedPhotoUrl.test.ts",
+    "supabase/migrations/20261009175810_contain_anonymous_contractor_storage.sql",
+    "supabase/rollback/20261009175810_contain_anonymous_contractor_storage_rollback.sql",
+    "supabase/tests/anonymous_contractor_storage.test.ts"
+  ],
+  "sourceCallsites": [
+    {"file": "src/components/catalog/CatalogCardImage.tsx", "line": 15, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/catalog/CatalogCardImage.tsx", "line": 18, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/catalog/CatalogCardImage.tsx", "line": 20, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/catalog/CatalogCardImage.tsx", "line": 28, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/drone/DronePhotosModal.tsx", "line": 82, "symbols": ["storage.from"], "category": "drone", "kind": "source"},
+    {"file": "src/components/drone/DronePhotosModal.tsx", "line": 95, "symbols": ["getPublicUrl", "storage.from"], "category": "drone", "kind": "source"},
+    {"file": "src/components/drone/DronePhotosModal.tsx", "line": 96, "symbols": ["publicUrl"], "category": "drone", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosModal.tsx", "line": 60, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosModal.tsx", "line": 81, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosModal.tsx", "line": 83, "symbols": ["getPublicUrl", "storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosModal.tsx", "line": 84, "symbols": ["publicUrl"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosViewer.tsx", "line": 10, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosViewer.tsx", "line": 34, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosViewer.tsx", "line": 63, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosViewer.tsx", "line": 64, "symbols": ["getPublicUrl", "storage.from", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/mantas/MantaPhotosViewer.tsx", "line": 65, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/mantas/MantasList.tsx", "line": 11, "symbols": ["thumbnail_url"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/mantas/MantasList.tsx", "line": 13, "symbols": ["storage_path"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/mantas/MantasList.tsx", "line": 38, "symbols": ["storage_path", "thumbnail_url"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/mantas/MatchModal.tsx", "line": 35, "symbols": ["thumbnail_url"], "category": "Match UI", "kind": "source"},
+    {"file": "src/components/mantas/MatchModal.tsx", "line": 65, "symbols": ["thumbnail_url"], "category": "Match UI", "kind": "source"},
+    {"file": "src/components/mantas/UnifiedMantaModal.tsx", "line": 173, "symbols": ["storage.from"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/mantas/UnifiedMantaModal.tsx", "line": 200, "symbols": ["download", "storage.from"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/mantas/UnifiedMantaModal.tsx", "line": 215, "symbols": ["storage.from"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/components/maps/DronePhotosMapModal.tsx", "line": 212, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "drone", "kind": "source"},
+    {"file": "src/components/maps/DronePhotosMapModal.tsx", "line": 213, "symbols": ["publicUrl"], "category": "drone", "kind": "source"},
+    {"file": "src/components/maps/DronePhotosMapModal.tsx", "line": 214, "symbols": ["publicUrl"], "category": "drone", "kind": "source"},
+    {"file": "src/components/matching/MantaPhotoUploader.tsx", "line": 49, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/matching/MantaPhotoUploader.tsx", "line": 59, "symbols": ["getPublicUrl", "storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/matching/MantaPhotoUploader.tsx", "line": 60, "symbols": ["publicUrl"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/photos/MantaPhotosModal.tsx", "line": 56, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/photos/MantaPhotosModal.tsx", "line": 64, "symbols": ["getPublicUrl", "storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/photos/MantaPhotosModal.tsx", "line": 68, "symbols": ["publicUrl"], "category": "temp image", "kind": "source"},
+    {"file": "src/components/photos/PhotoCardImage.tsx", "line": 16, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/sightings/MantasInSightingModal.tsx", "line": 94, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/sightings/MantasInSightingModal.tsx", "line": 98, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/components/sightings/SightingCard.tsx", "line": 14, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/features/matching/rankedMatchWorkflow.ts", "line": 22, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/features/matching/rankedMatchWorkflow.ts", "line": 30, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/features/matching/rankedMatchWorkflow.ts", "line": 65, "symbols": ["storage.from"], "category": "temp image", "kind": "source"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.test.ts", "line": 11, "symbols": ["createSignedUrl(s)"], "category": "pending submission photo / Admin Review", "kind": "test"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.test.ts", "line": 25, "symbols": ["public endpoint"], "category": "pending submission photo / Admin Review", "kind": "test"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.test.ts", "line": 27, "symbols": ["public endpoint"], "category": "pending submission photo / Admin Review", "kind": "test"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.test.ts", "line": 30, "symbols": ["public endpoint"], "category": "pending submission photo / Admin Review", "kind": "test"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.ts", "line": 22, "symbols": ["public endpoint"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/features/photos/authenticatedPhotoUrl.ts", "line": 55, "symbols": ["createSignedUrl(s)", "storage.from"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/features/photos/photoPreparation.test.ts", "line": 51, "symbols": ["getPublicUrl", "publicUrl"], "category": "pending submission photo / Admin Review", "kind": "test"},
+    {"file": "src/features/photos/photoPreparation.ts", "line": 43, "symbols": ["getPublicUrl", "publicUrl"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/features/photos/photoPreparation.ts", "line": 72, "symbols": ["getPublicUrl", "publicUrl"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/features/photos/photoPreparation.ts", "line": 104, "symbols": ["getPublicUrl", "publicUrl"], "category": "pending submission photo / Admin Review", "kind": "source"},
+    {"file": "src/features/sightings/contributionDetails.test.ts", "line": 9, "symbols": ["getPublicUrl", "publicUrl"], "category": "My Contributions", "kind": "test"},
+    {"file": "src/features/sightings/contributionDetails.test.ts", "line": 58, "symbols": ["storage_path"], "category": "My Contributions", "kind": "test"},
+    {"file": "src/features/sightings/contributionDetails.test.ts", "line": 95, "symbols": ["storage_path"], "category": "My Contributions", "kind": "test"},
+    {"file": "src/features/sightings/contributionDetails.ts", "line": 79, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "My Contributions", "kind": "source"},
+    {"file": "src/features/sightings/contributionDetails.ts", "line": 96, "symbols": ["storage_path"], "category": "My Contributions", "kind": "source"},
+    {"file": "src/features/sightings/contributionDetails.ts", "line": 98, "symbols": ["storage_path"], "category": "My Contributions", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 77, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 78, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 89, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 90, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 101, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "src/integrations/supabase/types.ts", "line": 102, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/lib/catalogImage.ts", "line": 19, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/catalogImage.ts", "line": 31, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/catalogImage.ts", "line": 36, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/catalogImage.ts", "line": 39, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 8, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 17, "symbols": ["getPublicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 18, "symbols": ["getPublicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 19, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 30, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 44, "symbols": ["getPublicUrl", "publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 45, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 53, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 73, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 97, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/mantaImageManager.ts", "line": 98, "symbols": ["getPublicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/lib/supabaseHelper.ts", "line": 26, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 40, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 50, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 52, "symbols": ["getPublicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 54, "symbols": ["publicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 61, "symbols": ["publicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 62, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImageTestPage.tsx", "line": 63, "symbols": ["publicUrl", "thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImportPage.tsx", "line": 127, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImportPage.tsx", "line": 137, "symbols": ["publicUrl", "storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImportPage.tsx", "line": 139, "symbols": ["getPublicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/ImportPage.tsx", "line": 145, "symbols": ["publicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 13, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 41, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 51, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 56, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 72, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 80, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 82, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/PhotoBatchUploadPage.tsx", "line": 99, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AddCalibrationPage.tsx", "line": 11, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/AdminExportsPage.tsx", "line": 31, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/AdminExportsPage.tsx", "line": 78, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 12, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 30, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 38, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 52, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 58, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 60, "symbols": ["createSignedUrl(s)"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 84, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 85, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 86, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoStorageCheckPage.tsx", "line": 141, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 41, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 50, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 51, "symbols": ["getPublicUrl", "publicUrl", "storage.from", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 52, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 68, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 81, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminPhotoTestPage.tsx", "line": 93, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/AdminReviewPage.tsx", "line": 68, "symbols": ["storage.from"], "category": "Admin Review", "kind": "source"},
+    {"file": "src/pages/admin/AdminReviewPage.tsx", "line": 70, "symbols": ["storage.from"], "category": "Admin Review", "kind": "source"},
+    {"file": "src/pages/admin/AdminReviewPage.tsx", "line": 72, "symbols": ["getPublicUrl", "publicUrl"], "category": "Admin Review", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 30, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 31, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 49, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 50, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 51, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 52, "symbols": ["getPublicUrl", "storage.from", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 53, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 55, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 56, "symbols": ["getPublicUrl", "storage.from", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 57, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 70, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 124, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestCatalogImageDiagnostics.tsx", "line": 362, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 29, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 30, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 43, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 44, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 45, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 46, "symbols": ["getPublicUrl", "storage.from", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 47, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 49, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 50, "symbols": ["getPublicUrl", "storage.from", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 51, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 64, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/BestMantaImageDiagnostics.tsx", "line": 251, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 21, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 90, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 108, "symbols": ["createSignedUrl(s)", "storage.from", "storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 177, "symbols": ["createSignedUrl(s)", "storage.from", "storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 192, "symbols": ["storage.from", "storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 207, "symbols": ["storage.from"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 214, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 221, "symbols": ["createSignedUrl(s)", "storage.from"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 224, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 235, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 264, "symbols": ["storage.from"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 271, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 290, "symbols": ["createSignedUrl(s)", "storage.from"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 292, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 394, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/CalibrationSessionPage.tsx", "line": 425, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "src/pages/admin/ChooseBestMantaPhotoPage.tsx", "line": 15, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/ChooseBestMantaPhotoPage.tsx", "line": 99, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/DiagnosticsPage.tsx", "line": 52, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/DiagnosticsPage.tsx", "line": 64, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/DiagnosticsPage.tsx", "line": 72, "symbols": ["storage.from"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/ColumnPreview.tsx", "line": 14, "symbols": ["public endpoint"], "category": "Admin Review", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 16, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 56, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 57, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 58, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 61, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 64, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 71, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 128, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 136, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 152, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 164, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 183, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 188, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 203, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 210, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 517, "symbols": ["getPublicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 523, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/catalog.service.ts", "line": 531, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/data/types.ts", "line": 24, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx", "line": 15, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx", "line": 21, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx", "line": 85, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx", "line": 87, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/BestVentralPhotosModal.tsx", "line": 106, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/SightingsListModal.tsx", "line": 23, "symbols": ["getPublicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/FindDuplicates/modals/SightingsListModal.tsx", "line": 93, "symbols": ["getPublicUrl"], "category": "other", "kind": "source"},
+    {"file": "src/pages/admin/MissingCatalogPhotosPage.tsx", "line": 15, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/MissingCatalogPhotosPage.tsx", "line": 77, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/MissingCatalogPhotosPage.tsx", "line": 79, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/MissingSightingPhotosPage.tsx", "line": 15, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/MissingSightingPhotosPage.tsx", "line": 175, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 16, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 17, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 25, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 26, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 27, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 28, "symbols": ["getPublicUrl", "storage.from", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 29, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 31, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 32, "symbols": ["getPublicUrl", "storage.from", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 33, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/admin/modals/CatalogBestPhotoModal.tsx", "line": 75, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Catalog.tsx", "line": 33, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Catalog.tsx", "line": 573, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Catalog.tsx", "line": 574, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/DroneSurveys.tsx", "line": 259, "symbols": ["getPublicUrl", "publicUrl", "storage.from"], "category": "drone", "kind": "source"},
+    {"file": "src/pages/browse_data/Mantas.tsx", "line": 300, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Mantas.tsx", "line": 303, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Photos.tsx", "line": 45, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Photos.tsx", "line": 46, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Photos.tsx", "line": 782, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Photos.tsx", "line": 906, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Sizes.tsx", "line": 39, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/Sizes.tsx", "line": 480, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 17, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 62, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 143, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 157, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 171, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/components/AllMantasInSightingModal.tsx", "line": 222, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 17, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 18, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 26, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 27, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 95, "symbols": ["storage_path", "thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/CatalogBestPhotoModal.tsx", "line": 164, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx", "line": 11, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx", "line": 124, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx", "line": 134, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx", "line": 151, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/pages/browse_data/modals/SightingMantasQuickModal.tsx", "line": 205, "symbols": ["thumbnail_url"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "src/services/calibration.ts", "line": 67, "symbols": ["storage.from"], "category": "calibration", "kind": "source"},
+    {"file": "src/services/calibration.ts", "line": 77, "symbols": ["storage_path"], "category": "calibration", "kind": "source"},
+    {"file": "supabase/functions/catalog_selfmatch/index.ts", "line": 18, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/commit-drone-draft/index.ts", "line": 127, "symbols": ["download", "storage.from"], "category": "drone", "kind": "source"},
+    {"file": "supabase/functions/commit-drone-draft/index.ts", "line": 134, "symbols": ["storage.from"], "category": "drone", "kind": "source"},
+    {"file": "supabase/functions/commit-drone-draft/index.ts", "line": 144, "symbols": ["storage.from"], "category": "drone", "kind": "source"},
+    {"file": "supabase/functions/embeddings-catalog/index.ts", "line": 22, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-catalog-missing/index.ts", "line": 28, "symbols": ["download", "storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 12, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 67, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 74, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 77, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 83, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 84, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/embeddings-photo/index.ts", "line": 97, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "supabase/functions/match-manta/index.ts", "line": 11, "symbols": ["public endpoint"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/match-manta/index.ts", "line": 41, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/match-manta/index.ts", "line": 54, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 6, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 7, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 33, "symbols": ["public endpoint"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 112, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 113, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 115, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 117, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 172, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "supabase/functions/test-embed-fix/index.ts", "line": 190, "symbols": ["storage_path"], "category": "other", "kind": "source"},
+    {"file": "scripts/assign_view_labels.py", "line": 48, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "scripts/assign_view_labels.py", "line": 52, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "scripts/compare-identical-photo-embeddings.ts", "line": 6, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/compare-multiple-photo-embeddings.ts", "line": 10, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/compare-to-anchor-4882.ts", "line": 11, "symbols": ["public endpoint"], "category": "other", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 9, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 76, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 78, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 87, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 88, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-all-ventral-photos.ts", "line": 90, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 10, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 21, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 24, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 33, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 34, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 36, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 42, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 55, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 61, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 67, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 86, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 89, "symbols": ["publicUrl", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-catalog-batch.ts", "line": 98, "symbols": ["publicUrl"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/embed-single-catalog-photo.ts", "line": 15, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 99, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 106, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 160, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 188, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 198, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 211, "symbols": ["storage.from"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 213, "symbols": ["createSignedUrl(s)", "storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 216, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 220, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/export-best-photos.ts", "line": 226, "symbols": ["storage_path"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/label_view.py", "line": 65, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "scripts/label_view.py", "line": 69, "symbols": ["thumbnail_url"], "category": "other", "kind": "source"},
+    {"file": "scripts/run-local-catalog-embeddings.ts", "line": 12, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"},
+    {"file": "scripts/run-local-selfmatch.ts", "line": 9, "symbols": ["public endpoint"], "category": "other", "kind": "source"},
+    {"file": "scripts/security/test_combined_release_rollback.py", "line": 57, "symbols": ["storage_path"], "category": "other", "kind": "test"},
+    {"file": "scripts/security/test_combined_release_rollback.py", "line": 392, "symbols": ["storage_path", "thumbnail_url"], "category": "other", "kind": "test"},
+    {"file": "scripts/test-single-photo-match.ts", "line": 15, "symbols": ["public endpoint"], "category": "manta permanent catalog photo", "kind": "source"}
+  ]
+}

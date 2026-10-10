@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -218,7 +219,7 @@ export default function AllMantasInSightingModal(props: {
                   <tr key={row.pk_manta_id} className="border-b align-middle">
                     <td className="px-3 py-2">
                       <div className="h-14 w-14 overflow-hidden rounded border bg-gray-50">
-                        <img
+                        <MantaImage
                           src={row.thumbnail_url || "/manta-logo.svg"}
                           alt={row.name || `Manta ${row.pk_manta_id}`}
                           className="h-full w-full object-cover"

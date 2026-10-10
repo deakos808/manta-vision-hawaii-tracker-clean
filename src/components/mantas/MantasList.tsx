@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React from "react";
 import { formatMantaSize } from "@/features/photos/photoPresentation";
@@ -35,8 +37,7 @@ const TILE_H=80;
 const CELL_H = 136; // tile row + meta row baseline
 
 function urlFor(p: any): string | undefined {
-  const c = [p?.thumbnail_url, p?.url, p?.storage_url, p?.path, p?.storage_path];
-  return c.find(v => typeof v === "string" && v.trim().length > 0);
+  return mantaPhotoSource(p || {});
 }
 function strictPhoto(photos: any[] | undefined, view: "ventral"|"dorsal"){
   const list = Array.isArray(photos) ? photos : [];
@@ -56,7 +57,7 @@ function tempName(m:any){
 function ImgTile({url, placeholder}:{url?:string; placeholder:string}){
   return (
     <div className="overflow-hidden rounded border bg-white flex items-center justify-center shrink-0" style={{width:TILE_W, height:TILE_H}}>
-      {url ? <img src={url} alt={placeholder} style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", objectPosition: "center", display: "block" }}/> :
+      {url ? <MantaImage src={url} alt={placeholder} style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", objectPosition: "center", display: "block" }}/> :
         <div className="text-xs text-slate-400 select-none">{placeholder}</div>}
     </div>
   );

@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useIsAdmin } from "@/lib/isAdmin";
@@ -61,8 +63,7 @@ export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount
 
   const urlFor = (r: PhotoRow) => {
     if (!r.storage_path) return "";
-    const { data } = supabase.storage.from("manta-images").getPublicUrl(r.storage_path);
-    return data?.publicUrl || "";
+    return mantaPhotoSource(r) || "";
   };
 
   async function setBest(view: View, target: PhotoRow) {
@@ -109,7 +110,7 @@ export default function MantaPhotosViewer({ open, onOpenChange, mantaId, onCount
             return (
               <div key={String(r.pk_photo_id ?? "")} className="border rounded p-2 bg-white">
                 {url ? (
-                  <img src={url} alt={`photo ${String(r.pk_photo_id ?? "")}`} className="w-full h-28 object-cover rounded mb-2" />
+                  <MantaImage src={url} alt={`photo ${String(r.pk_photo_id ?? "")}`} className="w-full h-28 object-cover rounded mb-2" />
                 ) : (
                   <div className="w-full h-28 bg-gray-100 rounded mb-2 flex items-center justify-center text-xs text-gray-500">no image</div>
                 )}

@@ -1,3 +1,4 @@
+import { photoForPayload } from '../photos/photoPresentation';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -13,7 +14,7 @@ for (const [value,label] of [['mobula alfredi','Reef manta'],['mobula birostris'
     const hydrate = modalSource.match(/setSpecies\(existingManta\?\.species \?\? null\)/)![0];
     vm.runInNewContext(hydrate, { existingManta: { species: value }, setSpecies: (v: unknown) => { species = v; } });
     const saved = vm.runInNewContext(ts.transpile(saveSource + '\nsave()', { target: ts.ScriptTarget.ES2022 }), {
-      mantaId: 'stable-id', name: 'Kai', gender: 'female', ageClass: 'juvenile', species,
+      photoForPayload, mantaId: 'stable-id', name: 'Kai', gender: 'female', ageClass: 'juvenile', species,
       size: '3.67', photos: [], potentialCatalogId: null, potentialNoMatch: true,
       noPhotos: true, firstExifMeta: null, existingManta: {},
     });

@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/components/sightings/SightingCard.tsx
 
 import { Link } from 'react-router-dom';
@@ -11,7 +13,7 @@ interface SightingCardProps {
 // Local fallback utility to safely construct image URLs
 const getImageUrl = (path: string | null | undefined): string =>
   path
-    ? supabase.storage.from('manta-images').getPublicUrl(path).data.publicUrl
+    ? mantaPhotoSource({storage_path: path})
     : '/no-photo.png';
 
 const SightingCard = ({ sighting }: SightingCardProps) => {
@@ -34,7 +36,7 @@ const SightingCard = ({ sighting }: SightingCardProps) => {
       <Card className="overflow-hidden h-full transition-all hover:shadow-md">
         <div className="relative h-[200px]">
           {imageUrl ? (
-            <img
+            <MantaImage
               src={imageUrl}
               alt={`Manta ray sighting ${sighting.id}`}
               className="w-full h-full object-cover"

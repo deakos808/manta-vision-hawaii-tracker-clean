@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -916,7 +917,7 @@ export default function MantasPage() {
                   className="flex flex-col rounded border bg-white p-2 shadow-sm"
                 >
                   <div className="w-full overflow-hidden rounded-lg border bg-gray-50">
-                    <img
+                    <MantaImage
                       src={m.best_thumb_url || "/manta-logo.svg"}
                       alt={m.name ?? `Manta ${m.pk_manta_id}`}
                       className="w-full h-[140px] object-cover rounded"

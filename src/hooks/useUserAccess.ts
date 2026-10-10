@@ -14,7 +14,7 @@ export interface UserAccess {
 
 export function useUserAccess(): UserAccess {
   const { session, isLoading: sessionLoading } = useSessionContext();
-  const [access, setAccess] = useState<UserAccess>({
+  const [access, setAccess] = useState<UserAccess & { userId?: string }>({
     state: "loading",
     role: "unknown",
     isActive: null,
@@ -24,18 +24,19 @@ export function useUserAccess(): UserAccess {
   useEffect(() => {
     let cancelled = false;
     const userId = session?.user?.id;
+    const publishAccess = (next: UserAccess) => setAccess({ ...next, userId });
 
     if (sessionLoading) {
-      setAccess({ state: "loading", role: "unknown", isActive: null, loading: true });
+      publishAccess({ state: "loading", role: "unknown", isActive: null, loading: true });
       return () => { cancelled = true; };
     }
 
     if (!userId) {
-      setAccess({ state: "signed_out", role: "unknown", isActive: null, loading: false });
+      publishAccess({ state: "signed_out", role: "unknown", isActive: null, loading: false });
       return () => { cancelled = true; };
     }
 
-    setAccess({ state: "loading", role: "unknown", isActive: null, loading: true });
+    publishAccess({ state: "loading", role: "unknown", isActive: null, loading: true });
     void (async () => {
       try {
         const { data, error } = await supabase
@@ -47,28 +48,28 @@ export function useUserAccess(): UserAccess {
         if (cancelled) return;
         if (error) {
           console.error("[useUserAccess] profile lookup failed");
-          setAccess({ state: "error", role: "unknown", isActive: null, loading: false });
+          publishAccess({ state: "error", role: "unknown", isActive: null, loading: false });
           return;
         }
         if (!data) {
-          setAccess({ state: "missing_profile", role: "unknown", isActive: null, loading: false });
+          publishAccess({ state: "missing_profile", role: "unknown", isActive: null, loading: false });
           return;
         }
 
         const role: AppRole = data.role === "admin" ? "admin" : data.role === "user" ? "user" : "unknown";
         if (data.is_active !== true) {
-          setAccess({ state: "inactive", role, isActive: false, loading: false });
+          publishAccess({ state: "inactive", role, isActive: false, loading: false });
           return;
         }
         if (role === "unknown") {
-          setAccess({ state: "error", role, isActive: true, loading: false });
+          publishAccess({ state: "error", role, isActive: true, loading: false });
           return;
         }
-        setAccess({ state: role, role, isActive: true, loading: false });
+        publishAccess({ state: role, role, isActive: true, loading: false });
       } catch {
         if (!cancelled) {
           console.error("[useUserAccess] unexpected profile lookup failure");
-          setAccess({ state: "error", role: "unknown", isActive: null, loading: false });
+          publishAccess({ state: "error", role: "unknown", isActive: null, loading: false });
         }
       }
     })();
@@ -76,5 +77,12 @@ export function useUserAccess(): UserAccess {
     return () => { cancelled = true; };
   }, [session?.user?.id, sessionLoading]);
 
+  // Never reuse a previous session's role while the profile effect catches up.
+  if (sessionLoading || (session?.user?.id && access.userId !== session.user.id)) {
+    return { state: "loading", role: "unknown", isActive: null, loading: true };
+  }
+  if (!session?.user?.id) {
+    return { state: "signed_out", role: "unknown", isActive: null, loading: false };
+  }
   return access;
 }

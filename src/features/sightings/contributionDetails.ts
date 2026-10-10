@@ -76,11 +76,11 @@ function publicImage(client: SupabaseClient, path?: string, bucket = 'manta-imag
   const publicPath = key.match(/^storage\/v1\/object\/public\/([^/]+)\/(.*)$/i);
   if (publicPath) { bucket = publicPath[1]; key = publicPath[2]; }
   else if (key.startsWith(`${bucket}/`)) key = key.slice(bucket.length + 1);
-  return client.storage.from(bucket).getPublicUrl(key).data.publicUrl;
+  return bucket === "manta-images" ? `${bucket}/${key}` : client.storage.from(bucket).getPublicUrl(key).data.publicUrl;
 }
 export function payloadPhotos(client: SupabaseClient, payload: RecordData): ContributionPhoto[] {
   return (Array.isArray(payload.mantas) ? payload.mantas : []).flatMap((m: RecordData) => (Array.isArray(m.photos) ? m.photos : []).map((p: RecordData) => {
-    const durable = typeof p.url === 'string' && p.url.trim() && !p.url.startsWith('blob:') ? p.url : publicImage(client,p.path,p.storageBucket);
+    const durable = p.path && p.storageBucket === 'manta-images' ? publicImage(client,p.path,p.storageBucket) : typeof p.url === 'string' && p.url.trim() && !p.url.startsWith('blob:') ? p.url : publicImage(client,p.path,p.storageBucket);
     const url = photoDisplaySource({url: durable,previewUrl:p.previewUrl});
     const name = String(p.name || p.path || 'Photo');
     return {url,name,view:p.view || 'other',bestVentral:!!p.isBestVentral,bestDorsal:!!p.isBestDorsal,

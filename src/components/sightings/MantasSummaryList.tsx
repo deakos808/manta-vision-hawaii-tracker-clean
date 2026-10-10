@@ -1,3 +1,5 @@
+import { mantaPhotoSource } from '@/features/photos/authenticatedPhotoUrl';
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +8,8 @@ type TempPhoto = {
   id?: string;
   url?: string;
   photo_url?: string;
+  path?: string;
+  storageBucket?: string;
   view?: "ventral" | "dorsal" | "other";
   is_best_ventral?: boolean;
   is_best_dorsal?: boolean;
@@ -22,7 +26,7 @@ type TempManta = {
 
 function photoURL(p?: TempPhoto): string | undefined {
   if (!p) return undefined;
-  return p.url || p.photo_url;
+  return mantaPhotoSource(p) || p.photo_url;
 }
 
 function isBestVentral(p?: TempPhoto): boolean {
@@ -81,7 +85,7 @@ export default function MantasSummaryList(props: {
                     {bestVentral ? (
                       <div className="text-xs">
                         <div className="mb-1 font-medium">Best ventral</div>
-                        <img
+                        <MantaImage
                           src={photoURL(bestVentral)}
                           alt="best ventral"
                           className="h-20 w-20 rounded-md object-cover"
@@ -92,7 +96,7 @@ export default function MantasSummaryList(props: {
                     {bestDorsal ? (
                       <div className="text-xs">
                         <div className="mb-1 font-medium">Best dorsal</div>
-                        <img
+                        <MantaImage
                           src={photoURL(bestDorsal)}
                           alt="best dorsal"
                           className="h-20 w-20 rounded-md object-cover"
@@ -104,7 +108,7 @@ export default function MantasSummaryList(props: {
                       <div className="mb-1 font-medium">Photos</div>
                       <div className="flex gap-2">
                         {thumbs.map((p, i) => (
-                          <img
+                          <MantaImage
                             key={(p.id || photoURL(p) || "") + i}
                             src={photoURL(p)}
                             alt={p.view || "photo"}

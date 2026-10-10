@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/pages/admin/ChooseBestMantaPhotoPage.tsx
 
 import { useEffect, useState } from 'react';
@@ -95,7 +96,7 @@ export default function ChooseBestMantaPhotoPage() {
             {photos.map((photo) => (
               <Card key={photo.pk_photo_id}>
                 <CardContent className="p-4 space-y-2">
-                  <img
+                  <MantaImage
                     src={photo.thumbnail_url || photo.photo_url}
                     alt="manta preview"
                     className="rounded shadow border"

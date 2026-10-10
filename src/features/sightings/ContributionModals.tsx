@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,7 +16,7 @@ export function ReadOnlyFields({ fields }: { fields: [string, unknown][] }) {
 function Photo({ url, name, heic }: { url?: string; name: string; heic?: boolean }) {
   const [failed,setFailed] = useState(false);
   return !url || heic || failed ? <div className="h-52 bg-slate-100 grid place-items-center text-sm text-slate-600">{heic ? 'HEIC photo — preview unavailable' : 'Image unavailable'}</div>
-    : <img src={url} alt={name} loading="lazy" className="w-full h-52 object-contain bg-white" onError={() => setFailed(true)} />;
+    : <MantaImage src={url} alt={name} loading="lazy" className="w-full h-52 object-contain bg-white" onError={() => setFailed(true)} />;
 }
 export default function ContributionModals({ selection, userId, onClose, onCatalog }: { selection: ContributionModal; userId: string; onClose: () => void; onCatalog: (id: number) => void }) {
   const q = useQuery({

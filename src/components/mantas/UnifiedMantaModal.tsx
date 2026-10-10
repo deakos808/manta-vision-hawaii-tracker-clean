@@ -1,10 +1,11 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { SPECIES_OPTIONS, type CatalogSpecies } from "@/features/sightings/catalogSpecies";
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
 import PhotoEditModal from "./PhotoEditModal";
-import { photoDisplaySource } from "@/features/photos/photoPresentation";
+import { photoDisplaySource, photoForPayload } from "@/features/photos/photoPresentation";
 import { uploadPreparedPair, uploadReeditedPhoto, meanDiscWidthMeters, type EditTransform } from "@/features/photos/photoPreparation";
 import type { BasicExif } from "@/lib/exif";
 import { readBasicExif } from "@/lib/exif";
@@ -16,7 +17,7 @@ type View = "ventral" | "dorsal" | "other";
 export type Uploaded = {
   id: string;
   name: string;
-  url: string;
+  url?: string;
   path: string;
   view: View;
   isBestVentral?: boolean;
@@ -214,7 +215,7 @@ export default function UnifiedMantaModal({
       if (error || !data.user) throw new Error("Sign in before saving a photo. No files were uploaded.");
       const updated = await uploadReeditedPhoto(supabase.storage.from("manta-images"), editingPhoto.photo, prepared, editTransform, crypto.randomUUID());
       const previewUrl = URL.createObjectURL(prepared);
-      setPhotos(previous => previous.map(photo => photo.id === updated.id ? { ...photo, path: updated.path, url: updated.url, editTransform: updated.editTransform, previewUrl } : photo));
+      setPhotos(previous => previous.map(photo => photo.id === updated.id ? { ...photo, path: updated.path, editTransform: updated.editTransform, previewUrl } : photo));
       // Keep any previously saved draft's preview alive if this manta edit is cancelled.
       setEditingPhoto(null);
     } finally { intakeLock.current = false; setBusy(false); }
@@ -296,7 +297,7 @@ export default function UnifiedMantaModal({
       ageClass,
       species,
       size: size ?? null,
-      photos,
+      photos: photos.map(photoForPayload),
       potentialCatalogId,
       potentialNoMatch,
       matchedCatalogId: potentialCatalogId,
@@ -447,7 +448,7 @@ export default function UnifiedMantaModal({
                           <div className="text-[10px] text-slate-500 break-all">{p.name}</div>
                         </div>
                       ) : (
-                        <img
+                        <MantaImage
                           src={photoDisplaySource(p)}
                           alt={p.name}
                           className="w-[110px] h-[80px] object-cover rounded border"

@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import React from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -12,27 +13,27 @@ function toPublic(u?: string | null): string | null {
   if (/^https?:\/\//i.test(u)) return u;
   let key = String(u).replace(/^\/+/, "").replace(/^browse\//i, "");
   const m1 = key.match(/^storage\/v1\/object\/public\/([^/]+)\/(.*)$/i);
-  if (m1) return supabase.storage.from(m1[1]).getPublicUrl(m1[2]).data.publicUrl;
+  if (m1) return (["manta-images", "temp-images", "drone-photo"].includes(m1[1]) ? `${m1[1]}/${m1[2]}` : supabase.storage.from(m1[1]).getPublicUrl(m1[2]).data.publicUrl);
   const m2 = key.match(/^([^/]+)\/(.*)$/);
   if (m2 && (m2[1] === "manta-images" || m2[1] === "temp-images")) {
-    return supabase.storage.from(m2[1]).getPublicUrl(m2[2]).data.publicUrl;
+    return (["manta-images", "temp-images", "drone-photo"].includes(m2[1]) ? `${m2[1]}/${m2[2]}` : supabase.storage.from(m2[1]).getPublicUrl(m2[2]).data.publicUrl);
   }
-  return supabase.storage.from("manta-images").getPublicUrl(key).data.publicUrl;
+  return `manta-images/${key}`;
 }
 
 export default function CatalogCardImage({ e, viewMode, className }: Props) {
   const raw: string | null =
-    e?.best_catalog_photo_url ??
     (viewMode === "dorsal" ? e?.best_catalog_dorsal_path : e?.best_catalog_ventral_path) ??
+    e?.best_catalog_photo_url ??
     e?.best_photo_url ??
     e?.thumbnail_url ??
     null;
 
   const url = toPublic(raw) ?? "/manta-logo.svg";
-  const src = url + (url.includes("?") ? "&" : "?") + "cb=" + Date.now();
+  const src = url;
 
   return (
-    <img
+    <MantaImage
       src={src}
       key={src}
       alt={e?.name ?? "catalog"}

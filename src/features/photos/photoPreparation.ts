@@ -40,7 +40,6 @@ export function dragCrop(crop: Crop, handle: CropHandle, dx: number, dy: number,
 // Minimal injectable Storage surface: tests use memory-only fakes, never Supabase.
 type PhotoBucket = {
   upload: (path: string, body: Blob, options: { upsert: false; contentType?: string; cacheControl: string }) => PromiseLike<{ error: unknown }>;
-  getPublicUrl: (path: string) => { data: { publicUrl: string } };
 };
 export async function uploadPreparedPair(bucket: PhotoBucket, input: {
   uploaderId: string; sightingId: string; mantaId: string; photoId: string; editId: string;
@@ -69,7 +68,6 @@ export async function uploadPreparedPair(bucket: PhotoBucket, input: {
   }
   return {
     id: input.photoId, name: input.original.name, path,
-    url: bucket.getPublicUrl(path).data.publicUrl,
     view: "other" as const, storageBucket: "manta-images" as const,
     originalPath, editTransform: input.editTransform,
   };
@@ -101,5 +99,5 @@ export async function uploadReeditedPhoto<T extends {
   }
   // Preserve identity, source, view, best flags, and measurement. Never delete the
   // superseded derivative: reference-aware cleanup belongs to a later task.
-  return { ...photo, path, url: bucket.getPublicUrl(path).data.publicUrl, editTransform };
+  return { ...photo, path, editTransform };
 }

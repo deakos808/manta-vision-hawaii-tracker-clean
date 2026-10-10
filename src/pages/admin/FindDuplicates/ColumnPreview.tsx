@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import type { CatalogSummary } from "./data/types";
 
 type Props = {
@@ -31,7 +32,7 @@ export default function ColumnPreview({ title, record }: Props) {
           <div className="h-64 w-full overflow-hidden rounded-lg bg-muted">
             {imgSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <MantaImage
                 src={imgSrc}
                 alt={`Best ventral for #${record.pk_catalog_id}`}
                 className="h-full w-full object-contain"

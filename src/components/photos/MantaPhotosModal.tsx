@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import React, { useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -158,7 +159,7 @@ export default function MantaPhotosModal({ open, onClose, sightingId, onAddManta
               <div className="grid grid-cols-2 gap-3">
                 {photos.map((p) => (
                   <div key={p.id} className="border rounded p-2">
-                    <img src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
+                    <MantaImage src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
                     <div className="text-xs break-all mb-2">{p.name}</div>
 
                     <div className="text-xs mb-1">View</div>

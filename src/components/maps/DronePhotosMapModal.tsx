@@ -1,3 +1,4 @@
+import { authenticatedPhotoUrl } from "@/features/photos/authenticatedPhotoUrl";
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -201,7 +202,7 @@ export default function DronePhotosMapModal({
           }
         }
 
-        root.onclick = (e: any) => {
+        root.onclick = async (e: any) => {
           const link = e.target?.closest?.(".js-open-photo") as HTMLElement | null;
           if (!link) return;
           e.preventDefault();
@@ -209,9 +210,17 @@ export default function DronePhotosMapModal({
           const pid = String(link.getAttribute("data-id") || "");
           if (!pid) return;
 
-          const publicUrl = supabase.storage.from("drone-photo").getPublicUrl(pid).data.publicUrl;
-          if (publicUrl) {
-            window.open(publicUrl, "_blank", "noopener,noreferrer");
+          // Open synchronously to retain the existing user-initiated popup behavior.
+          const photoWindow = window.open("about:blank", "_blank");
+          if (!photoWindow) return;
+          photoWindow.opener = null;
+          try {
+            const url = await authenticatedPhotoUrl(supabase,
+              { bucket: "drone-photo", path: pid }, import.meta.env.VITE_SUPABASE_URL);
+            photoWindow.location.replace(url);
+          } catch {
+            photoWindow.close();
+            alert("Photo is unavailable. Check your access and try again.");
           }
         };
       });

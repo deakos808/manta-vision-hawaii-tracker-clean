@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
@@ -201,7 +202,7 @@ export default function SightingMantasQuickModal({
                 {rows.map((r) => (
                   <tr key={`${r.pk_catalog_id}-${r.pk_manta_id ?? "no-manta"}`} className="border-b last:border-0 align-top">
                     <td className="px-3 py-2">
-                      <img
+                      <MantaImage
                         src={r.thumbnail_url ?? "/manta-logo.svg"}
                         alt={`Catalog ${r.pk_catalog_id}`}
                         className="h-20 w-20 object-cover rounded border bg-white"

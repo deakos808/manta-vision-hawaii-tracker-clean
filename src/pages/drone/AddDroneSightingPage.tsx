@@ -1,3 +1,5 @@
+import { MantaImage } from "@/features/photos/MantaImage";
+import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import { Button as UIButton } from "@/components/ui/button";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/layout/Layout";
@@ -258,7 +260,7 @@ export default function AddDroneSightingPage() {
       const rows = photos.map((p) => ({
         draft_id: sight.id,
         path: p.path,
-        url: p.url || null,
+        url: null, // Signed display URLs are never persisted; path is the durable identity.
         taken_date: p.date || null,
         taken_time: p.time || null,
         lat: typeof p.lat === "number" ? p.lat : null,
@@ -465,7 +467,7 @@ export default function AddDroneSightingPage() {
                         HEIC
                       </div>
                     ) : (
-                      <img src={p.url} className="h-14 w-14 object-cover rounded" alt={p.name} />
+                      <MantaImage src={mantaPhotoSource(p)} className="h-14 w-14 object-cover rounded" alt={p.name} />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm truncate">{p.name}</div>

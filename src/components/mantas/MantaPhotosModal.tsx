@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -157,7 +158,7 @@ async function listStorage(prefix: string) {
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(p=>(
                   <div key={p.id} className="border rounded p-2">
-                    <img src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
+                    <MantaImage src={p.url} alt={p.name} className="w-full h-24 object-cover rounded mb-2" />
                     <div className="text-xs break-all mb-2">{p.name}</div>
                     <div className="text-xs mb-1">View</div>
                     <select className="w-full border rounded px-2 py-1 text-sm mb-2" value={p.view} onChange={(e)=>setView(p.id, e.target.value as View)}>

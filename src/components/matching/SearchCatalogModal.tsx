@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // src/components/matching/SearchCatalogModal.tsx
 
 import { useEffect, useState } from 'react';
@@ -86,7 +87,7 @@ export default function SearchCatalogModal({ open, onClose, tempMantaId }: Searc
                 className="border rounded p-2 flex gap-4 items-center"
               >
                 {entry.best_catalog_photo_url ? (
-                  <img
+                  <MantaImage
                     src={entry.best_catalog_photo_url}
                     alt={entry.name || `Catalog ${entry.pk_catalog_id}`}
                     className="w-20 h-20 object-cover rounded border"

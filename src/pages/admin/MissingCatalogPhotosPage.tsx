@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 // File: src/pages/admin/MissingCatalogPhotosPage.tsx
 
 import { useEffect, useState } from 'react';
@@ -75,7 +76,7 @@ export default function MissingCatalogPhotosPage() {
                     <div className="mt-2">
                       <strong>Preview:</strong>{' '}
                       {entry.thumbnail_url ? (
-                        <img
+                        <MantaImage
                           src={entry.thumbnail_url}
                           alt="preview"
                           className="h-16 w-auto mt-2 rounded border"

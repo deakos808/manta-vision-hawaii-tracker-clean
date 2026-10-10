@@ -1,3 +1,4 @@
+import { MantaImage, MantaImageLink } from "@/features/photos/MantaImage";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -224,13 +225,13 @@ export default function SightingsListModal({ open, onOpenChange, pk_catalog_id }
                 {individuals.map((r, i) => (
                   <li key={i} className="flex items-center gap-3">
                     {r.best_url ? (
-                      <a href={r.best_url} target="_blank" rel="noreferrer" title="Open image in new tab">
-                        <img
+                      <MantaImageLink href={r.best_url} target="_blank" rel="noreferrer" title="Open image in new tab">
+                        <MantaImage
                           src={r.best_url}
                           alt={`best manta ventral for catalog #${r.fk_catalog_id}`}
                           className="h-10 w-10 rounded object-cover border"
                         />
-                      </a>
+                      </MantaImageLink>
                     ) : (
                       <div className="h-10 w-10 rounded bg-muted border flex items-center justify-center text-xs text-muted-foreground">—</div>
                     )}

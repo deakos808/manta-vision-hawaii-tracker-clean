@@ -1,3 +1,4 @@
+import { useMantaImageSource } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { measurementValues, valuesFromDistances, initialMeasurement, commitMeasurementStage, resetMeasurement, type MeasurementPoint as Pt, type MeasurementStage, type MeasureResult } from "@/features/photos/measurement";
@@ -15,6 +16,7 @@ function clamp01(v: number) { return Math.max(0, Math.min(1, v)); }
 const to2 = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "—");
 
 export default function MeasureModal({ open, src, onClose, onApply, initial }: Props) {
+  const displaySrc = useMantaImageSource(src);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -134,7 +136,7 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
 
         <div ref={workspaceRef} className="mx-4 mt-3 h-[48dvh] sm:h-[54dvh] min-h-[180px] bg-slate-100 flex items-center justify-center rounded">
           <div className="relative shrink-0" style={{ width: display.width || undefined, height: display.height || undefined }}>
-            <img ref={imgRef} src={src} alt="measure" className="block rounded" style={{ width: display.width || undefined, height: display.height || undefined, visibility: display.width ? "visible" : "hidden" }} onLoad={e => setNatural({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })} draggable={false} />
+            <img ref={imgRef} src={displaySrc} alt="measure" className="block rounded" style={{ width: display.width || undefined, height: display.height || undefined, visibility: display.width ? "visible" : "hidden" }} onLoad={e => setNatural({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })} draggable={false} />
             <div className={`absolute inset-0 touch-none ${stage === "complete" ? "" : "cursor-crosshair"}`} onPointerDown={onMouseDown} onPointerMove={onMouseMove} onPointerUp={onMouseUp} onPointerCancel={onMouseUp} onPointerLeave={() => { if (dragIdx === null) setCursor(null); }}>
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 {points[0] && <circle cx={px(points[0]).x} cy={px(points[0]).y} r={6} fill="#f59e0b" />}
@@ -150,7 +152,7 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
                 if (top + loupe > dispH) top = cursor.y - loupe - P;
                 left = Math.max(0, Math.min(dispW - loupe, left));
                 top  = Math.max(0, Math.min(dispH - loupe, top));
-                const url = src;
+                const url = displaySrc;
                 return (
                   <React.Fragment>
                   <span className="pointer-events-none absolute z-40 bg-slate-900/90 text-white text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ left, top: Math.max(0, top - 23) }}>{activeLabel}</span>

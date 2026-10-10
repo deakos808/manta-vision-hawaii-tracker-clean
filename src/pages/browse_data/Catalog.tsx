@@ -1,3 +1,4 @@
+import { MantaImage } from "@/features/photos/MantaImage";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
@@ -570,13 +571,13 @@ export default function Catalog() {
         {filtered.map((e) => {
           const thumb =
             viewMode === "ventral"
-              ? e.best_catalog_ventral_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg"
-              : e.best_catalog_dorsal_thumb_url ?? e.thumbnail_url ?? "/manta-logo.svg";
+              ? e.best_catalog_ventral_path || e.best_catalog_ventral_thumb_url || e.thumbnail_url || "/manta-logo.svg"
+              : e.best_catalog_dorsal_path || e.best_catalog_dorsal_thumb_url || e.thumbnail_url || "/manta-logo.svg";
 
           return (
             <Card key={e.pk_catalog_id} className="p-2 flex flex-col">
               <div className="flex flex-col items-center w-full">
-                <img
+                <MantaImage
                   src={thumb}
                   alt={e.name ?? "catalog"}
                   className="w-full aspect-square object-cover rounded border"
