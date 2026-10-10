@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import Layout from "@/components/layout/Layout";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,7 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <Layout>
+    <main>
       <div className="mx-auto max-w-md p-4">
         <div className="mb-3 text-sm text-muted-foreground">
           <Link to="/" className="hover:underline">← Home</Link>
@@ -71,6 +70,6 @@ export default function SetPasswordPage() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </main>
   );
 }

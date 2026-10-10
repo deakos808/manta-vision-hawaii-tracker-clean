@@ -8,8 +8,8 @@ export function AuthenticationLoadingState() {
   return <div className="grid min-h-screen place-items-center bg-white text-sm font-medium text-slate-600" role="status">Restoring your secure session…</div>;
 }
 
-export default function RequireAuth(props: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { children, adminOnly = false } = props;
+export default function RequireAuth(props: { children: React.ReactNode; adminOnly?: boolean; signedOut?: React.ReactNode }) {
+  const { children, adminOnly = false, signedOut } = props;
   const { isLoading: sessionLoading } = useSessionContext();
   const access = useUserAccess();
   const location = useLocation();
@@ -21,6 +21,7 @@ export default function RequireAuth(props: { children: React.ReactNode; adminOnl
   if (decision === 'pending') return <AuthenticationLoadingState />;
 
   if (decision === 'signin') {
+    if (signedOut !== undefined) return <>{signedOut}</>;
     return <Navigate to="/signin" state={{ redirectTo: `${location.pathname}${location.search}${location.hash}` }} replace />;
   }
 

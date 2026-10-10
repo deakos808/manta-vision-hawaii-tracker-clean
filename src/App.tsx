@@ -12,7 +12,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ReviewListPage from "@/pages/admin/ReviewListPage";
 import RequireAuth from "@/components/auth/RequireAuth";
 
-import LandingPage from "@/pages/public/LandingPage";
 import NotFoundPage from "@/pages/public/NotFoundPage";
 
 import SignInPage from "@/pages/auth/SignInPage";
@@ -72,30 +71,30 @@ function App() {
         </div>
       )}
       <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/signin" element={<Layout><SignInPage /></Layout>} />
+      <Route path="/" element={<RequireAuth><Navigate to="/dashboard" replace /></RequireAuth>} />
+      <Route path="/signin" element={<RequireAuth signedOut={<SignInPage />}><Navigate to="/dashboard" replace /></RequireAuth>} />
       <Route path="/signout" element={<SignOutPage />} />
       <Route path="/login" element={<Navigate to="/signin" replace />} />
       <Route path="/set-password" element={<SetPasswordPage />} />
 
-      <Route path="/browse" element={<Navigate to="/browse/photos" replace />} />
-      <Route path="/browse/data" element={<BrowseData />} />
-      <Route path="/browse/catalog" element={<Catalog />} />
-      <Route path="/browse/sightings" element={<Sightings />} />
-      <Route path="/browse/photos" element={<Photos />} />
-      <Route path="/browse/mantas" element={<Mantas />} />
+      <Route path="/browse" element={<RequireAuth><Navigate to="/browse/photos" replace /></RequireAuth>} />
+      <Route path="/browse/data" element={<RequireAuth><BrowseData /></RequireAuth>} />
+      <Route path="/browse/catalog" element={<RequireAuth><Catalog /></RequireAuth>} />
+      <Route path="/browse/sightings" element={<RequireAuth><Sightings /></RequireAuth>} />
+      <Route path="/browse/photos" element={<RequireAuth><Photos /></RequireAuth>} />
+      <Route path="/browse/mantas" element={<RequireAuth><Mantas /></RequireAuth>} />
       <Route path="/browse/sizes" element={<RequireAuth adminOnly><SizesPage /></RequireAuth>} />
       <Route path="/browse/drone" element={<RequireAuth adminOnly><DroneSurveysPage /></RequireAuth>} />
       <Route path="/browse/biopsies" element={<RequireAuth adminOnly><Biopsies /></RequireAuth>} />
 
-      <Route path="/test-match-ui" element={<MatchingPage />} />
+      <Route path="/test-match-ui" element={<RequireAuth adminOnly><MatchingPage /></RequireAuth>} />
 
       <Route path="/my-contributions" element={<RequireAuth><MyContributionsPage /></RequireAuth>} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-      <Route path="/import" element={<RequireAuth><ImportPage /></RequireAuth>} />
+      <Route path="/import" element={<RequireAuth adminOnly><ImportPage /></RequireAuth>} />
 
       <Route path="/sightings/add" element={<RequireAuth><AddSightingPage /></RequireAuth>} />
-      <Route path="/sightings/add2" element={<RequireAuth><SightingQuickForm /></RequireAuth>} />
+      <Route path="/sightings/add2" element={<RequireAuth adminOnly><SightingQuickForm /></RequireAuth>} />
       <Route path="/drone/add" element={<RequireAuth><AddDroneSightingPage /></RequireAuth>} />
 
       <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>} />
