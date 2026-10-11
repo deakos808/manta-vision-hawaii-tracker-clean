@@ -3,7 +3,7 @@ import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authenticatedPhotoUrl, mantaDisplayReference, freshSignedPhotoUrl } from './authenticatedPhotoUrl';
 
-export function useMantaImageSource(src?: string | null): string | undefined {
+export function useMantaImageSource(src?: string | null, enabled = true): string | undefined {
   const user = useUser();
   const supabase = useSupabaseClient();
   const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
@@ -13,7 +13,7 @@ export function useMantaImageSource(src?: string | null): string | undefined {
   const query = useQuery({
     queryKey: ['manta-photo-display', user?.id, reference?.bucket, reference?.path],
     queryFn: () => authenticatedPhotoUrl(supabase, reference!, supabaseUrl!),
-    enabled: !!user && !!reference,
+    enabled: enabled && !!user && !!reference,
     staleTime: 240_000, gcTime: 300_000, refetchInterval: 240_000,
     retry: false,
   });
@@ -24,11 +24,40 @@ export function useMantaImageSource(src?: string | null): string | undefined {
   return query.isError ? '/manta-logo.svg' : freshSignedPhotoUrl(query.data, query.dataUpdatedAt);
 }
 
-export const MantaImage = forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement>>(
-  function MantaImage({ src, onError, ...props }, ref) {
+type MantaImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
+  loadingMode?: 'eager' | 'lazy';
+};
+
+export const MantaImage = forwardRef<HTMLImageElement, MantaImageProps>(
+  function MantaImage({ src, onError, loadingMode = 'eager', style, ...props }, ref) {
+    const element = React.useRef<HTMLImageElement | null>(null);
+    const [activated, setActivated] = React.useState(false);
+    React.useEffect(() => {
+      if (loadingMode !== 'lazy' || activated) return;
+      if (typeof IntersectionObserver === 'undefined') {
+        setActivated(true);
+        return;
+      }
+      const observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          // Latch activation: leaving the viewport must not disable refresh or
+          // discard the fresh user/bucket/path cache on subsequent re-entry.
+          setActivated(true);
+          observer.disconnect();
+        }
+      }, { rootMargin: '600px' });
+      if (element.current) observer.observe(element.current);
+      return () => observer.disconnect();
+    }, [loadingMode, activated]);
     const queryClient = useQueryClient();
-    const displaySrc = useMantaImageSource(src);
-    return <img {...props} ref={ref} src={displaySrc} onError={event => {
+    const displaySrc = useMantaImageSource(src, loadingMode === 'eager' || activated);
+    return <img {...props} ref={node => {
+      element.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) ref.current = node;
+    }} src={displaySrc} style={displaySrc ? style : { ...style, visibility: 'hidden' }} onError={event => {
+      // An unresolved/offscreen image has no request to fail.
+      if (!displaySrc) return;
       // Lazy images can first request their URL after returning from background.
       // Refresh expired evidence before allowing a caller to latch its fallback.
       const cached = queryClient.getQueryCache().findAll({queryKey: ['manta-photo-display']})

@@ -37,13 +37,26 @@ function setup(t: TestContext) {
     }) },
   };
   const cache = new QueryClient();
-  type Slot = { observer?: QueryObserver<any>; unsubscribe?: () => void };
+  type Slot = { observer?: QueryObserver<any>; unsubscribe?: () => void; state?: boolean; ref?: {current: unknown}; deps?: unknown[]; effect?: () => (() => void) | void; cleanup?: () => void; intersection?: any };
   let active: Slot;
   const slots: Slot[] = [];
   const exported: any = {};
   vm.runInNewContext(compiled, {
     exports: exported, env: { VITE_SUPABASE_URL: origin },
-    React: { createElement: (_tag: unknown, props: unknown) => props }, forwardRef: (fn: unknown) => fn,
+    React: {
+      createElement: (_tag: unknown, props: unknown) => props,
+      useRef: () => active.ref ||= {current:null},
+      useState: (initial: boolean) => { const slot=active; slot.state ??= initial; return [slot.state,(value:boolean)=>{slot.state=value;}]; },
+      useEffect: (effect: Slot['effect'], deps: unknown[]) => {
+        if (!active.deps || deps.some((d,i)=>d!==active.deps![i])) { active.deps=deps; active.effect=effect; }
+      },
+    }, forwardRef: (fn: unknown) => fn,
+    IntersectionObserver: class {
+      disconnected=false;
+      constructor(public callback: (entries:any[])=>void, public options:any) { active.intersection=this; }
+      observe() {}
+      disconnect() { this.disconnected=true; }
+    },
     useUser: () => user, useSupabaseClient: () => client, useQueryClient: () => cache,
     useQuery: (options: any) => {
       if (!active.observer) {
@@ -53,16 +66,23 @@ function setup(t: TestContext) {
       return active.observer.getCurrentResult();
     }, authenticatedPhotoUrl, mantaDisplayReference, freshSignedPhotoUrl,
   });
-  t.after(() => { for (const slot of slots) slot.unsubscribe?.(); cache.clear(); });
+  t.after(() => { for (const slot of slots) { slot.cleanup?.(); slot.unsubscribe?.(); } cache.clear(); });
   return {
     client, cache, calls, advance: (ms: number) => { now += ms; },
     user: (id: string | null) => { user = id ? { id } : null; },
     fail: () => { failSigning = true; },
-    image: (src: string, onError = () => {}) => {
+    image: (src: string, onError = () => {}, loadingMode: 'eager' | 'lazy' = 'eager') => {
       const slot: Slot = {}; slots.push(slot);
       return {
-        render: () => { active = slot; return exported.MantaImage({ src, onError }, null); },
-        unmount: () => { slot.unsubscribe?.(); slot.observer?.destroy(); },
+        render: () => {
+          active = slot; const result=exported.MantaImage({ src, onError, loadingMode }, null);
+          result.ref({});
+          if(slot.effect) {slot.cleanup?.(); slot.cleanup=slot.effect() || undefined; slot.effect=undefined;}
+          return result;
+        },
+        intersect: (visible=true) => { if (!slot.intersection.disconnected) slot.intersection.callback([{isIntersecting:visible}]); },
+        margin: () => slot.intersection?.options.rootMargin,
+        unmount: () => { slot.cleanup?.(); slot.unsubscribe?.(); slot.observer?.destroy(); },
       };
     },
   };
@@ -183,4 +203,48 @@ test('temp preview, admin draft and committed drone screens use the shared signe
   const save=readFileSync('src/pages/drone/AddDroneSightingPage.tsx','utf8');assert.match(save,/path: p.path,\s+url: null/);
   const map=readFileSync('src/components/maps/DronePhotosMapModal.tsx','utf8');assert.match(map,/await authenticatedPhotoUrl/);assert.doesNotMatch(map,/getPublicUrl/);
   const diagnostics=readFileSync('src/pages/admin/DiagnosticsPage.tsx','utf8');assert.doesNotMatch(diagnostics,/getPublicUrl/);
+});
+
+
+test('lazy image activates once near viewport, preserves fresh cache and expiry recovery', async t => {
+  const h=setup(t);let fallback=0;
+  const image=h.image(permanent,()=>fallback++,'lazy');
+  const offscreen=image.render(); await flush();
+  assert.equal(h.calls.length,0);assert.equal(offscreen.src,undefined);
+  assert.equal(offscreen.style.visibility,'hidden');offscreen.onError({});assert.equal(fallback,0);
+  assert.equal(image.margin(),'600px');
+  image.intersect(false);image.render();await flush();assert.equal(h.calls.length,0);
+  image.intersect();image.render();await flush();const first=image.render();
+  assert.equal(h.calls.length,1);assert.match(first.src,/object\/sign/);
+  image.intersect(false);image.render();image.intersect();image.render();await flush();
+  assert.equal(h.calls.length,1);
+  h.advance(420_000);first.onError({});assert.equal(image.render().src,undefined);
+  await flush();assert.notEqual(image.render().src,first.src);assert.equal(h.calls.length,2);
+  image.unmount();
+});
+test('eager signing pending is invisible; genuine signing failure uses existing fallback', async t => {
+  const h=setup(t);h.fail();const image=h.image(permanent);
+  const pending=image.render();assert.equal(pending.src,undefined);assert.equal(pending.style.visibility,'hidden');
+  await flush();const failed=image.render();assert.equal(h.calls.length,1);
+  assert.equal(failed.src,'/manta-logo.svg');assert.equal(failed.style,undefined);
+});
+test('753 catalog cards sign only near-viewport cards on initial load', async t => {
+  assert.match(browse, /src=\{thumb\}\s+loadingMode="lazy"/);
+  const h=setup(t);const cards=Array.from({length:753},(_,i)=>h.image(`photos/${i}/photo.jpg`,undefined,'lazy'));
+  cards.forEach(c=>c.render());await flush();assert.equal(h.calls.length,0);
+  cards.slice(0,12).forEach(c=>{c.intersect();c.render();});await flush();
+  assert.equal(h.calls.length,12,'no hundreds of initial signing requests');
+  cards.slice(12,18).forEach(c=>{c.intersect();c.render();});await flush();assert.equal(h.calls.length,18);
+});
+test('1000 Match candidates stay lazy while submitted and selected images sign eagerly', async t => {
+  assert.match(match,/src=\{tempUrl[^\n]*\n\s+loadingMode="eager"/);
+  assert.match(match,/src=\{imgFromRow\(current\)\}\s+loadingMode="eager"/);
+  assert.match(match,/<MantaImage loadingMode="lazy" src=\{imgFromRow\(candidate\)\}/);
+  const h=setup(t);const candidates=Array.from({length:1000},(_,i)=>h.image(`photos/${i}/photo.jpg`,undefined,'lazy'));
+  candidates.forEach(c=>c.render());
+  h.image(pending).render();h.image('photos/0/photo.jpg').render();
+  candidates.slice(0,5).forEach(c=>{c.intersect();c.render();});await flush();
+  assert.equal(h.calls.length,6,'selected main image and its thumbnail share a query');
+  h.image('photos/999/photo.jpg').render();await flush();assert.equal(h.calls.length,7);
+  assert.equal(h.calls[h.calls.length - 1]?.path,'photos/999/photo.jpg');
 });

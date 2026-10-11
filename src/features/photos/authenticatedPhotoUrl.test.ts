@@ -103,7 +103,7 @@ test('lazy image expiration refreshes its exact query without latching the calle
  const exported: any={};
  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.CommonJS}}).outputText,{
    exports:exported,env:{VITE_SUPABASE_URL:origin},
-   React:{createElement:(_tag:unknown,props:unknown)=>props},forwardRef:(fn:unknown)=>fn,
+   React:{createElement:(_tag:unknown,props:unknown)=>props,useRef:()=>({current:null}),useState:()=>[false,()=>{}],useEffect:()=>{}},forwardRef:(fn:unknown)=>fn,
    useUser:()=>({id:'user'}),useSupabaseClient:()=>({}),useQuery:()=>query,
    authenticatedPhotoUrl,mantaDisplayReference,
    freshSignedPhotoUrl:(url:string,at:number)=>freshSignedPhotoUrl(url,at,now),

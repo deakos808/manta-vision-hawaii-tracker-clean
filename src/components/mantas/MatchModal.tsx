@@ -300,6 +300,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
             <div className={IMAGE_FRAME}>
               <MantaImage
                 src={tempUrl || '/manta-logo.svg'}
+                loadingMode="eager"
                 alt="Submitted manta photo"
                 className="w-full h-full min-h-0 object-contain"
                 referrerPolicy="no-referrer"
@@ -389,6 +390,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
             <div ref={catalogViewerRef} className={IMAGE_FRAME}>
               <MantaImage
                 src={imgFromRow(current)}
+                loadingMode="eager"
                 alt={current?.name ?? 'catalog'}
                 className="w-full h-full min-h-0 object-contain"
                 referrerPolicy="no-referrer"
@@ -404,7 +406,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
                   aria-pressed={candidateIndex === idx}
                   onClick={() => setIdx(candidateIndex)}
                   className={`shrink-0 w-20 rounded border-2 p-1 text-xs ${candidateIndex === idx ? 'border-sky-600 bg-sky-50' : 'border-transparent bg-gray-50 hover:border-gray-300'}`}>
-                  <MantaImage src={imgFromRow(candidate)} alt="" loading="lazy" className="h-16 w-full object-contain" referrerPolicy="no-referrer"
+                  <MantaImage loadingMode="lazy" src={imgFromRow(candidate)} alt="" loading="lazy" className="h-16 w-full object-contain" referrerPolicy="no-referrer"
                     onError={(event) => { event.currentTarget.src = '/manta-logo.svg'; }} />
                   {candidate.pk_catalog_id}
                 </button>
