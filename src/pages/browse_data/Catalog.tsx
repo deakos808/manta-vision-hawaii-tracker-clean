@@ -579,6 +579,7 @@ export default function Catalog() {
               <div className="flex flex-col items-center w-full">
                 <MantaImage
                   src={thumb}
+                  loadingMode="lazy"
                   alt={e.name ?? "catalog"}
                   className="w-full aspect-square object-cover rounded border"
                   onError={(ev) => {
