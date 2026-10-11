@@ -2,6 +2,8 @@ import CalibrationSessionPage from "./pages/admin/CalibrationSessionPage";
 import CalibrationLandingPage from "./pages/admin/CalibrationLandingPage";
 import AddCalibrationPage from "./pages/admin/AddCalibrationPage";
 import React from "react";
+import ContributePage from "@/pages/public/ContributePage";
+import ContributorRequestsPage from "@/pages/admin/ContributorRequestsPage";
 
 import MyContributionsPage from "@/pages/MyContributionsPage";
 import AddSightingPage from "@/pages/AddSightingPage";
@@ -75,6 +77,7 @@ function App() {
       <Route path="/signin" element={<RequireAuth signedOut={<SignInPage />}><Navigate to="/dashboard" replace /></RequireAuth>} />
       <Route path="/signout" element={<SignOutPage />} />
       <Route path="/login" element={<Navigate to="/signin" replace />} />
+      <Route path="/contribute" element={<ContributePage />} />
       <Route path="/set-password" element={<SetPasswordPage />} />
 
       <Route path="/browse" element={<RequireAuth><Navigate to="/browse/photos" replace /></RequireAuth>} />
@@ -109,6 +112,8 @@ function App() {
       <Route path="/admin/diagnostics" element={<RequireAuth adminOnly><DiagnosticsPage /></RequireAuth>} />
 
       <Route path="/admin/roles" element={<RequireAuth adminOnly><Layout><AdminRolesPage /></Layout></RequireAuth>} />
+      <Route path="/admin/contributor-requests" element={<RequireAuth adminOnly><ContributorRequestsPage /></RequireAuth>} />
+      <Route path="/admin/users/invite" element={<RequireAuth adminOnly><UsersInvitePage /></RequireAuth>} />
       <Route path="/admin/users-invite" element={<RequireAuth adminOnly><UsersInvitePage /></RequireAuth>} />
       <Route path="/admin/photo-test" element={<RequireAuth adminOnly><MatchingPage /></RequireAuth>} />
       <Route path="/admin/match-diagnostics" element={<RequireAuth adminOnly><MatchDiagnosticsPage /></RequireAuth>} />

@@ -47,7 +47,7 @@ test('anonymous app routes redirect before rendering data or navigation', () => 
   const { render, routes } = fixture('signed_out');
   for (const route of routes as any[]) {
     const path = route.props.path;
-    if (['/signin', '/login', '/set-password', '/signout', '*'].includes(path)) continue;
+    if (['/contribute', '/signin', '/login', '/set-password', '/signout', '*'].includes(path)) continue;
     assert.equal(render(path), '<span data-redirect="/signin"></span>', path);
   }
   const signin = render('/signin');
@@ -128,4 +128,13 @@ test('Admin Import clearly disables legacy actions without mounting staging cont
   assert.doesNotMatch(html, /<button|<input|<form/);
   const source = readFileSync(new URL('../../pages/admin/ImportPage.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /CatalogStagingPanel|StagingCsvPanel|ImportCsvPanel/);
+});
+
+test('contribute is the intentional public page; contributor queue and invite alias are admin-only', () => {
+  for (const role of ['signed_out', 'user', 'admin'] as const) assert.match(fixture(role).render('/contribute'), /ContributePage/);
+  for (const path of ['/admin/contributor-requests', '/admin/users/invite']) {
+    assert.match(fixture('signed_out').render(path), /data-redirect="\/signin"/);
+    assert.match(fixture('user').render(path), /Administrator access required/);
+    assert.match(fixture('admin').render(path), /<article>/);
+  }
 });

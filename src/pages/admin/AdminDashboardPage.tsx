@@ -38,6 +38,7 @@ export default function AdminDashboardPage() {
         </Section>
 
         <Section title="Admin & Access">
+          <AdminCard title="Contributor access requests" desc="Review public requests before inviting a contributor." btn={{ label: "Review Requests", onClick: () => navigate("/admin/contributor-requests") }} />
           <AdminCard
             title="👥 Manage Admin Roles"
             desc="Add, edit, or archive users and assign admin roles."

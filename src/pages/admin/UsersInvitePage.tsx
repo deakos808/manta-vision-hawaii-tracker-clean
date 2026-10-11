@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { invitePrefill } from "@/features/contributors/invitePrefill";
+import { Link, useLocation } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { inviteManagedUser, checkHistoricalContributions, type HistoryCandidate } from "@/lib/adminUserManagementApi";
 
 export default function UsersInvitePage() {
-  const [email, setEmail] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [reason, setReason] = useState("");
+  const { search } = useLocation();
+  const [prefill] = useState(() => invitePrefill(search));
+  const [email, setEmail] = useState(prefill.email);
+  const [displayName, setDisplayName] = useState(prefill.displayName);
+  const [reason, setReason] = useState(prefill.reason);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

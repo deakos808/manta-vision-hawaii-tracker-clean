@@ -95,3 +95,8 @@ verify_jwt = false
 
 [functions.notify-admin]
 verify_jwt = true
+
+# Intentional public request endpoint: validates origins/body and exposes no account data.
+[functions.request-contributor-access]
+enabled = true
+verify_jwt = false
