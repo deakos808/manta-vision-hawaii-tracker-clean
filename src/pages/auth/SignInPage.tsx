@@ -7,6 +7,8 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [resetNotice, setResetNotice] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,11 +30,18 @@ export default function SignInPage() {
   async function handleReset(e: React.MouseEvent) {
     e.preventDefault();
     setErrorMsg(null);
+    setResetNotice(false);
     if (!email) { setErrorMsg('Enter your email first'); return; }
-    const url = `${window.location.origin}/set-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: url });
-    if (error) setErrorMsg(error.message || 'Error sending recovery email');
-    else setErrorMsg('Check your email for a password reset link.');
+    setResetBusy(true);
+    try {
+      const url = `${window.location.origin}/set-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: url });
+      // Never display provider messages that could disclose account existence.
+      if (error) setErrorMsg('Unable to process the reset request right now. Please try again later or contact HAMER administration.');
+      else setResetNotice(true);
+    } catch {
+      setErrorMsg('Unable to process the reset request right now. Please try again later or contact HAMER administration.');
+    } finally { setResetBusy(false); }
   }
 
   return (
@@ -60,6 +69,11 @@ export default function SignInPage() {
           required
         />
 
+        {resetNotice && <div role="status" className="rounded border bg-slate-50 p-3 text-sm space-y-2">
+          <p className="font-semibold">Check your email</p>
+          <p>If an active MantaTracker account exists for this email, we'll send a password-reset link.</p>
+          <p>If you don't receive it within a few minutes, check your spam or junk folder. If you previously used a different login, or you're unsure which email is registered, please contact HAMER administration for access.</p>
+        </div>}
         {errorMsg && <div className="text-red-600 text-sm">{errorMsg}</div>}
 
         <button
@@ -72,11 +86,13 @@ export default function SignInPage() {
 
         <button
           onClick={handleReset}
+          disabled={resetBusy}
           type="button"
           className="text-sm underline text-sky-700"
         >
-          Forgot password?
+          {resetBusy ? 'Requesting…' : 'Forgot password?'}
         </button>
+        <a href="/contribute" className="block text-sm underline text-sky-700">Need contributor access?</a>
       </form>
     </div>
   );
