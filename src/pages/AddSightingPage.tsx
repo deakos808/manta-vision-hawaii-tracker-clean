@@ -1,3 +1,5 @@
+import { STALE_SUBMISSION_MESSAGE, ADMIN_STALE_SUBMISSION_MESSAGE, RELOAD_SUBMISSION_MESSAGE, pendingEditProtocol, savePendingSubmission, type EditProtocol } from "@/features/sightings/pendingSubmission";
+import { useSession } from "@supabase/auth-helpers-react";
 import { notifySubmission } from "@/features/sightings/submissionNotification";
 import { getSubmissionIssues, getApprovalIssues, approvalFailureMessage, TIME_ORDER_MESSAGE, MULTI_DATE_REVIEW_MESSAGE, type SubmissionField } from "@/features/sightings/submissionValidation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -17,7 +19,7 @@ import { initialLocationPoint, formatLocationPoint, locationPoint } from "@/comp
 import { saveReviewServer } from "@/utils/reviewSave";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { hasOrganicBiopsies, validateOrganicBiopsy } from "@/features/biopsies/organicBiopsy";
+import { validateOrganicBiopsy } from "@/features/biopsies/organicBiopsy";
 
 function uuid(){ try { return (crypto as any).randomUUID(); } catch { return Math.random().toString(36).slice(2); } }
 const METHOD_OPTIONS = [
@@ -65,6 +67,13 @@ export default function AddSightingPage() {
     || searchParams.get("review") || searchParams.get("reviewId") || null;
   const isReview = !!reviewId;
   const canReview = !access.loading && access.isActive === true && access.role === "admin";
+  const userId = useSession()?.user.id;
+  const editId = isReview ? null : searchParams.get("edit");
+  const existingId = reviewId || editId;
+  const canEditPending = !access.loading && access.isActive === true && (access.role === "user" || access.role === "admin");
+  const [editProtocol, setEditProtocol] = useState<EditProtocol>(0);
+  const [editRevision, setEditRevision] = useState<number | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [loadedReviewId, setLoadedReviewId] = useState<string | null>(null);
   const [reviewLoadError, setReviewLoadError] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
@@ -95,7 +104,7 @@ export default function AddSightingPage() {
     const windowParams = new URLSearchParams(window.location.search);
     return !((location.state as { reviewId?: string } | null)?.reviewId
       || searchParams.get("review") || searchParams.get("reviewId")
-      || windowParams.get("review") || windowParams.get("reviewId"));
+      || windowParams.get("review") || windowParams.get("reviewId") || searchParams.get("edit") || windowParams.get("edit"));
   });
   // addOpen's initial value already excludes every supported review entry route.
   const [methodsConfirmed, setMethodsConfirmed] = useState(() => !addOpen);
@@ -180,7 +189,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const emailValid = !submissionIssues.some(issue => issue.field === "email");
   const showFieldIssue = (field: SubmissionField) => (!isReview || field === "startTime" || field === "stopTime")
     && submissionIssues.some(issue => issue.field === field);
-  const preserveLocationCoordinates = useRef(isReview);
+  const preserveLocationCoordinates = useRef(!!existingId);
   const [coordSource, setCoordSource] = useState<string>("");
   const [savedMapPoint, setSavedMapPoint] = useState<{ lat: string; lng: string } | null>(null);
   useEffect(() => {
@@ -195,27 +204,41 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [successMessage, setSuccessMessage] = useState("");
 
   const [mapOpen, setMapOpen] = useState(false);
-  const formSightingId = useMemo(()=>uuid(),[]);
+  const newSightingId = useMemo(()=>uuid(),[]);
+  const formSightingId = existingId || newSightingId;
   const totalPhotosAll = useMemo(() => (mantas ?? []).reduce((a,m)=> a + (Array.isArray((m as any).photos) ? (m as any).photos.length : 0), 0), [mantas]);
 
   useEffect(()=>{ console.log("[AddSighting] mounted"); }, []);
 
   // Fetch review payload
   useEffect(() => {
-    if (!reviewId || !canReview) return;
+    if (!existingId || (isReview ? !canReview : !canEditPending) || !userId) return;
     let cancelled = false;
     setLoadedReviewId(null);
     setReviewLoadError(false);
+    setEditRevision(null);
+    setEditError(null);
     (async () => {
       console.info("[AddSighting][review] fetch start", reviewId);
       try {
+        const protocol = await pendingEditProtocol(supabase);
+        if (cancelled) return;
+        setEditProtocol(protocol);
+        if (editId && protocol !== 1) {
+          setEditError("Editing pending submissions is not available yet. Return to My Contributions.");
+          setReviewLoadError(true);
+          return;
+        }
         const { data, error } = await supabase
           .from("sighting_submissions")
-          .select("id,email,sighting_date,submitted_at,status,payload")
-          .eq("id", reviewId)
+          .select("*")
+          .eq("id", existingId)
           .single();
         if (cancelled) return;
         if (error || !data) { setReviewLoadError(true); return; }
+        if (data.status !== "pending" || data.committed_pk_sighting_id != null
+            || (!canReview && data.submitted_by !== userId)) { setReviewLoadError(true); return; }
+        setEditRevision(protocol === 1 ? data.edit_revision : null);
         const anyd: any = data;
         setEmail(anyd.email || "");
         if (anyd.sighting_date) setDate(String(anyd.sighting_date));
@@ -238,6 +261,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         if (p.longitude != null) setLng(String(p.longitude));
         if (Array.isArray(p.mantas)) {
           setMantas(p.mantas.map((m:any) => ({
+            ...m,
             id: m.id || uuid(),
             name: m.name || "",
             gender: m.gender ?? null,
@@ -251,13 +275,17 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             biopsy: m.biopsy ?? null,
           })));
         }
-        setLoadedReviewId(reviewId);
+        setNextMantaSequence(Array.isArray(p.mantas) ? p.mantas.length : 0);
+        setLoadedReviewId(existingId);
       } catch (e:any) {
-        if (!cancelled) setReviewLoadError(true);
+        if (!cancelled) {
+          setReviewLoadError(true);
+          setEditError("Unable to load submission editing. Reload before continuing.");
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [reviewId, canReview]);
+  }, [existingId, isReview, canReview, canEditPending, userId]);
 
   // Load islands (distinct from sightings)
   // Load locations for selected island (location_defaults, fallback to sightings)
@@ -465,6 +493,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     setSuccessOpen(true);
   };
 
+  function nextAvailableMantaLabel() {
+    let sequence = nextMantaSequence;
+    while (mantas.some(m => m.name === mantaLabel(sequence))) sequence++;
+    return mantaLabel(sequence);
+  }
+
   // Save handlers for Add/Edit manta
   const onAddSave = async (m: MantaDraft) => {
     console.log("[AddSighting][onAddSave] received manta", m);
@@ -491,7 +525,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       const i=prev.findIndex(x=>x.id===m.id);
       if(i>=0){
         const keep:any = prev[i] as any;
-        const merged:any = { ...(m as any) };
+        const merged:any = { ...keep, ...(m as any) };
         if (keep.matchedCatalogId != null && merged.matchedCatalogId == null) merged.matchedCatalogId = keep.matchedCatalogId;
         if (typeof keep.noMatch === "boolean" && typeof merged.noMatch !== "boolean") merged.noMatch = keep.noMatch;
         if (keep.biopsy && !merged.biopsy) merged.biopsy = keep.biopsy;
@@ -529,10 +563,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     if (!reviewIsValid()) return;
     setReviewBusy(true);
     try {
-      await saveReviewServer(reviewId, currentReviewPayload());
+      const saved = await saveReviewServer(reviewId, currentReviewPayload(), editRevision, "save", editProtocol);
+      setEditRevision(saved.revision);
       window.alert("Saved ✓");
-    } catch {
-      window.alert("Save failed. Review changes were not confirmed saved.");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Save failed. Review changes were not confirmed saved.");
     } finally {
       setReviewBusy(false);
     }
@@ -549,16 +584,12 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     setReviewBusy(true);
     try {
       const payload = currentReviewPayload();
-      await saveReviewServer(reviewId, payload);
-      const commitFunction = hasOrganicBiopsies(payload.mantas)
-        ? "commit_sighting_submission_with_biopsies"
-        : "commit_sighting_submission";
-      const { error } = await supabase.rpc(commitFunction, { sub_id: reviewId });
-      if (error) throw error;
+      await saveReviewServer(reviewId, payload, editRevision, "commit", editProtocol);
       window.alert("Committed.");
       navigate(returnPath);
     } catch (error) {
-      window.alert(approvalFailureMessage(error));
+      if (error instanceof Error && [STALE_SUBMISSION_MESSAGE, ADMIN_STALE_SUBMISSION_MESSAGE, RELOAD_SUBMISSION_MESSAGE].includes(error.message)) setEditError(error.message);
+      else window.alert(approvalFailureMessage(error));
     } finally {
       setReviewBusy(false);
     }
@@ -569,18 +600,30 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     if (!window.confirm("Are you sure you want to reject this submission?")) return;
     setReviewBusy(true);
     try {
-      const { data, error } = await supabase.from("sighting_submissions")
-        .update({ status: "rejected", rejected_at: new Date().toISOString() })
-        .eq("id", reviewId).eq("status", "pending")
-        .select("id").single();
-      if (error || !data) throw error || new Error("Submission was not updated");
+      await saveReviewServer(reviewId, {}, editRevision, "reject", editProtocol);
       window.alert("Submission rejected.");
       navigate(returnPath);
-    } catch {
-      window.alert("Rejection failed. The submission was not confirmed rejected.");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Rejection failed. The submission was not confirmed rejected.");
     } finally {
       setReviewBusy(false);
     }
+  }
+
+  async function handleSavePending() {
+    if (!editId || !canEditPending || loadedReviewId !== editId || reviewBusy || submissionIssues.length) return;
+    const invalidBiopsy = mantas.find(m => validateOrganicBiopsy(m.biopsy));
+    if (invalidBiopsy) { setEditError(validateOrganicBiopsy(invalidBiopsy.biopsy)); return; }
+    setReviewBusy(true);
+    setEditError(null);
+    try {
+      const saved = await savePendingSubmission(supabase, editId, editRevision, currentReviewPayload());
+      setEditRevision(saved.revision);
+      window.alert("Changes saved. Your submission is still pending review.");
+      navigate("/my-contributions");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Save failed. Your edits have not been saved.");
+    } finally { setReviewBusy(false); }
   }
 
   // MantasList hooks
@@ -598,8 +641,9 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   // UI
   if (isReview && access.loading) return <Layout><p role="status">Checking administrator access…</p></Layout>;
   if (isReview && !canReview) return <Layout><p role="alert">Active administrator access is required to review submissions.</p></Layout>;
-  if (isReview && reviewLoadError) return <Layout><p role="alert">Could not load this submission for review.</p></Layout>;
-  if (isReview && loadedReviewId !== reviewId) return <Layout><p role="status">Loading submission…</p></Layout>;
+  if (editId && !canEditPending) return <Layout><p role="status">{access.loading ? "Checking contributor access…" : "Active contributor access is required."}</p></Layout>;
+  if (existingId && reviewLoadError) return <Layout><p role="alert">{editError || "This pending submission is unavailable. It may have been finalized, or you may not have access."}</p></Layout>;
+  if (existingId && loadedReviewId !== existingId) return <Layout><p role="status">Loading submission…</p></Layout>;
 
   return (
     <Layout>
@@ -607,7 +651,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <Link to="/dashboard" className="text-blue-700 underline">
           Dashboard
         </Link>
-        <span className="text-slate-600"> / Add Sighting</span>
+        <span className="text-slate-600"> / {editId ? "Edit submission" : "Add Sighting"}</span>
       </div>
 
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
@@ -617,7 +661,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   onClose={()=>setAddOpen(false)}
   sightingId={formSightingId}
   onSave={onAddSave}
-  automaticName={isReview ? undefined : mantaLabel(nextMantaSequence)}
+  automaticName={isReview ? undefined : nextAvailableMantaLabel()}
 />
 <UnifiedMantaModal
   showSize={methods.pairedLaser}
@@ -684,7 +728,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
 
       {/* Hero */}
       <div className="bg-gradient-to-r from-sky-600 to-blue-700 py-8 text-white text-center">
-        <h1 className="text-3xl font-semibold">Add Manta Sighting</h1>
+        <h1 className="text-3xl font-semibold">{editId ? "Edit pending submission" : "Add Manta Sighting"}</h1>
         <div className="text-xs opacity-90 mt-1">sighting: {formSightingId.slice(0,8)}</div>
       </div>
 
@@ -887,6 +931,8 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         </Card>
 
         {/* Footer buttons */}
+        {editId && <p className="text-sm text-slate-600 text-center">Changes remain a proposal for Admin review. Original photos are preserved.</p>}
+        {editError && <div role="alert" className="rounded border border-red-300 p-3 text-sm text-red-700">{editError}</div>}
         {readinessMessages.length > 0 && (
           <div id="submission-issues" role="status" className="text-sm text-slate-600 text-center">
             <span className="font-medium">Still needed:</span>{" "}
@@ -900,6 +946,11 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
             <Button variant="outline" onClick={() => navigate(returnPath)}>Cancel</Button>
             <Button variant="secondary" disabled={reviewBusy} onClick={handleSaveReview}>Save Changes</Button>
                         <Button disabled={reviewBusy || approvalIssues.length > 0} aria-describedby={approvalIssues.length ? "submission-issues" : undefined} onClick={handleCommitReview}>Commit Review</Button>
+            </>
+          ) : editId ? (
+            <>
+              <Button variant="outline" disabled={reviewBusy} onClick={() => navigate("/my-contributions")}>Cancel</Button>
+              <Button disabled={reviewBusy || submissionIssues.length > 0} onClick={handleSavePending}>Save changes</Button>
             </>
           ) : (
             <>

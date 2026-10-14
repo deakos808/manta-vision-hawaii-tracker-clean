@@ -4,6 +4,7 @@ import { useSession } from '@supabase/auth-helpers-react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import { supabase } from '@/lib/supabase';
+import { pendingEditAvailable, pendingEditProtocol } from '@/features/sightings/pendingSubmission';
 import { loadContributions } from '@/features/sightings/contributions';
 import { CONTRIBUTION_BATCH_SIZE, contributionBatches, loadContributionPage, type PageDetail } from '@/features/sightings/contributionDetails';
 import ContributionModals, { type ContributionModal } from '@/features/sightings/ContributionModals';
@@ -22,6 +23,11 @@ export default function MyContributionsPage() {
     queryFn: () => loadContributions(supabase, userId!),
     enabled: !!userId,
     gcTime: 0,
+  });
+  const { data: editProtocol } = useQuery({
+    queryKey: ['pending-edit-protocol', userId],
+    queryFn: () => pendingEditProtocol(supabase),
+    enabled: !!userId,
   });
   const [visibleCount, setVisibleCount] = useState(CONTRIBUTION_BATCH_SIZE);
   const [selection,setSelection] = useState<ContributionModal | null>(null);
@@ -86,7 +92,7 @@ export default function MyContributionsPage() {
                     <td className="px-3 py-1 whitespace-nowrap">{photos != null && photos > 0 ? <button className="py-2 text-sky-700 underline" onClick={() => setSelection({kind:'photos',row:item})}>{photos} {photos === 1 ? 'photo' : 'photos'}</button> : photos === 0 ? '0' : '—'}</td>
                     <td className="px-3 py-1 max-w-60">{links.length ? <div className="flex flex-col items-start">{links.slice(0,2).map((c,i) => c.id ? <button key={i} className="py-1 text-sky-700 underline text-left" onClick={() => setSelection({kind:'catalog',id:c.id!})}>{c.label}: {c.name || c.id}</button> : <span key={i} className="py-1">{c.label}</span>)}{links.length>2 && <button className="py-2 text-sky-700 underline" onClick={() => setSelection({kind:'catalog-list',links})}>+{links.length-2} more</button>}</div> : enrichmentPending ? '…' : '—'}</td>
                     <td className="px-3 py-2"><span className="rounded bg-slate-100 px-2 py-1 text-xs">{item.status}</span></td>
-                    <td className="px-3 py-1"><button aria-label={`More about ${displayDate(item.date)}`} className="py-2 text-sky-700 underline" onClick={() => setSelection({kind:'more',row:item})}>More</button></td>
+                    <td className="px-3 py-1"><button aria-label={`More about ${displayDate(item.date)}`} className="py-2 text-sky-700 underline" onClick={() => setSelection({kind:'more',row:item})}>More</button>{editProtocol === 1 && pendingEditAvailable(item) && <Link className="block py-2 text-sky-700 underline whitespace-nowrap" to={`/sightings/add?edit=${encodeURIComponent(item.submissionId!)}`}>Edit submission</Link>}</td>
                   </tr>;
                 })}</tbody>
               </table>

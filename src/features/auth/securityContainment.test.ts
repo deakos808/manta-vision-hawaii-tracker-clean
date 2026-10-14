@@ -367,8 +367,9 @@ test("organic biopsy entry uses stable correlation and retires the CSV importer"
     );
   }
 
-  assert.match(page, /commit_sighting_submission_with_biopsies/);
-  assert.match(page, /hasOrganicBiopsies\(payload\.mantas\)/);
+  assert.match(page, /saveReviewServer\(reviewId, payload, editRevision, "commit", editProtocol\)/);
+  assert.match(read("supabase/migrations/20261013055511_edit_pending_sighting_submissions.sql"), /perform public.commit_sighting_submission_with_biopsies\(sub_id\)/);
+  assert.match(read("supabase/migrations/20261013055511_edit_pending_sighting_submissions.sql"), /m->'biopsy'->>'collected' = 'true'/);
   assert.match(list, /allowBiopsyEntry &&/);
   assert.match(list, /Biopsy collected for/);
 

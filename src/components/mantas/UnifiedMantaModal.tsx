@@ -126,7 +126,7 @@ export default function UnifiedMantaModal({
     setSpecies(existingManta?.species ?? null);
     setSize(existingManta?.size ?? null);
     setPhotos(existingManta?.photos ?? []);
-    setPotentialCatalogId(existingManta?.potentialCatalogId ?? null);
+    setPotentialCatalogId(existingManta?.matchedCatalogId ?? existingManta?.potentialCatalogId ?? null);
     setPotentialNoMatch(existingManta?.noMatch !== undefined
       ? existingManta.noMatch
       : existingManta?.potentialNoMatch ?? false);

@@ -1,3 +1,5 @@
+import { pendingEditProtocol, type EditProtocol } from "@/features/sightings/pendingSubmission";
+import { saveReviewServer } from "@/utils/reviewSave";
 import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import { MantaImage } from "@/features/photos/MantaImage";
 import React from "react";
@@ -9,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Row = {
+  edit_revision?: number;
+  editProtocol: EditProtocol;
   id: string;
   submitted_at: string | null;
   email: string | null;
@@ -32,16 +36,17 @@ export default function ReviewListPage() {
   const [photosTitle, setPhotosTitle] = React.useState("Submitted Photos");
   const [photos, setPhotos] = React.useState<ReviewPhoto[]>([]);
 
-  const { data = [] } = useQuery({
+  const { data = [], isError } = useQuery({
     queryKey: ["review-list"],
     queryFn: async () => {
+      const protocol = await pendingEditProtocol(supabase);
       const { data, error } = await supabase
         .from("sighting_submissions")
-        .select("id,submitted_at,email,sighting_date,manta_count,photo_count,payload,status")
+        .select("*")
         .eq("status", "pending")
         .order("submitted_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as Row[];
+      return (data || []).map(row => ({ ...row, editProtocol: protocol })) as Row[];
     },
   });
 
@@ -78,7 +83,8 @@ export default function ReviewListPage() {
       </div>
 
       <div className="max-w-4xl mx-auto p-4">
-        {data.length === 0 && <div className="text-slate-500">No pending submissions.</div>}
+        {isError && <p role="alert">Unable to load submissions. Reload before continuing.</p>}
+        {!isError && data.length === 0 && <div className="text-slate-500">No pending submissions.</div>}
 
         <ul className="space-y-3">
           {data.map((r) => {
@@ -122,11 +128,12 @@ export default function ReviewListPage() {
                     variant="destructive"
                     onClick={async () => {
                       if (!window.confirm("Are you sure you want to delete this sighting entry?")) return;
-                      await supabase
-                        .from("sighting_submissions")
-                        .update({ status: "rejected", rejected_at: new Date().toISOString() })
-                        .eq("id", r.id);
-                      await qc.invalidateQueries({ queryKey: ["review-list"] });
+                      try {
+                        await saveReviewServer(r.id, {}, r.edit_revision ?? null, "reject", r.editProtocol);
+                        await qc.invalidateQueries({ queryKey: ["review-list"] });
+                      } catch (error) {
+                        window.alert(error instanceof Error ? error.message : "Rejection was not saved. Reload before continuing.");
+                      }
                     }}
                   >
                     Reject

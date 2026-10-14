@@ -1,3 +1,5 @@
+import { pendingEditProtocol, type EditProtocol } from "@/features/sightings/pendingSubmission";
+import { saveReviewServer } from "@/utils/reviewSave";
 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -7,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type Row = {
+  edit_revision?: number;
+  editProtocol: EditProtocol;
   id: string;
   submitted_at: string | null;
   email: string | null;
@@ -32,18 +36,21 @@ function MatchPill({ payload }: { payload:any }) {
 export default function ReviewSubmissionsPage(){
   const [rows, setRows] = useState<Row[]>([]);
   const nav = useNavigate();
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(()=>{
     let alive=true;
     (async ()=>{
+      const protocol = await pendingEditProtocol(supabase);
       const { data, error } = await supabase
         .from("sighting_submissions")
-        .select("id,submitted_at,email,sighting_date,manta_count,photo_count,status,payload")
+        .select("*")
         .order("submitted_at",{ascending:false})
         .limit(500);
       if(!alive) return;
-      if(!error && data) setRows(data as Row[]);
-    })();
+      if(error) throw error;
+      if(data) setRows(data.map(row => ({ ...row, editProtocol: protocol })) as Row[]);
+    })().catch(() => { if (alive) setLoadError(true); });
     return ()=>{ alive=false; };
   },[]);
 
@@ -52,8 +59,14 @@ export default function ReviewSubmissionsPage(){
   };
 
   const onReject = async (id:string) => {
-    await supabase.from("sighting_submissions").update({ status: "rejected" }).eq("id", id);
-    setRows(prev => prev.map(r => r.id===id ? ({...r, status:"rejected"}) : r));
+    const row = rows.find(r => r.id === id);
+    if (!row) return;
+    try {
+      await saveReviewServer(id, {}, row.edit_revision ?? null, "reject", row.editProtocol);
+      setRows(prev => prev.map(r => r.id===id ? ({...r, status:"rejected"}) : r));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Rejection was not saved. Reload before continuing.");
+    }
   };
 
   const onCommit = async (id:string) => {
@@ -76,6 +89,7 @@ export default function ReviewSubmissionsPage(){
             <CardTitle>Submissions</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
+            {loadError && <p role="alert">Unable to load submissions. Reload before continuing.</p>}
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-600">
@@ -108,7 +122,7 @@ export default function ReviewSubmissionsPage(){
                     </td>
                   </tr>
                 ))}
-                {rows.length===0 && (
+                {!loadError && rows.length===0 && (
                   <tr><td className="py-4 text-slate-500" colSpan={8}>No submissions.</td></tr>
                 )}
               </tbody>
