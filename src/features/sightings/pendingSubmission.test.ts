@@ -24,9 +24,9 @@ test('contributor conflict guidance refers only to My Contributions', () => {
   assert.equal(STALE_SUBMISSION_MESSAGE, 'This submission changed while you were editing it. Your changes were not saved. Return to My Contributions and reopen the latest version before trying again. Copy any unsaved notes before leaving this page.');
   assert.doesNotMatch(STALE_SUBMISSION_MESSAGE, /review queue|SQL|RPC/);
 });
-test('stale revision reports conflict without retrying', async () => {
+for (const code of ['PT409', '40001']) test(`stale revision ${code} reports conflict without retrying`, async () => {
   let calls = 0;
-  await assert.rejects(savePendingSubmission({ rpc: async () => { calls++; return { error: { code: '40001' } }; } }, 's', 0, {}), { message: STALE_SUBMISSION_MESSAGE });
+  await assert.rejects(savePendingSubmission({ rpc: async () => { calls++; return { error: { code } }; } }, 's', 0, {}), { message: STALE_SUBMISSION_MESSAGE });
   assert.equal(calls, 1);
 });
 for (const revision of [null, -1, NaN]) test(`invalid revision ${revision} fails before RPC`, async () => {

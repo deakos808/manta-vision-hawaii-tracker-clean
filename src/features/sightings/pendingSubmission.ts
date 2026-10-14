@@ -12,7 +12,7 @@ export async function savePendingSubmission(client: { rpc: Function }, id: strin
     sub_id: id, expected_revision: revision, changes, action,
   });
   if (error) {
-    if (error.code === "40001") throw new Error(STALE_SUBMISSION_MESSAGE);
+    if (error.code === "PT409" || error.code === "40001") throw new Error(STALE_SUBMISSION_MESSAGE);
     throw error;
   }
   if (!data || !Number.isInteger(data.revision)) throw new Error("Save was not confirmed. Reopen the submission before retrying.");
