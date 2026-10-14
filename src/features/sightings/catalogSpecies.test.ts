@@ -15,7 +15,7 @@ for (const [value,label] of [['mobula alfredi','Reef manta'],['mobula birostris'
     vm.runInNewContext(hydrate, { existingManta: { species: value }, setSpecies: (v: unknown) => { species = v; } });
     const saved = vm.runInNewContext(ts.transpile(saveSource + '\nsave()', { target: ts.ScriptTarget.ES2022 }), {
       photoForPayload, mantaId: 'stable-id', name: 'Kai', gender: 'female', ageClass: 'juvenile', species,
-      size: '3.67', photos: [], potentialCatalogId: null, potentialNoMatch: true,
+      size: '3.67', photos: [], identificationProposal: null, potentialCatalogId: null, potentialNoMatch: true,
       noPhotos: true, firstExifMeta: null, existingManta: {},
     });
     const payload = JSON.parse(JSON.stringify(saved));

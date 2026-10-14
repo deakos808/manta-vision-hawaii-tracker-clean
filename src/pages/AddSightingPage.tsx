@@ -526,7 +526,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
       if(i>=0){
         const keep:any = prev[i] as any;
         const merged:any = { ...keep, ...(m as any) };
-        if (keep.matchedCatalogId != null && merged.matchedCatalogId == null) merged.matchedCatalogId = keep.matchedCatalogId;
+        if (keep.matchedCatalogId != null && merged.matchedCatalogId === undefined) merged.matchedCatalogId = keep.matchedCatalogId;
         if (typeof keep.noMatch === "boolean" && typeof merged.noMatch !== "boolean") merged.noMatch = keep.noMatch;
         if (keep.biopsy && !merged.biopsy) merged.biopsy = keep.biopsy;
         const c=[...prev]; c[i]=merged as any; return c;
@@ -976,7 +976,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           setMantas(prev =>
             prev.map(mm =>
               String(mm.id) === String(pageMatchFor)
-                ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false } as any)
+                ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false, potentialCatalogId: catalogId, potentialNoMatch: false, identificationProposal: { method: "photo_match" } } as any)
                 : mm
             )
           );
@@ -987,7 +987,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
           setMantas(prev =>
             prev.map(mm =>
               String(mm.id) === String(pageMatchFor)
-                ? ({ ...mm, matchedCatalogId: null, noMatch: true } as any)
+                ? ({ ...mm, matchedCatalogId: null, noMatch: true, potentialCatalogId: null, potentialNoMatch: true, identificationProposal: null } as any)
                 : mm
             )
           );

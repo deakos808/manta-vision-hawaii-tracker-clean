@@ -43,7 +43,7 @@ test('opening/saving preserves manual size; measurement changes and measured-pho
   run(functions, context);
   const save = modal.slice(modal.indexOf('  function save()'), modal.indexOf('    onSave(draft);')) + '\nreturn draft;\n}';
   const saved = run(save + '\nsave()', { photoForPayload, mantaId: 'm', name: 'Kai', gender: 'female', ageClass: 'juvenile', species: null, size, photos,
-    potentialCatalogId: null, potentialNoMatch: true, noPhotos: false, firstExifMeta: null, existingManta: {} });
+    identificationProposal: null, potentialCatalogId: null, potentialNoMatch: true, noPhotos: false, firstExifMeta: null, existingManta: {} });
   assert.equal(saved.size, '3.67');
   run('onMeasureApplied("a", {dlCm:100,dwCm:600,discPx:10,scalePx:6,scaleCm:60,points:[]})', context);
   assert.equal(size, '5.00');

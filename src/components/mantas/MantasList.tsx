@@ -132,7 +132,7 @@ export default function MantasList({
                   <div className="mt-2 grid gap-1 w-[128px]">
                     <div className="flex items-center justify-center">
                       {matchedId !== null ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Matched</span>
+                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Proposed identification</span>
                       ) : noMatch ? (
                         <span className="text-[11px] px-2 py-[3px] rounded-full bg-slate-100 text-slate-600">No matches</span>
                       ) : (
@@ -143,7 +143,7 @@ export default function MantasList({
                           title={!ventUrl ? 'Add a ventral photo to find a match' : !allowMatching ? 'An active account is required' : 'Find catalog match'}
                           onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
                         >
-                          Match
+                          Match from photo
                         </button>
                       )}
                     </div>
@@ -209,6 +209,13 @@ export default function MantasList({
                 </button>
               </div>
             </div>
+            {matchedId != null && <div className="px-6 pb-3 text-sm">
+              <strong>{m.identificationProposal?.catalogName || 'Contributor proposed'} · Catalog #{matchedId}</strong>
+              <div>{m.identificationProposal?.method === 'contributor_known' ? 'Contributor-known identity — known individual / contributor supplied' : 'Photo match proposal'}</div>
+              {m.identificationProposal?.evidence && <p className="whitespace-pre-wrap break-words">Recognition evidence: {m.identificationProposal.evidence}</p>}
+              <div className="text-slate-600">Awaiting HAMER review</div>
+            </div>}
+            {allowMatching && <div className="px-6 pb-3"><button type="button" className="text-sm underline" onClick={() => onEdit(m)}>I know this manta / Edit identification</button></div>}
             {allowBiopsyEntry && (
               <div className="px-6 pb-3">
                 <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
