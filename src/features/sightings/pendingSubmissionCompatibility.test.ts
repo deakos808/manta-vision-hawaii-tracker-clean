@@ -29,7 +29,8 @@ function mock(migrated = false) {
       if (name === 'pending_submission_edit_protocol') return state.migrated ? { data: 1 } : { error: { code: 'PGRST202' } };
       if (name === 'save_pending_sighting_submission') {
         if (!state.migrated) return { error: { code: 'PGRST202' } };
-        if (args.expected_revision !== state.revision || state.status !== 'pending') return { error: { code: '40001' } };
+        if (state.status !== 'pending') return { error: { code: '40001' } };
+        if (args.expected_revision !== state.revision) return { error: { code: 'PT409' } };
         state.notes = args.changes.notes ?? state.notes;
         state.revision++;
         if (args.action !== 'save') state.status = args.action === 'commit' ? 'committed' : 'rejected';

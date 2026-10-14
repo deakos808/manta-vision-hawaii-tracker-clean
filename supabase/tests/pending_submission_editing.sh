@@ -20,7 +20,13 @@ psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261005070057_sighting_submis
 psql -X -v ON_ERROR_STOP=1 -v baseline=true -f supabase/tests/pending_submission_editing.sql
 pg_dump --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' > "$scratch/before.sql"
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261013055511_edit_pending_sighting_submissions.sql >/dev/null
+pg_dump --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' > "$scratch/pre-conflict.sql"
+psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261014074119_return_pending_edit_conflicts_without_retry.sql >/dev/null
 psql -X -v ON_ERROR_STOP=1 -v baseline=false -f supabase/tests/pending_submission_editing.sql
+psql -X -v ON_ERROR_STOP=1 -f supabase/rollback/20261014074119_return_pending_edit_conflicts_without_retry_rollback.sql >/dev/null
+pg_dump --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' > "$scratch/post-conflict.sql"
+cmp "$scratch/pre-conflict.sql" "$scratch/post-conflict.sql"
+echo 'PASS: conflict rollback restored exact prior schema and privileges'
 psql -X -v ON_ERROR_STOP=1 -f supabase/rollback/20261013055511_edit_pending_sighting_submissions_rollback.sql >/dev/null
 pg_dump --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' > "$scratch/after.sql"
 cmp "$scratch/before.sql" "$scratch/after.sql"
