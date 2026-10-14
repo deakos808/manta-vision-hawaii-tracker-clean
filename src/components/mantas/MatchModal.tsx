@@ -1,4 +1,5 @@
 import { MantaImage } from "@/features/photos/MantaImage";
+import { catalogTextMatches } from '@/features/sightings/knownIdentification';
 import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -137,8 +138,7 @@ const MatchModal: React.FC<Props> = ({
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     const base = rows.filter((c) => {
-  const nm = normStr(c.name);
-  const byText = (nm ? nm.includes(s) : false) || String(c.pk_catalog_id).includes(s);
+  const byText = catalogTextMatches(c, s);
 
   const byFilters =
     arrHas(filters.population, c.populations ?? null, c.population ?? null) &&

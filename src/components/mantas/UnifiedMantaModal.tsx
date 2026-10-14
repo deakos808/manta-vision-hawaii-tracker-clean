@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import MeasureModal, { MeasureResult } from "./MeasureModal";
 import MatchModal from "./MatchModal";
+import KnownMantaLookup from "./KnownMantaLookup";
+import { knownIdentification, type IdentificationProposal } from "@/features/sightings/knownIdentification";
 import PhotoEditModal from "./PhotoEditModal";
 import { photoDisplaySource, photoForPayload } from "@/features/photos/photoPresentation";
 import { uploadPreparedPair, uploadReeditedPhoto, meanDiscWidthMeters, type EditTransform } from "@/features/photos/photoPreparation";
@@ -41,6 +43,7 @@ export type MantaDraft = {
   size?: string | null;
   photos: Uploaded[];
   matchedCatalogId?: number | null;
+  identificationProposal?: IdentificationProposal | null;
   noMatch?: boolean;
   noPhotos?: boolean;
   potentialCatalogId?: number | null;
@@ -102,6 +105,8 @@ export default function UnifiedMantaModal({
   const [measureOpen, setMeasureOpen] = useState<Uploaded | null>(null);
   const [matchOpen, setMatchOpen] = useState<Uploaded | null>(null);
   const [potentialCatalogId, setPotentialCatalogId] = useState<number | null>(null);
+  const [knownOpen, setKnownOpen] = useState(false);
+  const [identificationProposal, setIdentificationProposal] = useState<IdentificationProposal | null>(null);
   const [potentialNoMatch, setPotentialNoMatch] = useState<boolean>(false);
 
   const [localExifPromptOpen, setLocalExifPromptOpen] = useState(false);
@@ -131,6 +136,8 @@ export default function UnifiedMantaModal({
       ? existingManta.noMatch
       : existingManta?.potentialNoMatch ?? false);
     setNoPhotos(existingManta?.noPhotos ?? false);
+    setKnownOpen(false);
+    setIdentificationProposal(existingManta?.identificationProposal ?? null);
     setFirstExifMeta(existingManta?.firstExifMeta ?? null);
   }, [open, existingManta, automaticName]);
 
@@ -299,6 +306,7 @@ export default function UnifiedMantaModal({
       size: size ?? null,
       photos: photos.map(photoForPayload),
       potentialCatalogId,
+      identificationProposal,
       potentialNoMatch,
       matchedCatalogId: potentialCatalogId,
       noMatch: potentialNoMatch,
@@ -532,6 +540,28 @@ export default function UnifiedMantaModal({
               {photos.length === 0 && <div className="text-sm text-gray-600">No photos added yet.</div>}
             </div>
 
+            <section className="my-4 rounded border p-3" aria-label="Proposed identification">
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="rounded bg-sky-700 text-white px-3 py-2 disabled:opacity-50"
+                  disabled={intakeActive || !photos.some(p => p.view === 'ventral')}
+                  onClick={() => setMatchOpen(photos.find(p => p.view === 'ventral' && p.isBestVentral) ?? photos.find(p => p.view === 'ventral') ?? null)}>Match from photo</button>
+                <button type="button" className="rounded border px-3 py-2" disabled={intakeActive} onClick={() => setKnownOpen(true)}>I know this manta</button>
+              </div>
+              <p className="mt-2 text-xs text-slate-600">Match from photo requires a ventral image. Search directly if you already know the individual.</p>
+              {potentialCatalogId != null && <div className="mt-3 text-sm">
+                <strong>Proposed identification</strong>
+                <div>{identificationProposal?.catalogName} · Catalog #{potentialCatalogId}</div>
+                <div>{identificationProposal?.method === 'contributor_known' ? 'Contributor-known identity' : 'Photo match proposal'}</div>
+                <p>Awaiting HAMER review</p>
+                {identificationProposal?.method === 'contributor_known' && <label className="block mt-2">How do you recognize this manta? (optional)
+                  <textarea className="block border rounded p-2 w-full" value={identificationProposal.evidence ?? ''}
+                    onChange={e => setIdentificationProposal({ ...identificationProposal, evidence: e.target.value })} /></label>}
+                <button type="button" className="underline mt-2" onClick={() => { setPotentialCatalogId(null); setPotentialNoMatch(false); setIdentificationProposal(null); }}>Remove proposal</button>
+              </div>}
+              {potentialNoMatch && <p className="mt-2 text-sm">No Match / New Individual — awaiting HAMER review</p>}
+              <button type="button" className="text-sm underline mt-2" disabled={intakeActive}
+                onClick={() => { setPotentialCatalogId(null); setPotentialNoMatch(true); setIdentificationProposal(null); }}>No Match / New Individual</button>
+            </section>
             <div className="px-0 py-3 mt-2 flex justify-end gap-2 border-t">
               <button type="button" className="px-3 py-2 rounded border" onClick={() => { if (!intakeActive) onClose(); }} disabled={intakeActive}>Cancel</button>
               <button
@@ -633,6 +663,12 @@ export default function UnifiedMantaModal({
         </DialogContent>
       </Dialog>
 
+      {knownOpen && <KnownMantaLookup initialEvidence={identificationProposal?.evidence}
+        onClose={() => setKnownOpen(false)} onConfirm={(row, evidence) => {
+          const proposal = knownIdentification(row, evidence);
+          setPotentialCatalogId(proposal.matchedCatalogId); setPotentialNoMatch(false);
+          setIdentificationProposal(proposal.identificationProposal); setKnownOpen(false);
+        }} />}
       {matchOpen && (
         <MatchModal
           open={true}
@@ -640,11 +676,13 @@ export default function UnifiedMantaModal({
           tempUrl={photoDisplaySource(matchOpen) || ""}
           aMeta={{ name, gender, ageClass, species, meanSize: size ? Number(size) : null }}
           onChoose={(id) => {
+            setIdentificationProposal({ method: "photo_match" });
             setPotentialCatalogId(id);
             setPotentialNoMatch(false);
             setMatchOpen(null);
           }}
           onNoMatch={() => {
+            setIdentificationProposal(null);
             setPotentialCatalogId(null);
             setPotentialNoMatch(true);
             setMatchOpen(null);
