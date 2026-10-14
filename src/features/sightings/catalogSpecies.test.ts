@@ -38,7 +38,7 @@ test('Add/Edit and review retain species and pass the same manta array to both p
  assert.match(modal,/value={species \?\? ""}/);
  assert.match(page,/species: m.species \?\? null/);
  assert.equal((page.match(/mantas, methods, standardize_survey/g)||[]).length,2);
- assert.match(readFileSync('src/utils/reviewSave.ts','utf8'),/if \(Array.isArray\(v\)\) out\[k\] = v.slice\(\)/);
+ assert.match(readFileSync('src/utils/reviewSave.ts','utf8'),/savePendingSubmission\(supabase, reviewId, revision, overrides/);
 });
 test('summary and comparison clearly separate proposal and catalog',()=>{
  assert.match(readFileSync('src/components/mantas/MantasList.tsx','utf8'),/Proposed species:/);

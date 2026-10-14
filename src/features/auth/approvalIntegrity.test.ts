@@ -17,8 +17,8 @@ function harness(options: Record<string, any> = {}) {
     async single() { return options.rejectResult ?? { data: { id: 'review' }, error: null }; }
   };
   const context: any = {
-    reviewId: 'review', canReview: true, loadedReviewId: 'review', reviewBusy: false,
-    approvalFailureMessage, needsTimeReview: false, mantas: [{ id: 'stable-manta', name: 'Kai', noMatch: true, photos: [{ id: 'photo', originalPath: 'original' }] }],
+    editProtocol: 1, editRevision: 7, editId: null, canEditPending: false, submissionIssues: [], setEditRevision: () => {}, setEditError: (message: string | null) => { if (message) alerts.push(message); }, reviewId: 'review', canReview: true, loadedReviewId: 'review', reviewBusy: false,
+    STALE_SUBMISSION_MESSAGE: "stale", ADMIN_STALE_SUBMISSION_MESSAGE: "admin stale", RELOAD_SUBMISSION_MESSAGE: "reload", approvalFailureMessage, needsTimeReview: false, mantas: [{ id: 'stable-manta', name: 'Kai', noMatch: true, photos: [{ id: 'photo', originalPath: 'original' }] }],
     date: '2026-10-05', startTime: '10:00:01', stopTime: '11:00:02', photographer: 'Researcher',
     email: 'test@example.invalid', phone: '', island: 'Hawaii', locationId: '1', locationName: 'Site',
     locationUnknown: false, lat: '19', lng: '-156', methods: { tagDeployment: true }, standardizeSurvey: 'Yes', notes: 'current notes',
@@ -27,9 +27,20 @@ function harness(options: Record<string, any> = {}) {
     setReviewBusy: (value: boolean) => { context.reviewBusy = value; },
     validateOrganicBiopsy: () => options.invalidBiopsy ? 'invalid biopsy' : null,
     hasOrganicBiopsies: () => !!options.biopsies,
-    saveReviewServer: async (_id: string, payload: any) => {
-      events.push('save'); saved = payload;
-      if (options.saveFails) throw new Error('save failed');
+    saveReviewServer: async (_id: string, payload: any, revision: number, action = 'save') => {
+      assert.equal(revision, 7);
+      if (action === 'reject') {
+        events.push('update:rejected');
+        if (options.rejectResult) throw new Error('Rejection failed');
+      } else {
+        events.push('save'); saved = payload;
+        if (options.saveFails) throw new Error('save failed');
+        if (action === 'commit') {
+          events.push(options.biopsies ? 'commit_sighting_submission_with_biopsies' : 'commit_sighting_submission');
+          if (options.rpcError || options.rpcFails) throw options.rpcError ?? new Error('RPC failed');
+        }
+      }
+      return { revision: 8, status: action === 'save' ? 'pending' : action };
     },
     supabase: {
       rpc: async (name: string) => { events.push(name); return { error: options.rpcError ?? (options.rpcFails ? new Error('RPC failed') : null) }; },
@@ -38,6 +49,7 @@ function harness(options: Record<string, any> = {}) {
     navigate: () => events.push('navigate'),
     ...options.state,
   };
+  context.savePendingSubmission = (_client: unknown, id: string, revision: number, changes: unknown) => context.saveReviewServer(id, changes, revision);
   Object.defineProperty(context, 'approvalIssues', { get: () => getApprovalIssues(context) });
   vm.createContext(context);
   vm.runInContext(ts.transpileModule(handlers, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
@@ -84,7 +96,7 @@ for (const rejectResult of [{ data: null, error: new Error('denied') }, { data: 
   });
 }
 test('all review entry routes resolve synchronously and fetch requires active admin', () => {
-  const declaration = page.slice(page.indexOf('  const reviewId ='), page.indexOf('  const [loadedReviewId'));
+  const declaration = page.slice(page.indexOf('  const reviewId ='), page.indexOf('  const userId ='));
   for (const [state, query] of [[{ reviewId: 'r' }, ''], [null, 'review=r'], [null, 'reviewId=r']] as const) {
     for (const access of [{ loading: true, isActive: true, role: 'admin' }, { loading: false, isActive: true, role: 'user' }, { loading: false, isActive: false, role: 'admin' }]) {
       const script = ts.transpileModule(declaration + '\nresult = {reviewId, isReview, canReview};', {}).outputText;
@@ -93,26 +105,22 @@ test('all review entry routes resolve synchronously and fetch requires active ad
       assert.equal(ctx.result.reviewId, 'r'); assert.equal(ctx.result.isReview, true); assert.equal(ctx.result.canReview, false);
     }
   }
-  assert.match(page, /if \(!reviewId \|\| !canReview\) return;/);
+  assert.match(page, /if \(!existingId \|\| \(isReview \? !canReview : !canEditPending\) \|\| !userId\) return;/);
   assert.match(page, /if \(isReview && !canReview\) return/);
 });
 
-test('review save atomically updates payload/date and rejects zero-row writes', async () => {
+test('review save forwards the loaded revision and atomic action without refetching', async () => {
   const source = readFileSync('src/utils/reviewSave.ts', 'utf8');
-  for (const fail of [false, true]) {
-    let written: any; const filters: any[] = []; let writing = false;
-    const chain: any = {
-      select: () => chain, eq: (...args: any[]) => { filters.push(args); return chain; },
-      update: (row: any) => { written = row; writing = true; return chain; },
-      single: async () => writing ? { data: fail ? null : { id: 'r' }, error: null } : { data: { payload: { date: '2020-01-01', preserved: true }, sighting_date: '2020-01-01' }, error: null }
-    };
-    const ctx: any = { exports: {}, require: () => ({ supabase: { from: () => chain } }) };
-    vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, ctx);
-    const operation = ctx.exports.saveReviewServer('r', { date: '2026-10-05', notes: 'reviewed' });
-    if (fail) await assert.rejects(operation); else await operation;
-    assert.equal(written.payload.date, '2026-10-05'); assert.equal(written.sighting_date, '2026-10-05');
-    assert.equal(written.payload.preserved, true); assert.ok(filters.some(([k,v]) => k === 'status' && v === 'pending'));
-  }
+  let args: any[] = [];
+  const client = {};
+  const ctx: any = { exports: {}, require: (path: string) => path.includes('pendingSubmission')
+    ? { savePendingSubmission: async (...values: any[]) => { args = values; return { revision: 8 }; } }
+    : { supabase: client } };
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, ctx);
+  const payload = { notes: 'reviewed' };
+  await ctx.exports.saveReviewServer('r', payload, 7, 'commit');
+  assert.deepEqual(args, [client, 'r', 7, payload, 'commit']);
+  assert.doesNotMatch(source, /\.from\(|\.update\(/);
 });
 
 test('review save retains explicit unknown location', async () => {
@@ -150,3 +158,21 @@ test('only Commit Review button gains readiness gating', () => {
   assert.match(page, /disabled=\{reviewBusy \|\| approvalIssues.length > 0\}/);
   assert.match(page, /disabled=\{reviewBusy\} onClick=\{handleSaveReview\}/);
 });
+
+for (const failure of [false, true]) test(`pending contributor save ${failure ? 'failure retains draft' : 'updates same submission'}`, async () => {
+  const h = harness({ saveFails: failure, state: { editId: 'review', canEditPending: true } });
+  const before = JSON.stringify(h.context.mantas);
+  await h.context.handleSavePending();
+  assert.deepEqual(h.events, failure ? ['save'] : ['save','navigate']);
+  assert.equal(JSON.stringify(h.context.mantas), before);
+  assert.equal(h.saved().notes, 'current notes');
+  assert.equal(h.saved().mantas[0].photos[0].originalPath, 'original');
+  assert.match(h.alerts[0], failure ? /failed/ : /still pending/);
+});
+for (const state of [{ canEditPending: false }, { loadedReviewId: null }, { reviewBusy: true }, { submissionIssues: [{ field:'email' }] }]) {
+  test(`pending save guard ${JSON.stringify(state)}`, async () => {
+    const h = harness({ state: { editId: 'review', canEditPending: true, ...state } });
+    await h.context.handleSavePending();
+    assert.deepEqual(h.events, []);
+  });
+}

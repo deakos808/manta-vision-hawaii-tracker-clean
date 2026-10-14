@@ -1,45 +1,14 @@
 import { supabase } from "@/lib/supabase";
+import { savePendingSubmission, saveLegacyReview, STALE_SUBMISSION_MESSAGE, ADMIN_STALE_SUBMISSION_MESSAGE, type EditProtocol, type PendingAction } from "@/features/sightings/pendingSubmission";
 
-const isObj = (v: any) => v && typeof v === "object" && !Array.isArray(v);
-
-export function deepMerge(target: any, ...sources: any[]): any {
-  const out: any = isObj(target) ? { ...target } : {};
-  for (const src of sources) {
-    if (!src) continue;
-    for (const [k, v] of Object.entries(src)) {
-      if (Array.isArray(v)) out[k] = v.slice();
-      else if (isObj(v)) out[k] = deepMerge(out[k] ?? {}, v);
-      else if (v !== undefined) out[k] = v;
-    }
+/** Protocol and revision are captured when review opens, never refreshed at save. */
+export async function saveReviewServer(reviewId: string, overrides?: unknown, revision: number | null = null, action: PendingAction = "save", protocol: EditProtocol = 1) {
+  if (protocol === 0) return saveLegacyReview(supabase, reviewId, overrides ?? {}, action);
+  try {
+    return await savePendingSubmission(supabase, reviewId, revision, overrides ?? {}, action);
+  } catch (error) {
+    if (error instanceof Error && error.message === STALE_SUBMISSION_MESSAGE) throw new Error(ADMIN_STALE_SUBMISSION_MESSAGE);
+    throw error;
   }
-  return out;
 }
-
-/**
- * Merge-safe save: reads existing payload, merges `overrides`, writes back.
- * Do not pass undefined values for fields you wish to preserve.
- */
-export async function saveReviewServer(reviewId: string, overrides?: any) {
-  if (!reviewId) throw new Error("saveReviewServer: missing reviewId");
-  const { data, error } = await supabase
-    .from("sighting_submissions")
-    .select("payload,sighting_date")
-    .eq("id", reviewId)
-    .single();
-  if (error) throw error;
-
-  const existing = (data as any)?.payload ?? {};
-  const merged = deepMerge({}, existing, overrides ?? {});
-  const { data: saved, error: uerr } = await supabase
-    .from("sighting_submissions")
-    .update({ payload: merged, sighting_date: merged.date === undefined ? data?.sighting_date : merged.date || null })
-    .eq("id", reviewId)
-    .eq("status", "pending")
-    .select("id")
-    .single();
-  if (uerr || !saved) throw uerr || new Error("Review was not saved");
-
-  return merged;
-}
-
 export default saveReviewServer;
