@@ -1,3 +1,4 @@
+import { measurementSummary, isExternal } from "../photos/photoMeasurements";
 import { photoForPayload } from '../photos/photoPresentation';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,23 +33,16 @@ test('review coordinates survive hydration/list changes; explicit location selec
   assert.match(page, /onSave=\{\(point, names\) => \{\s*preserveLocationCoordinates.current = true/);
 });
 
-test('opening/saving preserves manual size; measurement changes and measured-photo removal recompute', () => {
-  const functions = modal.slice(modal.indexOf('  function updateMeasuredPhotos'), modal.indexOf('  function canSave()'));
-  let size = '3.67';
-  const photos = [{ id: 'a', measure: { dwCm: 200 } }, { id: 'b', measure: { dwCm: 400 } }];
-  const context: any = { photos, meanDiscWidthMeters, setSize: (v: string) => { size = v; },
-    setPhotos: (v: unknown) => { context.photos = v; } };
+test('photo edits never overwrite legacy size or independent estimate', () => {
   assert.match(modal, /setSize\(existingManta\?\.size \?\? null\)/);
-  assert.doesNotMatch(modal, /\[meanDW\]/);
-  run(functions, context);
-  const save = modal.slice(modal.indexOf('  function save()'), modal.indexOf('    onSave(draft);')) + '\nreturn draft;\n}';
-  const saved = run(save + '\nsave()', { photoForPayload, mantaId: 'm', name: 'Kai', gender: 'female', ageClass: 'juvenile', species: null, size, photos,
-    identificationProposal: null, potentialCatalogId: null, potentialNoMatch: true, noPhotos: false, firstExifMeta: null, existingManta: {} });
-  assert.equal(saved.size, '3.67');
-  run('onMeasureApplied("a", {dlCm:100,dwCm:600,discPx:10,scalePx:6,scaleCm:60,points:[]})', context);
-  assert.equal(size, '5.00');
-  run('deletePhoto("a")', context);
-  assert.equal(size, '4.00');
+  const functions = modal.slice(modal.indexOf('  function updateMeasuredPhotos'), modal.indexOf('  function canSave()'));
+  let size: string | null = '3.67';
+  const context: any = { photos: [], summary: { dw: {n:1} }, measurementSummary, isExternal,
+    setSize: (v: string | null) => {size=v;}, setPhotos: (v: unknown)=>{context.photos=v;} };
+  run(functions,context);
+  run('updateMeasuredPhotos([{measure:{source:"external",metric:"dw",units:"m",valueMeters:3.14}}])',context);
+  assert.equal(size,'3.67');
+  run('updateMeasuredPhotos([])',context); assert.equal(size,'3.67');
 });
 
 for (const [canonical, legacy, expected] of [[true, false, true], [false, true, false], [undefined, true, true]]) {
