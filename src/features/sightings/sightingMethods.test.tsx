@@ -28,11 +28,12 @@ test("summary hides and restores size and biopsy without mutating scientific dat
     showSize: on, allowBiopsyEntry: on, allowMatching: false,
   }));
   const visible = render(true);
-  assert.match(visible, /Size \(m\)/);
+  assert.match(visible, /Measured DW/);
   assert.match(visible, /3\.67 m/);
   assert.match(visible, /Biopsy collected for/);
   const hidden = render(false);
-  assert.doesNotMatch(hidden, /Size \(m\)|3\.67 m|Biopsy collected for/);
+  assert.doesNotMatch(hidden, /Size \(m\)|Biopsy collected for/);
+  assert.match(hidden, /Measured DW/); // Photo evidence remains visible independently of sighting method.
   assert.equal(render(true), visible);
   assert.deepEqual(mantas, before);
 });
@@ -50,13 +51,11 @@ test("both payloads persist methods; review defaults old payloads; toggles only 
   assert.equal((page.match(/showSize=\{methods.pairedLaser\}/g) || []).length, 3);
 });
 
-test("modal gates size field, measurement readout, action and workflow without resetting photo state", () => {
+test("photo evidence is independent of sighting method; manual size still honors method", () => {
   const modal = readFileSync(new URL("../../components/mantas/UnifiedMantaModal.tsx", import.meta.url), "utf8");
-  assert.match(modal, /\{showSize && <div[^>]*>\s*<label[^>]*>Mean Size/);
-  assert.match(modal, /\{showSize && p.measure &&/);
-  assert.match(modal, /\{showSize && <button[\s\S]*?>\s*Size\s*<\/button>\}/);
-  assert.match(modal, /\{showSize && measureOpen &&/);
-  assert.doesNotMatch(modal, /\[[^\]\n]*showSize[^\]\n]*\]/);
+  assert.match(modal, /showSize \|\| estimatedSize \|\| summary.dw.n/);
+  assert.match(modal, /PhotoMeasurementControls/);
+  assert.match(modal, /measureOpen &&/);
 });
 
 test("tag method round-trips as a boolean only", () => {

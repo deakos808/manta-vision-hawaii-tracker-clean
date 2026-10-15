@@ -8,11 +8,15 @@ import KnownMantaLookup from "./KnownMantaLookup";
 import { knownIdentification, type IdentificationProposal } from "@/features/sightings/knownIdentification";
 import PhotoEditModal from "./PhotoEditModal";
 import { photoDisplaySource, photoForPayload } from "@/features/photos/photoPresentation";
-import { uploadPreparedPair, uploadReeditedPhoto, meanDiscWidthMeters, type EditTransform } from "@/features/photos/photoPreparation";
+import { uploadPreparedPair, uploadReeditedPhoto, type EditTransform } from "@/features/photos/photoPreparation";
 import type { BasicExif } from "@/lib/exif";
 import { readBasicExif } from "@/lib/exif";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { OrganicBiopsyDraft } from "@/features/biopsies/organicBiopsy";
+
+import { sizeSourcesForPayload, isExternal, invalidExternalMeasurement, measuredPhotoForPayload, measurementSummary, type PhotoMeasurement } from "@/features/photos/photoMeasurements";
+import PhotoMeasurementControls from "./PhotoMeasurementControls";
+import MeasurementSummary from "./MeasurementSummary";
 
 type View = "ventral" | "dorsal" | "other";
 
@@ -24,7 +28,8 @@ export type Uploaded = {
   view: View;
   isBestVentral?: boolean;
   isBestDorsal?: boolean;
-  measure?: { dlCm: number; dwCm: number; discPx: number; scalePx: number; scaleCm: number; points?: MeasureResult["points"] };
+  isPhotogrammetry?: boolean | null;
+  measure?: PhotoMeasurement;
   previewUrl?: string | null;
   isHeicLike?: boolean;
   storageBucket?: "manta-images";
@@ -40,7 +45,8 @@ export type MantaDraft = {
   gender?: string | null;
   ageClass?: string | null;
   species?: CatalogSpecies | null;
-  size?: string | null;
+  size?: string | null; // legacy, source unspecified; never inferred to be an estimate
+  estimatedSize?: string | null; // explicit contributor visual estimate in meters
   photos: Uploaded[];
   matchedCatalogId?: number | null;
   identificationProposal?: IdentificationProposal | null;
@@ -91,6 +97,7 @@ export default function UnifiedMantaModal({
   const [species, setSpecies] = useState<CatalogSpecies | null>(null);
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
+  const [estimatedSize, setEstimatedSize] = useState<string | null>(null);
   const [noPhotos, setNoPhotos] = useState(false);
 
   const [photos, setPhotos] = useState<Uploaded[]>([]);
@@ -130,6 +137,7 @@ export default function UnifiedMantaModal({
     setAgeClass(existingManta?.ageClass ?? null);
     setSpecies(existingManta?.species ?? null);
     setSize(existingManta?.size ?? null);
+    setEstimatedSize(existingManta?.estimatedSize ?? null);
     setPhotos(existingManta?.photos ?? []);
     setPotentialCatalogId(existingManta?.matchedCatalogId ?? existingManta?.potentialCatalogId ?? null);
     setPotentialNoMatch(existingManta?.noMatch !== undefined
@@ -147,6 +155,8 @@ export default function UnifiedMantaModal({
     };
   }, []);
 
+  const summary = measurementSummary(photos);
+  const measuredDW = summary.dw.mean;
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
@@ -184,7 +194,7 @@ export default function UnifiedMantaModal({
         original: pendingPhoto.file, prepared, editTransform,
       });
       const exif = pendingPhoto.exif;
-      setPhotos(previous => [...previous, { ...added, captureDate: exif.captureDate, captureTime: exif.captureTime, previewUrl: URL.createObjectURL(prepared) }]);
+      setPhotos(previous => [...previous, { ...added, isPhotogrammetry: false, captureDate: exif.captureDate, captureTime: exif.captureTime, previewUrl: URL.createObjectURL(prepared) }]);
       if (!batchExifChosen.current && typeof exif.lat === "number" && typeof exif.lon === "number") {
         setFirstExifMeta({
           date: exif.captureDate, time: exif.captureTime,
@@ -259,11 +269,9 @@ export default function UnifiedMantaModal({
     );
   }
 
-  // Recalculate only after a measurement-changing action, never hydration.
+  // Photo evidence never overwrites the independent visual estimate or legacy value.
   function updateMeasuredPhotos(next: Uploaded[]) {
     setPhotos(next);
-    const meanDW = meanDiscWidthMeters(next);
-    if (meanDW !== null) setSize(meanDW.toFixed(2));
   }
 
   function deletePhoto(id: string) {
@@ -278,7 +286,7 @@ export default function UnifiedMantaModal({
 
   function onMeasureApplied(photoId: string, r: MeasureResult) {
     const previous = photos.find((p) => p.id === photoId)?.measure;
-    if (previous && previous.dlCm === r.dlCm && previous.dwCm === r.dwCm
+    if (previous && !isExternal(previous) && previous.dlCm === r.dlCm && previous.dwCm === r.dwCm
         && previous.discPx === r.discPx && previous.scalePx === r.scalePx
         && previous.scaleCm === r.scaleCm
         && JSON.stringify(previous.points) === JSON.stringify(r.points)) return;
@@ -293,7 +301,7 @@ export default function UnifiedMantaModal({
   function canSave() {
     const hasName = name.trim().length > 0;
     const hasPhotosOrOverride = photos.length > 0 || noPhotos;
-    return hasName && hasPhotosOrOverride;
+    return hasName && hasPhotosOrOverride && !photos.some(invalidExternalMeasurement) && (!estimatedSize || (Number.isFinite(Number(estimatedSize)) && Number(estimatedSize) > 0));
   }
 
   function save() {
@@ -303,8 +311,8 @@ export default function UnifiedMantaModal({
       gender,
       ageClass,
       species,
-      size: size ?? null,
-      photos: photos.map(photoForPayload),
+      ...sizeSourcesForPayload(photos, estimatedSize, size),
+      photos: photos.map(p => photoForPayload(measuredPhotoForPayload(p))),
       potentialCatalogId,
       identificationProposal,
       potentialNoMatch,
@@ -428,22 +436,24 @@ export default function UnifiedMantaModal({
                 </select>
               </div>
 
-              {showSize && <div className="md:col-span-2 col-span-12">
-                <label className="text-sm block mb-1">Mean Size (m)</label>
+              {(showSize || estimatedSize || summary.dw.n > 0 || summary.dl.n > 0) && <div className="md:col-span-3 col-span-12">
+                <label htmlFor="estimated-size" className="text-sm block mb-1">Estimated disc width (m)</label>
                 <input
                   type="number"
                   className="w-full border rounded px-3 py-2"
-                  value={size ?? ""}
-                  onChange={(e) => setSize(e.target.value || null)}
+                  id="estimated-size"
+                  value={estimatedSize ?? ""}
+                  onChange={(e) => setEstimatedSize(e.target.value || null)}
                   placeholder="m"
                 />
+                <p className="text-xs text-slate-600">Visual estimate only</p>
               </div>}
             </div>
 
 
+            <div className="mt-4"><MeasurementSummary photos={photos} estimatedSize={estimatedSize} legacySize={size} /></div>
             <div className="mt-4 space-y-3">
               {photos.map((p) => {
-                const canSize = true;
                 const ventralDisabled = p.view !== "ventral";
                 const dorsalDisabled = p.view !== "dorsal";
 
@@ -504,14 +514,6 @@ export default function UnifiedMantaModal({
                           />
                           Best dorsal
                         </label>
-
-                        {showSize && p.measure && (
-                          <div className="text-xs text-slate-600 mt-1">
-                            <div className="text-[12px] text-slate-700">
-                              DL: {((p.measure?.dlCm ?? 0) / 100).toFixed(2)} m · DW: {((p.measure?.dwCm ?? 0) / 100).toFixed(2)} m
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -523,16 +525,12 @@ export default function UnifiedMantaModal({
                         title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"}
                         onClick={() => void editCrop(p)}
                       >Edit Crop</button>
-                      {showSize && <button
-                        type="button"
-                        className="min-h-11 md:min-h-0 px-2 py-1 rounded bg-sky-600 text-white"
-                        disabled={intakeActive}
-                        onClick={() => setMeasureOpen(p)}
-                      >
-                        Size
-                      </button>}
                       <button type="button" className="min-h-11 md:min-h-0 px-2 md:px-0 text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
                     </div>
+                    <PhotoMeasurementControls id={p.id} isPhotogrammetry={p.isPhotogrammetry} measure={p.measure} disabled={intakeActive}
+                      onDesignation={value => setPhotos(previous => previous.map(photo => photo.id === p.id ? { ...photo, isPhotogrammetry: value } : photo))}
+                      onChange={measure => updateMeasuredPhotos(photos.map(photo => photo.id === p.id ? { ...photo, measure } : photo))}
+                      onMeasure={() => setMeasureOpen(p)} />
                   </div>
                 );
               })}
@@ -600,7 +598,7 @@ export default function UnifiedMantaModal({
         />
       )}
 
-      {showSize && measureOpen && (
+      {measureOpen && (
         <MeasureModal
           open={true}
           src={photoDisplaySource(measureOpen) || ""}
@@ -610,7 +608,7 @@ export default function UnifiedMantaModal({
             setMeasureOpen(null);
           }}
           initial={
-            measureOpen.measure
+            measureOpen.measure && !isExternal(measureOpen.measure)
               ? {
                   dlCm: measureOpen.measure.dlCm,
                   dwCm: measureOpen.measure.dwCm,
@@ -674,7 +672,7 @@ export default function UnifiedMantaModal({
           open={true}
           onClose={() => setMatchOpen(null)}
           tempUrl={photoDisplaySource(matchOpen) || ""}
-          aMeta={{ name, gender, ageClass, species, meanSize: size ? Number(size) : null }}
+          aMeta={{ name, gender, ageClass, species, meanSize: measuredDW }}
           onChoose={(id) => {
             setIdentificationProposal({ method: "photo_match" });
             setPotentialCatalogId(id);

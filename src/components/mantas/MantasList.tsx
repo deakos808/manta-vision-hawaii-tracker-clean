@@ -1,8 +1,9 @@
+import MeasurementSummary from "./MeasurementSummary";
+import { measurementSummary } from "@/features/photos/photoMeasurements";
 import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import { MantaImage } from "@/features/photos/MantaImage";
 import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React from "react";
-import { formatMantaSize } from "@/features/photos/photoPresentation";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 import {
   newOrganicBiopsy,
@@ -93,7 +94,7 @@ export default function MantasList({
         <div className={TH}>Temp Name</div>
         <div className={TH}>Gender</div>
         <div className={TH}>Age Class</div>
-        {showSize && <div className={TH}>Size (m)</div>}
+        {showSize && <div className={TH}>Measured DW</div>}
         <div className={TH}>Actions</div>
       </div>
 
@@ -104,6 +105,7 @@ export default function MantasList({
           const dor  = strictPhoto(m?.photos,'dorsal');
           const ventUrl = urlFor(vent);
           const dorUrl  = urlFor(dor);
+          const derivedDW = measurementSummary(m.photos ?? []).dw.mean;
           const count = Array.isArray(m?.photos) ? m.photos.length : 0;
           const matchedId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id) ?? null;
           const noMatch = !!(m?.noMatch || m?.no_match);
@@ -178,7 +180,7 @@ export default function MantasList({
               <div className={TD}><span className="lg:hidden font-medium">Name: </span>{tempName(m)}<div className="text-xs whitespace-normal">Proposed species: {speciesLabel(m?.species)}</div></div>
               <div className={TD}><span className="lg:hidden font-medium">Gender: </span>{m?.gender || "—"}</div>
               <div className={TD}><span className="lg:hidden font-medium">Age Class: </span>{m?.ageClass || "—"}</div>
-              {showSize && <div className={TD}><span className="lg:hidden font-medium">Mean Size: </span>{formatMantaSize(m?.size)}</div>}
+              {showSize && <div className={TD}><span className="lg:hidden font-medium">Measured DW: </span>{(derivedDW !== null ? derivedDW.toFixed(2) + " m" : "—")}</div>}
 
               {/* Actions inside column */}
               <div className="flex flex-wrap items-center gap-3">
@@ -272,6 +274,7 @@ export default function MantasList({
                 )}
               </div>
             )}
+              <div className="col-span-full"><MeasurementSummary photos={m.photos ?? []} estimatedSize={m.estimatedSize} legacySize={m.size} /></div>
             </div>
           );
         })}
