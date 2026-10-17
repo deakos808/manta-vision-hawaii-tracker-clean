@@ -60,14 +60,7 @@ export default function Biopsies() {
     (async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from("biopsies")
-        .select(
-          'pk_biopsy_id, fk_catalog_id, fk_manta_id, fk_sighting_id, sample_date, ' +
-          'catalog:fk_catalog_id ( pk_catalog_id, name, best_catalog_ventral_thumb_url, last_gender, last_age_class, species, total_biopsies ), ' +
-          'sightings:fk_sighting_id ( is_mprf )'
-        )
-        .order("created_at", { ascending: false })
-        .limit(2000);
+        .rpc("admin_biopsy_browse");
 
       if (error) { console.error("[biopsies] load error", error); setRows([]); setLoading(false); return; }
 
@@ -176,9 +169,7 @@ export default function Biopsies() {
     setSelectedAgeRankRow(null);
     setAgeRankLoading(true);
     const { data, error } = await supabase
-      .from("kona_biopsy_age_rank_view_v3")
-      .select("*")
-      .order("age_rank_v3", { ascending: true });
+      .rpc("admin_biopsy_age_ranking");
     if (error) {
       console.error("[biopsies] age rank load error", error);
       setAgeRankRows([]);
