@@ -1,0 +1,10 @@
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.biopsies FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.manta_sizes FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.photo_measurements FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.calibration_sessions FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.calibration_photos FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.calibration_measurements FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.manta_embeddings FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.photo_embeddings FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.sighting_embeddings FROM authenticated;
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.manta_match_results FROM authenticated;
