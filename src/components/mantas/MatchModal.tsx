@@ -47,7 +47,7 @@ interface Props {
   onClose: () => void;
   tempUrl?: string | null;
   aMeta?: Meta;
-  onChoose?: (catalogId: number) => void;
+  onChoose?: (catalogId: number, catalogName?: string | null) => void;
   onNoMatch?: () => void;
   rankedEnabled?: boolean;
 }
@@ -228,7 +228,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
     const numericId = Number(catalogId);
     if (!Number.isFinite(numericId)) return;
     void cleanupBefore(() => {
-      onChoose?.(numericId);
+      onChoose?.(numericId, rows.find(row => Number(row.pk_catalog_id) === numericId)?.name ?? null);
       onClose();
     });
   };
@@ -432,7 +432,7 @@ return base.sort((a, b) => a.pk_catalog_id - b.pk_catalog_id);
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50" disabled={!current || actionBusy} onClick={() => current && chooseMatch(current.pk_catalog_id)}>This is a match</button>
-                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Match / New Individual</button>
+                <button type="button" className="px-3 py-1 rounded border text-sm disabled:opacity-50" onClick={chooseNoMatch} disabled={actionBusy}>No Match Found / New Individual</button>
               </div>
             </div>
           </div>

@@ -42,7 +42,7 @@ export default function KnownMantaLookup({ onClose, onConfirm, initialEvidence =
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     }} role="dialog" aria-modal="true" aria-labelledby="known-manta-title" className="bg-white rounded-lg p-4 w-full max-w-xl max-h-[90dvh] overflow-y-auto">
-      <div className="flex justify-between gap-3"><h3 id="known-manta-title" className="text-lg font-semibold">I know this manta</h3>
+      <div className="flex justify-between gap-3"><h3 id="known-manta-title" className="text-lg font-semibold">Suggest Identity</h3>
         <button type="button" onClick={onClose} aria-label="Close catalog lookup">Close</button></div>
       <p className="text-sm text-slate-600 my-2">Search the catalog when you already know the individual. HAMER reviews every proposed identification.</p>
       <label className="block text-sm">Catalog ID or manta name

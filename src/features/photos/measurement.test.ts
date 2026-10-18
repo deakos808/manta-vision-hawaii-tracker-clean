@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { initialMeasurement, commitMeasurementStage, measurementValues, resetMeasurement, valuesFromDistances } from "./measurement";
+import { measurementPixelDistance, initialMeasurement, commitMeasurementStage, measurementValues, resetMeasurement, valuesFromDistances } from "./measurement";
 
 const points = [{ x: .1, y: .1 }, { x: .3, y: .1 }, { x: .5, y: .2 }, { x: .5, y: .8 }];
 test("placing both scale points does not advance; explicit commit advances to DL", () => {
@@ -42,4 +42,17 @@ test("DL uses disc/reference ratio, DW remains DL times 2.3, display scaling can
     assert.ok(Math.abs(result.dwCm - 207) < 1e-10);
   }
   assert.deepEqual(valuesFromDistances(120, 320, 60), { scalePx: 120, discPx: 320, dlCm: 160, dwCm: 368 });
+});
+
+test("native pixel readings follow point placement and dragging independently of display size", () => {
+ const native = {width:4000,height:2000};
+ const distance = (a: typeof points[number], b: typeof points[number]) => measurementPixelDistance(a,b,native.width,native.height);
+ assert.ok(Math.abs(distance(points[0],points[1])-800)<1e-10);
+ assert.ok(Math.abs(distance(points[2],points[3])-1200)<1e-10);
+ const moved={x:.4,y:.1};
+ assert.ok(Math.abs(distance(points[0],moved)-1200)<1e-10);
+ for(const fit of [.15,.5,1]) {
+   measurementValues(points,native.width*fit,native.height*fit,60);
+   assert.ok(Math.abs(distance(points[2],points[3])-1200)<1e-10);
+ }
 });

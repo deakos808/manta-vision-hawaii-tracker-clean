@@ -26,7 +26,10 @@ export function measurementSummary(photos: MeasuredPhoto[]) {
   const values = photos.map(photoMeasurementMeters);
   const aggregate = (metric: "dw" | "dl") => {
     const valid = values.map(v => v[metric]).filter(positive);
-    return { mean: valid.length ? valid.reduce((sum, v) => sum + v, 0) / valid.length : null, n: valid.length };
+    const mean = valid.length ? valid.reduce((sum, v) => sum + v, 0) / valid.length : null;
+    return { mean, n: valid.length, ...(metric === "dw" ? {
+      sd: valid.length > 1 ? Math.sqrt(valid.reduce((sum, v) => sum + (v - mean!) ** 2, 0) / (valid.length - 1)) : null,
+    } : {}) };
   };
   return { dw: aggregate("dw"), dl: aggregate("dl") };
 }

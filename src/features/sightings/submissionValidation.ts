@@ -1,7 +1,12 @@
 import { locationPoint } from "../../components/map/locationSelection";
 
-export type SubmissionField = 'date' | 'email' | 'startTime' | 'stopTime' | 'photoDates' | 'location';
+export type SubmissionField = 'date' | 'email' | 'startTime' | 'stopTime' | 'photoDates' | 'location' | 'estimatedSize';
 export const MULTI_DATE_REVIEW_MESSAGE = 'Photos span multiple dates. Review the sighting date, Start Time, and Stop Time manually.';
+
+function estimateIssues(mantas: readonly { name?: string; estimatedSize?: string | null }[] = []): Issue[] {
+  return mantas.filter(m => m.estimatedSize && !(Number.isFinite(Number(m.estimatedSize)) && Number(m.estimatedSize) > 0))
+    .map(m => ({ field: "estimatedSize", message: `${m.name || "Manta"}: visual DW estimate must be positive, or blank.` }));
+}
 
 type Issue = { field: SubmissionField; message: string };
 type SurveyTimes = { standardizeSurvey: string | null; startTime: string; stopTime: string };
@@ -27,9 +32,9 @@ export function getSurveyTimeIssues(input: SurveyTimes): Issue[] {
 }
 
 export function getApprovalIssues(input: SurveyTimes & {
-  mantas: readonly { name?: string; matchedCatalogId?: number | string | null; noMatch?: boolean }[];
+  mantas: readonly { name?: string; estimatedSize?: string | null; matchedCatalogId?: number | string | null; noMatch?: boolean }[];
 }): string[] {
-  const issues = getSurveyTimeIssues(input).map(issue => issue.message);
+  const issues = [...getSurveyTimeIssues(input), ...estimateIssues(input.mantas)].map(issue => issue.message);
   for (const [index, manta] of input.mantas.entries()) {
     const name = manta.name || `Manta ${index + 1}`;
     const matched = manta.matchedCatalogId != null;
@@ -53,8 +58,9 @@ export function getSubmissionIssues(input: {
   date: string; email: string; startTime: string; stopTime: string;
   locationUnknown: boolean; locationId: string; locationName: string; latitude: string; longitude: string;
   standardizeSurvey: string | null; needsTimeReview: boolean;
+  mantas?: readonly { name?: string; estimatedSize?: string | null }[];
 }): { field: SubmissionField; message: string }[] {
-  const issues: { field: SubmissionField; message: string }[] = [];
+  const issues: { field: SubmissionField; message: string }[] = estimateIssues(input.mantas);
   // Preserve the existing date/email checks used by Add Sighting.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date.trim())) issues.push({ field: 'date', message: 'Sighting date' });
   if (!/^\S+@\S+\.\S+$/.test(input.email.trim())) issues.push({ field: 'email', message: 'Email address' });

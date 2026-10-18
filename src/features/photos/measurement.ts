@@ -5,8 +5,11 @@ export type MeasureResult = {
   scalePx: number; discPx: number; dlCm: number; dwCm: number;
   scaleCm: number; points: MeasurementPoint[];
 };
+export function measurementPixelDistance(a: MeasurementPoint, b: MeasurementPoint, width: number, height: number) {
+  return Math.hypot((a.x - b.x) * width, (a.y - b.y) * height);
+}
 export function measurementValues(points: MeasurementPoint[], width: number, height: number, scaleCm: number) {
-  const distance = (a: MeasurementPoint, b: MeasurementPoint) => Math.hypot((a.x - b.x) * width, (a.y - b.y) * height);
+  const distance = (a: MeasurementPoint, b: MeasurementPoint) => measurementPixelDistance(a, b, width, height);
   const scalePx = points.length >= 2 ? distance(points[0], points[1]) : 0;
   const discPx = points.length >= 4 ? distance(points[2], points[3]) : 0;
   return valuesFromDistances(scalePx, discPx, scaleCm);

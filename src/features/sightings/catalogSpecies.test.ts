@@ -36,7 +36,7 @@ test('Add/Edit and review retain species and pass the same manta array to both p
  const page=readFileSync('src/pages/AddSightingPage.tsx','utf8');
  assert.match(modal,/setSpecies\(existingManta\?\.species \?\? null\)/);
  assert.match(modal,/ageClass,\s+species,/);
- assert.match(modal,/value={species \?\? ""}/);
+ assert.match(modal,/checked=\{\(species \?\? ""\) === option.value\}/);
  assert.match(page,/species: m.species \?\? null/);
  assert.equal((page.match(/mantas, methods, standardize_survey/g)||[]).length,2);
  assert.match(readFileSync('src/utils/reviewSave.ts','utf8'),/savePendingSubmission\(supabase, reviewId, revision, overrides/);
@@ -51,4 +51,14 @@ test('species errors guide review without internal IDs',()=>{
  assert.match(approvalFailureMessage({message:'Species mismatch: private-id'}),/proposed species conflicts/);
  assert.doesNotMatch(approvalFailureMessage({message:'Species mismatch: private-id'}),/private-id/);
  assert.match(approvalFailureMessage({message:'Proposed catalog species must be canonical'}),/select Reef manta, Oceanic manta, or Unknown/);
+});
+
+for (const gender of [null,'female','male','unknown']) for (const ageClass of [null,'juvenile','yearling','adult','unknown']) test(`classification save/reopen preserves ${gender} / ${ageClass}`,()=>{
+ const context={photoForPayload,measuredPhotoForPayload,sizeSourcesForPayload,estimatedSize:null,mantaId:'stable',name:'Saved name',gender,ageClass,species:null,size:null,photos:[],identificationProposal:null,potentialCatalogId:null,potentialNoMatch:false,noPhotos:true,firstExifMeta:null,existingManta:{}};
+ const saved=JSON.parse(JSON.stringify(vm.runInNewContext(ts.transpile(saveSource+'\nsave()'),context)));
+ assert.equal(saved.gender,gender);assert.equal(saved.ageClass,ageClass);assert.equal(saved.name,'Saved name');
+ const hydrate=modalSource.match(/setGender\(existingManta\?\.gender \?\? null\)/)![0]+';'+modalSource.match(/setAgeClass\(existingManta\?\.ageClass \?\? null\)/)![0];
+ let reopenedGender:unknown,reopenedAge:unknown;
+ vm.runInNewContext(hydrate,{existingManta:saved,setGender:(v:unknown)=>{reopenedGender=v},setAgeClass:(v:unknown)=>{reopenedAge=v}});
+ assert.equal(reopenedGender,gender);assert.equal(reopenedAge,ageClass);
 });

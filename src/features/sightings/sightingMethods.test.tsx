@@ -23,17 +23,17 @@ test("summary hides and restores size and biopsy without mutating scientific dat
   const before = structuredClone(mantas);
   const render = (on: boolean) => renderToStaticMarkup(React.createElement(MantasList, {
     mantas: mantas as any, setMantas: () => assert.fail("render must not change mantas"),
-    onEdit: () => {}, onRemove: () => {}, openMatch: () => {},
+    onEdit: () => {}, onSuggestIdentity: () => {}, onRemove: () => {}, openMatch: () => {},
     totalPhotosAll: 1, sightingDate: "2026-10-04",
     showSize: on, allowBiopsyEntry: on, allowMatching: false,
   }));
   const visible = render(true);
-  assert.match(visible, /Measured DW/);
+  assert.match(visible, /Measurements/);
   assert.match(visible, /3\.67 m/);
   assert.match(visible, /Biopsy collected for/);
   const hidden = render(false);
   assert.doesNotMatch(hidden, /Size \(m\)|Biopsy collected for/);
-  assert.match(hidden, /Measured DW/); // Photo evidence remains visible independently of sighting method.
+  assert.match(hidden, /Measurements/); // Photo evidence remains visible independently of sighting method.
   assert.equal(render(true), visible);
   assert.deepEqual(mantas, before);
 });
@@ -51,9 +51,12 @@ test("both payloads persist methods; review defaults old payloads; toggles only 
   assert.equal((page.match(/showSize=\{methods.pairedLaser\}/g) || []).length, 3);
 });
 
-test("photo evidence is independent of sighting method; manual size still honors method", () => {
+test("photo evidence stays in workbench; independent estimate and summary belong to sighting list", () => {
   const modal = readFileSync(new URL("../../components/mantas/UnifiedMantaModal.tsx", import.meta.url), "utf8");
-  assert.match(modal, /showSize \|\| estimatedSize \|\| summary.dw.n/);
+  const list = readFileSync(new URL("../../components/mantas/MantasList.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(modal, /<MeasurementSummary|id="estimated-size"/);
+  assert.match(list, /Visually estimated DW \(m\) — optional/);
+  assert.match(list, /<MeasurementSummary/);
   assert.match(modal, /PhotoMeasurementControls/);
   assert.match(modal, /measureOpen &&/);
 });
@@ -82,4 +85,18 @@ test("methods dialog stacks over photo intake and Continue accepts no selections
   assert.ok(page.includes("z-[300002]"));
   assert.match(page, /<Button type="button" className="w-full" onClick=[\s\S]*?>Continue<\/Button>/);
   assert.ok(page.includes('|| "None"'));
+});
+
+test("manta rows use one conditional identity action, concise decisions and accessible icons", () => {
+  const render = (m: object) => renderToStaticMarkup(<MantasList mantas={[{id:'m',name:'A',photos:[],...m}] as React.ComponentProps<typeof MantasList>['mantas']}
+    setMantas={()=>{}} onEdit={()=>{}} onSuggestIdentity={()=>{}} onRemove={()=>{}} openMatch={()=>{}} totalPhotosAll={0}
+    sightingDate="2026-10-18" showSize allowBiopsyEntry={false} allowMatching />);
+  const unknown=render({});assert.match(unknown,/>Unknown</);assert.match(unknown,/Suggest Identity/);assert.doesNotMatch(unknown,/Match Photo|>Identification</);
+  const best=render({photos:[{view:'ventral',isBestVentral:true}]});
+  assert.match(best,/Match Photo/);assert.doesNotMatch(best,/Suggest Identity/);
+  assert.match(render({photos:[{view:'ventral'}]}),/Suggest Identity/);
+  assert.match(render({noMatch:true}),/New — pending Admin review/);
+  assert.match(render({matchedCatalogId:733,identificationProposal:{catalogName:'Left Spot',method:'contributor_known'}}),/Left Spot · Catalog #733/);
+  assert.match(unknown,/aria-label="Edit manta"/);assert.match(unknown,/aria-label="Remove manta"/);
+  assert.doesNotMatch(unknown,/>Edit<|>Delete</);
 });

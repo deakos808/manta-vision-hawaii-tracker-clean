@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { MantaImage } from "@/features/photos/MantaImage";
 import { SPECIES_OPTIONS, type CatalogSpecies } from "@/features/sightings/catalogSpecies";
 import React, { useEffect, useRef, useState } from "react";
@@ -7,7 +8,7 @@ import MatchModal from "./MatchModal";
 import KnownMantaLookup from "./KnownMantaLookup";
 import { knownIdentification, type IdentificationProposal } from "@/features/sightings/knownIdentification";
 import PhotoEditModal from "./PhotoEditModal";
-import { photoDisplaySource, photoForPayload } from "@/features/photos/photoPresentation";
+import { designatedBestPhoto, invalidPhotoInjury, photoDisplaySource, photoForPayload, type InjuryModifier } from "@/features/photos/photoPresentation";
 import { uploadPreparedPair, uploadReeditedPhoto, type EditTransform } from "@/features/photos/photoPreparation";
 import type { BasicExif } from "@/lib/exif";
 import { readBasicExif } from "@/lib/exif";
@@ -16,7 +17,6 @@ import type { OrganicBiopsyDraft } from "@/features/biopsies/organicBiopsy";
 
 import { sizeSourcesForPayload, isExternal, invalidExternalMeasurement, measuredPhotoForPayload, measurementSummary, type PhotoMeasurement } from "@/features/photos/photoMeasurements";
 import PhotoMeasurementControls from "./PhotoMeasurementControls";
-import MeasurementSummary from "./MeasurementSummary";
 
 type View = "ventral" | "dorsal" | "other";
 
@@ -29,6 +29,8 @@ export type Uploaded = {
   isBestVentral?: boolean;
   isBestDorsal?: boolean;
   isPhotogrammetry?: boolean | null;
+  isInjury?: boolean | null;
+  injuryModifiers?: InjuryModifier[] | null;
   measure?: PhotoMeasurement;
   previewUrl?: string | null;
   isHeicLike?: boolean;
@@ -61,6 +63,7 @@ export type MantaDraft = {
 type Props = {
   open: boolean;
   showSize: boolean;
+  allowMatching: boolean;
   onClose: () => void;
   sightingId: string;
   onSave: (m: MantaDraft) => void;
@@ -81,7 +84,7 @@ function uuid() {
 
 export default function UnifiedMantaModal({
   open,
-  showSize,
+  allowMatching,
   onClose,
   sightingId,
   onSave,
@@ -157,6 +160,8 @@ export default function UnifiedMantaModal({
 
   const summary = measurementSummary(photos);
   const measuredDW = summary.dw.mean;
+  const bestVentral = designatedBestPhoto(photos, "ventral");
+  const hasMatch = potentialCatalogId != null && Number.isInteger(Number(potentialCatalogId)) && Number(potentialCatalogId) > 0;
   if (!open) return null;
 
   async function handleFiles(files: File[]) {
@@ -250,23 +255,19 @@ export default function UnifiedMantaModal({
   }
 
   function setView(id: string, view: View) {
-    setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, view } : p)));
+    setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, view, isBestVentral: view === "ventral" && !!p.isBestVentral, isBestDorsal: view === "dorsal" && !!p.isBestDorsal } : p)));
   }
 
-  function setBestVentral(id: string) {
-    setPhotos((prev) =>
-      prev.map((p) =>
-        p.view !== "ventral" ? { ...p, isBestVentral: false } : { ...p, isBestVentral: p.id === id }
-      )
-    );
+  function setBestVentral(id: string, checked = true) {
+    setPhotos(previous => previous.map(photo => photo.id === id
+      ? { ...photo, isBestVentral: checked && photo.view === "ventral" }
+      : checked && photo.isBestVentral ? { ...photo, isBestVentral: false } : photo));
   }
 
-  function setBestDorsal(id: string) {
-    setPhotos((prev) =>
-      prev.map((p) =>
-        p.view !== "dorsal" ? { ...p, isBestDorsal: false } : { ...p, isBestDorsal: p.id === id }
-      )
-    );
+  function setBestDorsal(id: string, checked = true) {
+    setPhotos(previous => previous.map(photo => photo.id === id
+      ? { ...photo, isBestDorsal: checked && photo.view === "dorsal" }
+      : checked && photo.isBestDorsal ? { ...photo, isBestDorsal: false } : photo));
   }
 
   // Photo evidence never overwrites the independent visual estimate or legacy value.
@@ -301,7 +302,7 @@ export default function UnifiedMantaModal({
   function canSave() {
     const hasName = name.trim().length > 0;
     const hasPhotosOrOverride = photos.length > 0 || noPhotos;
-    return hasName && hasPhotosOrOverride && !photos.some(invalidExternalMeasurement) && (!estimatedSize || (Number.isFinite(Number(estimatedSize)) && Number(estimatedSize) > 0));
+    return hasName && hasPhotosOrOverride && !photos.some(invalidExternalMeasurement) && !photos.some(invalidPhotoInjury) && (!estimatedSize || (Number.isFinite(Number(estimatedSize)) && Number(estimatedSize) > 0));
   }
 
   function save() {
@@ -345,19 +346,18 @@ export default function UnifiedMantaModal({
           </button>
 
           <div className="px-4 pt-4 text-center">
-            <h3 className="text-lg font-medium">{proposedNameFlow && name.trim() ? `Add Manta ${name.trim()}` : "Add Manta"}</h3>
-            <div className="text-[11px] text-gray-500 mt-1">sighting: {sightingId.slice(0, 8)}</div>
+            <h3 className="text-lg font-medium">{existingManta ? "Edit Manta" : "Add Manta"}</h3>
           </div>
 
           <div className="px-4 pb-4">
             <div className="mt-4 mb-6">
               <div
-                className="min-h-[200px] sm:min-h-[240px] border-dashed border-2 border-sky-300 rounded-lg bg-sky-50/60 p-6 text-slate-600 flex flex-col items-center justify-center"
+                className="min-h-[112px] sm:min-h-[96px] border-dashed border-2 border-sky-300 rounded-lg bg-sky-50/60 p-3 text-slate-600 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4"
                 onDrop={onDrop}
                 onDragOver={(e) => e.preventDefault()}
               >
-                <div className="text-lg sm:text-xl font-medium text-slate-800 text-center">Drop a manta photo here</div>
-                <div className="my-2">or</div>
+                <div className="text-sm font-medium text-slate-800 text-center">Drop a manta photo here</div>
+                <div className="text-sm">or</div>
                 <button
                   type="button"
                   onClick={() => inputRef.current?.click()}
@@ -385,152 +385,77 @@ export default function UnifiedMantaModal({
               )}
             </div>
 
-            <div className={"grid md:grid-cols-12 gap-3 " + (proposedNameFlow ? "text-sm text-slate-500" : "")}>
-              <div className="md:col-span-5 col-span-12">
-                <label htmlFor={`manta-name-${mantaId}`} className="text-sm block mb-1">{proposedNameFlow ? "Proposed Name" : "Temp Name"}</label>
-                <input
-                  className="w-full border rounded px-3 py-2"
-                  id={`manta-name-${mantaId}`}
-                  value={name}
-                  onBlur={() => setNameTouched(true)}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={proposedNameFlow ? "e.g., A, Kai, Luna" : "e.g., A, B, C"}
-                />
-                {!name.trim() && (!proposedNameFlow || nameTouched) && <div className="text-xs text-red-500 mt-1">Please provide a temporary name</div>}
+            <div className="space-y-3">
+              <div>
+                <label htmlFor={`manta-name-${mantaId}`} className="block text-xs">Temp Name</label>
+                <input className="min-h-11 w-36 rounded border px-2 text-sm lg:min-h-8" id={`manta-name-${mantaId}`} value={name}
+                  onBlur={() => setNameTouched(true)} onChange={e => setName(e.target.value)} placeholder="e.g., A, B, C" />
+                {!name.trim() && (!proposedNameFlow || nameTouched) && <div className="text-xs text-red-500">Please provide a temporary name</div>}
               </div>
-
-              <div className="md:col-span-5 col-span-12 min-w-0">
-                <label htmlFor={`manta-species-${mantaId}`} className="text-sm block mb-1">Species</label>
-                <select id={`manta-species-${mantaId}`} className="w-full min-w-0 border rounded px-2 py-2 text-slate-900"
-                  value={species ?? ""} onChange={e => setSpecies((e.target.value || null) as CatalogSpecies | null)}>
-                  {SPECIES_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
+              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 text-xs lg:grid-cols-[minmax(0,1.2fr)_minmax(0,.9fr)_minmax(0,1.1fr)]">
+                <fieldset className="min-w-0"><legend className="font-medium">Species</legend>
+                  <div className="flex flex-wrap gap-x-3">
+                    {SPECIES_OPTIONS.map(option => <label key={option.value} className="flex min-h-11 items-center gap-1 lg:min-h-8">
+                      <input type="radio" name={`species-${mantaId}`} checked={(species ?? "") === option.value} onChange={() => setSpecies(option.value || null)} />
+                      {option.value ? option.value.replace("mobula", "Mobula") : "Unknown / unspecified"}
+                    </label>)}
+                  </div>
+                </fieldset>
+                <fieldset><legend className="font-medium">Gender</legend><div className="flex flex-wrap gap-x-3">
+                  {["", "female", "male", "unknown"].map(value => <label key={value} className="flex min-h-11 items-center gap-1 lg:min-h-8">
+                    <input type="radio" name={`gender-${mantaId}`} checked={(gender ?? "") === value} onChange={() => setGender(value || null)} />{value || "Unspecified"}
+                  </label>)}
+                </div></fieldset>
+                <fieldset><legend className="font-medium">Age Class</legend><div className="flex flex-wrap gap-x-3">
+                  {["", "juvenile", "yearling", "adult", "unknown"].map(value => <label key={value} className="flex min-h-11 items-center gap-1 lg:min-h-8">
+                    <input type="radio" name={`age-${mantaId}`} checked={(ageClass ?? "") === value} onChange={() => setAgeClass(value || null)} />{value || "Unspecified"}
+                  </label>)}
+                </div></fieldset>
               </div>
-
-              <div className="md:col-span-2 col-span-12">
-                <label className="text-sm block mb-1">Gender</label>
-                <select
-                  className={"border rounded px-2 py-2 " + (((gender ?? "") === "") ? "text-slate-400" : "text-slate-900")}
-                  value={gender ?? ""}
-                  onChange={(e) => setGender(e.target.value || null)}
-                >
-                  <option value="">e.g., male</option>
-                  <option value="female">female</option>
-                  <option value="male">male</option>
-                  <option value="unknown">unknown</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-3 col-span-12">
-                <label className="text-sm block mb-1">Age Class</label>
-                <select
-                  className={"border rounded px-2 py-2 " + (((ageClass ?? "") === "") ? "text-slate-400" : "text-slate-900")}
-                  value={ageClass ?? ""}
-                  onChange={(e) => setAgeClass(e.target.value || null)}
-                >
-                  <option value="">e.g., adult</option>
-                  <option value="juvenile">juvenile</option>
-                  <option value="yearling">yearling</option>
-                  <option value="adult">adult</option>
-                  <option value="unknown">unknown</option>
-                </select>
-              </div>
-
-              {(showSize || estimatedSize || summary.dw.n > 0 || summary.dl.n > 0) && <div className="md:col-span-3 col-span-12">
-                <label htmlFor="estimated-size" className="text-sm block mb-1">Estimated disc width (m)</label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-3 py-2"
-                  id="estimated-size"
-                  value={estimatedSize ?? ""}
-                  onChange={(e) => setEstimatedSize(e.target.value || null)}
-                  placeholder="m"
-                />
-                <p className="text-xs text-slate-600">Visual estimate only</p>
-              </div>}
             </div>
 
-
-            <div className="mt-4"><MeasurementSummary photos={photos} estimatedSize={estimatedSize} legacySize={size} /></div>
-            <div className="mt-4 space-y-3">
+            <div className="mt-3 divide-y divide-slate-200">
               {photos.map((p) => {
-                const ventralDisabled = p.view !== "ventral";
-                const dorsalDisabled = p.view !== "dorsal";
 
                 return (
-                  <div key={p.id} className="border rounded p-3 grid grid-cols-1 md:grid-cols-[110px_minmax(0,1fr)_auto] gap-3 items-center">
+                  <div key={p.id} className="grid grid-cols-[64px_minmax(0,1fr)_44px] items-start gap-2 py-2 lg:grid-cols-[64px_210px_180px_minmax(0,1fr)_32px]">
                     <div>
-                      {p.isHeicLike ? (
-                        <div className="w-[110px] h-[80px] rounded border bg-slate-100 flex flex-col items-center justify-center text-center px-2">
-                          <div className="text-[10px] font-semibold text-slate-700">HEIC</div>
-                          <div className="text-[10px] text-slate-500 break-all">{p.name}</div>
-                        </div>
-                      ) : (
-                        <MantaImage
-                          src={photoDisplaySource(p)}
-                          alt={p.name}
-                          className="w-[110px] h-[80px] object-cover rounded border"
-                        />
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-sm">
-                        <div className="text-xs mb-1">View</div>
-                        <label className="flex items-center gap-2 mb-1">
-                          <input type="radio" name={`view-${p.id}`} checked={p.view === "ventral"} onChange={() => setView(p.id, "ventral")} />
-                          ventral
-                        </label>
-                        <label className="flex items-center gap-2 mb-1">
-                          <input type="radio" name={`view-${p.id}`} checked={p.view === "dorsal"} onChange={() => setView(p.id, "dorsal")} />
-                          dorsal
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input type="radio" name={`view-${p.id}`} checked={p.view === "other"} onChange={() => setView(p.id, "other")} />
-                          other
-                        </label>
-                      </div>
-
-                      <div className="text-sm">
-                        <div className="text-xs mb-1">Best</div>
-                        <label className={`flex items-center gap-2 mb-1 ${ventralDisabled ? "text-slate-400" : ""}`}>
-                          <input
-                            type="radio"
-                            name={`best-ventral-${p.id}`}
-                            disabled={ventralDisabled}
-                            checked={!!p.isBestVentral}
-                            onChange={() => setBestVentral(p.id)}
-                          />
-                          Best ventral
-                        </label>
-
-                        <label className={`flex items-center gap-2 ${dorsalDisabled ? "text-slate-400" : ""}`}>
-                          <input
-                            type="radio"
-                            name={`best-dorsal-${p.id}`}
-                            disabled={dorsalDisabled}
-                            checked={!!p.isBestDorsal}
-                            onChange={() => setBestDorsal(p.id)}
-                          />
-                          Best dorsal
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 md:justify-self-end">
-                      <button
-                        type="button"
-                        className="min-h-11 md:min-h-0 px-2 py-1 rounded border disabled:opacity-50"
+                      {p.isHeicLike ? <div className="flex h-16 w-16 items-center justify-center rounded border text-xs">HEIC</div> :
+                        <MantaImage src={photoDisplaySource(p)} alt={p.name} className="h-16 w-16 rounded border object-cover" />}
+                      <button type="button" className="min-h-11 w-16 text-[10px] underline disabled:opacity-50 lg:min-h-7"
                         disabled={intakeActive || !p.originalPath || p.storageBucket !== "manta-images"}
-                        title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"}
-                        onClick={() => void editCrop(p)}
-                      >Edit Crop</button>
-                      <button type="button" className="min-h-11 md:min-h-0 px-2 md:px-0 text-red-600" disabled={intakeActive} onClick={() => deletePhoto(p.id)}>Delete</button>
+                        title={!p.originalPath ? "Original source unavailable for this legacy photo" : "Edit from the untouched original"} onClick={() => void editCrop(p)}>Edit Crop</button>
                     </div>
-                    <PhotoMeasurementControls id={p.id} isPhotogrammetry={p.isPhotogrammetry} measure={p.measure} disabled={intakeActive}
-                      onDesignation={value => setPhotos(previous => previous.map(photo => photo.id === p.id ? { ...photo, isPhotogrammetry: value } : photo))}
-                      onChange={measure => updateMeasuredPhotos(photos.map(photo => photo.id === p.id ? { ...photo, measure } : photo))}
-                      onMeasure={() => setMeasureOpen(p)} />
+                    <div className="min-w-0 space-y-1 lg:contents">
+                      <fieldset className="min-w-0 rounded bg-slate-50 px-2 py-1 text-xs"><legend className="font-medium">View</legend>
+                        <div className="flex flex-wrap gap-x-3 lg:block">
+                        {["ventral", "dorsal", "other"].map(view => <div key={view} className="flex min-h-11 items-center gap-3 lg:min-h-7">
+                          <label className="flex min-h-11 items-center gap-1 lg:min-h-7"><input type="radio" name={`view-${p.id}`} checked={p.view === view} onChange={() => setView(p.id, view as View)} disabled={intakeActive} />{view[0].toUpperCase() + view.slice(1)}</label>
+                          {p.view === view && view !== "other" && <label className="flex min-h-11 items-center gap-1 lg:min-h-7"><input type="checkbox" aria-label={`Best ${view}`} checked={view === "ventral" ? !!p.isBestVentral : !!p.isBestDorsal} disabled={intakeActive}
+                            onChange={e => view === "ventral" ? setBestVentral(p.id, e.target.checked) : setBestDorsal(p.id, e.target.checked)} />Best</label>}
+                        </div>)}
+                        </div>
+                      </fieldset>
+                      <fieldset className="min-w-0 rounded border border-slate-100 px-2 py-1 text-xs"><legend className="font-medium">Injury</legend>
+                        <label className="flex min-h-11 items-center gap-1 lg:min-h-7"><input type="checkbox" checked={p.isInjury === true} disabled={intakeActive}
+                          onChange={e => setPhotos(previous => previous.map(photo => photo.id === p.id ? { ...photo, isInjury: e.target.checked, ...(!e.target.checked ? { injuryModifiers: [] } : {}) } : photo))} />Injury</label>
+                        {p.isInjury && <div className="flex flex-wrap gap-x-3">
+                          {(["predation", "entanglement"] as const).map(modifier => <label key={modifier} className="flex min-h-11 items-center gap-1 lg:min-h-7">
+                            <input type="checkbox" checked={Array.isArray(p.injuryModifiers) && p.injuryModifiers.includes(modifier)} disabled={intakeActive} onChange={e => setPhotos(previous => previous.map(photo => photo.id === p.id ? { ...photo,
+                              injuryModifiers: e.target.checked ? [...(Array.isArray(photo.injuryModifiers) ? photo.injuryModifiers : []).filter(value => value !== modifier), modifier] : (Array.isArray(photo.injuryModifiers) ? photo.injuryModifiers : []).filter(value => value !== modifier) } : photo))} />
+                            {modifier === "predation" ? "Predation" : "Entanglement"}
+                          </label>)}
+                        </div>}
+                        {invalidPhotoInjury(p) && <p role="alert" className="text-red-700">Review injury modifiers before saving.</p>}
+                      </fieldset>
+                      <fieldset className="min-w-0 rounded bg-slate-100/60 px-2 py-1 text-xs"><legend className="font-medium">Photogrammetry</legend>
+                        <label className="flex min-h-11 items-center gap-1 lg:min-h-7"><input type="checkbox" checked={p.isPhotogrammetry === true} disabled={intakeActive}
+                          onChange={e => setPhotos(previous => previous.map(photo => photo.id === p.id ? { ...photo, isPhotogrammetry: e.target.checked } : photo))} />Photogrammetry</label>
+                        <PhotoMeasurementControls id={p.id} isPhotogrammetry={p.isPhotogrammetry} measure={p.measure} disabled={intakeActive}
+                          onChange={measure => updateMeasuredPhotos(photos.map(photo => photo.id === p.id ? { ...photo, measure } : photo))} onMeasure={() => setMeasureOpen(p)} />
+                      </fieldset>
+                    </div>
+                    <button type="button" aria-label={`Delete photo ${p.name}`} title="Delete" className="flex min-h-11 min-w-11 items-center justify-center text-red-700 lg:min-h-8 lg:min-w-8" disabled={intakeActive} onClick={() => deletePhoto(p.id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
                   </div>
                 );
               })}
@@ -539,13 +464,15 @@ export default function UnifiedMantaModal({
             </div>
 
             <section className="my-4 rounded border p-3" aria-label="Proposed identification">
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="rounded bg-sky-700 text-white px-3 py-2 disabled:opacity-50"
-                  disabled={intakeActive || !photos.some(p => p.view === 'ventral')}
-                  onClick={() => setMatchOpen(photos.find(p => p.view === 'ventral' && p.isBestVentral) ?? photos.find(p => p.view === 'ventral') ?? null)}>Match from photo</button>
-                <button type="button" className="rounded border px-3 py-2" disabled={intakeActive} onClick={() => setKnownOpen(true)}>I know this manta</button>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                {bestVentral && <button type="button" className="min-h-11 rounded border px-2 lg:min-h-8" disabled={intakeActive || !allowMatching} onClick={() => setMatchOpen(bestVentral)}>Match Photo</button>}
+                <fieldset className="flex flex-wrap gap-3"><legend className="sr-only">Proposed identification status</legend>
+                  <label className="flex min-h-11 items-center gap-1 lg:min-h-8"><input type="radio" name={`identification-${mantaId}`} checked={hasMatch} disabled={intakeActive || (!hasMatch && !allowMatching)} onChange={() => { if (allowMatching) { if (bestVentral) setMatchOpen(bestVentral); else setKnownOpen(true); } }} />Match</label>
+                  <label className="flex min-h-11 items-center gap-1 lg:min-h-8"><input type="radio" name={`identification-${mantaId}`} checked={!hasMatch && potentialNoMatch} disabled={intakeActive} onChange={() => { setPotentialCatalogId(null); setPotentialNoMatch(true); setIdentificationProposal(null); }} />New</label>
+                  <label className="flex min-h-11 items-center gap-1 lg:min-h-8"><input type="radio" name={`identification-${mantaId}`} checked={!hasMatch && !potentialNoMatch} disabled={intakeActive} onChange={() => { setPotentialCatalogId(null); setPotentialNoMatch(false); setIdentificationProposal(null); }} />Unknown</label>
+                </fieldset>
+                {!bestVentral && <button type="button" className="min-h-11 underline lg:min-h-8" disabled={intakeActive || !allowMatching} onClick={() => setKnownOpen(true)}>Suggest Identity</button>}
               </div>
-              <p className="mt-2 text-xs text-slate-600">Match from photo requires a ventral image. Search directly if you already know the individual.</p>
               {potentialCatalogId != null && <div className="mt-3 text-sm">
                 <strong>Proposed identification</strong>
                 <div>{identificationProposal?.catalogName} · Catalog #{potentialCatalogId}</div>
@@ -554,11 +481,8 @@ export default function UnifiedMantaModal({
                 {identificationProposal?.method === 'contributor_known' && <label className="block mt-2">How do you recognize this manta? (optional)
                   <textarea className="block border rounded p-2 w-full" value={identificationProposal.evidence ?? ''}
                     onChange={e => setIdentificationProposal({ ...identificationProposal, evidence: e.target.value })} /></label>}
-                <button type="button" className="underline mt-2" onClick={() => { setPotentialCatalogId(null); setPotentialNoMatch(false); setIdentificationProposal(null); }}>Remove proposal</button>
               </div>}
               {potentialNoMatch && <p className="mt-2 text-sm">No Match / New Individual — awaiting HAMER review</p>}
-              <button type="button" className="text-sm underline mt-2" disabled={intakeActive}
-                onClick={() => { setPotentialCatalogId(null); setPotentialNoMatch(true); setIdentificationProposal(null); }}>No Match / New Individual</button>
             </section>
             <div className="px-0 py-3 mt-2 flex justify-end gap-2 border-t">
               <button type="button" className="px-3 py-2 rounded border" onClick={() => { if (!intakeActive) onClose(); }} disabled={intakeActive}>Cancel</button>
@@ -668,13 +592,16 @@ export default function UnifiedMantaModal({
           setIdentificationProposal(proposal.identificationProposal); setKnownOpen(false);
         }} />}
       {matchOpen && (
+        <div className="relative z-[400000]">
         <MatchModal
           open={true}
+          rankedEnabled={allowMatching}
           onClose={() => setMatchOpen(null)}
           tempUrl={photoDisplaySource(matchOpen) || ""}
           aMeta={{ name, gender, ageClass, species, meanSize: measuredDW }}
-          onChoose={(id) => {
-            setIdentificationProposal({ method: "photo_match" });
+          onChoose={(id, catalogName) => {
+            if (!Number.isInteger(id) || id <= 0) return;
+            setIdentificationProposal({ method: "photo_match", catalogName });
             setPotentialCatalogId(id);
             setPotentialNoMatch(false);
             setMatchOpen(null);
@@ -686,6 +613,7 @@ export default function UnifiedMantaModal({
             setMatchOpen(null);
           }}
         />
+        </div>
       )}
     </>
   );

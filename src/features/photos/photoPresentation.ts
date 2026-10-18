@@ -18,3 +18,18 @@ export function photoForPayload<T extends { url?: string | null; previewUrl?: st
   if (durable.url?.startsWith('blob:') || durable.url?.includes('/storage/v1/object/sign/')) delete durable.url;
   return durable;
 }
+
+export type InjuryModifier = "predation" | "entanglement";
+export function invalidPhotoInjury(photo: { isInjury?: boolean | null; injuryModifiers?: unknown }) {
+  const modifiers = photo.injuryModifiers;
+  return modifiers != null && (!Array.isArray(modifiers)
+    || modifiers.some(value => value !== "predation" && value !== "entanglement")
+    || (photo.isInjury === false && modifiers.length > 0));
+}
+
+// Anatomical view and explicit Best designation are both required. Never substitute a first photo.
+export function designatedBestPhoto<T extends { view?: string; photo_view?: string; photoView?: string; view_label?: string;
+  isBestVentral?: boolean; isBestDorsal?: boolean; is_best_manta_ventral_photo?: boolean; is_best_manta_dorsal_photo?: boolean }>(photos: readonly T[] | undefined, view: "ventral" | "dorsal"): T | undefined {
+  return photos?.find(photo => (photo.view ?? photo.photo_view ?? photo.photoView ?? photo.view_label) === view
+    && (view === "ventral" ? photo.isBestVentral ?? photo.is_best_manta_ventral_photo : photo.isBestDorsal ?? photo.is_best_manta_dorsal_photo) === true);
+}

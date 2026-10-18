@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { photoDisplaySource, photoForPayload, formatMantaSize } from "./photoPresentation";
+import { photoDisplaySource, photoForPayload, formatMantaSize, invalidPhotoInjury } from "./photoPresentation";
 
 test("hydrated photos prefer durable evidence over stale serialized blob previews", () => {
   const photo = { previewUrl: "blob:http://old-session/123", url: "https://example.com/photos/prepared.jpg" };
@@ -31,4 +31,15 @@ test('saving photo metadata strips transient URLs but preserves scientific/prove
   assert.ok(!('previewUrl' in saved));assert.ok(!('url' in saved));
   assert.equal(photo.previewUrl,'blob:preview');
   assert.equal(photoForPayload({url:'https://example.invalid/storage/v1/object/public/manta-images/legacy.jpg'}).url,'https://example.invalid/storage/v1/object/public/manta-images/legacy.jpg');
+});
+
+test('photo injury modifiers retain null history and reject unsupported or explicitly false evidence',()=>{
+ for(const injuryModifiers of [undefined,null,[],['predation'],['entanglement'],['predation','entanglement']]) {
+   const photo={url:'fixture.jpg',isInjury:true,injuryModifiers};
+   assert.equal(invalidPhotoInjury(photo),false);
+   assert.deepEqual(JSON.parse(JSON.stringify(photoForPayload(photo))),JSON.parse(JSON.stringify(photo)));
+ }
+ assert.equal(invalidPhotoInjury({isInjury:false,injuryModifiers:[]}),false);
+ for(const injuryModifiers of [['predation'],['entanglement'],['predation','entanglement']]) assert.equal(invalidPhotoInjury({isInjury:false,injuryModifiers}),true);
+ for(const injuryModifiers of ['predation',{},[null],[1],['collision']]) assert.equal(invalidPhotoInjury({isInjury:true,injuryModifiers}),true);
 });

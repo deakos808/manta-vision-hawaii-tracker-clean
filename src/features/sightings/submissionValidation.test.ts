@@ -84,3 +84,16 @@ test('approval identifies every unresolved manta, respecting explicit false', ()
   assert.deepEqual(issues([{ name: 'A' }, unresolved]), ['A: select a catalog match or No Match.', 'B: select a catalog match or No Match.']);
   assert.deepEqual(issues([{ ...matched, noMatch: true }]), ['A: choose either a catalog match or No Match.']);
 });
+
+test('moved per-manta visual estimate remains positive-or-blank in submit and approval',()=>{
+ for(const estimatedSize of ['0','-1','Infinity','NaN']) {
+   const mantas=[{name:'A',estimatedSize,noMatch:true}];
+   assert.ok(getSubmissionIssues({...complete,mantas}).some(issue=>issue.field==='estimatedSize'));
+   assert.ok(getApprovalIssues({...complete,mantas}).some(issue=>issue.includes('visual DW estimate')));
+ }
+ for(const estimatedSize of [null,'','3.125']) {
+   const mantas=[{name:'A',estimatedSize,noMatch:true}];
+   assert.ok(!getSubmissionIssues({...complete,mantas}).some(issue=>issue.field==='estimatedSize'));
+   assert.deepEqual(getApprovalIssues({...complete,mantas}),[]);
+ }
+});

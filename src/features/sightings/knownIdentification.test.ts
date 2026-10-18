@@ -28,9 +28,11 @@ test('result selection is separate from explicit confirmation', () => {
   assert.match(lookup, /disabled=\{!selected\}/);
   assert.match(lookup, /if \(selected\) onConfirm\(selected, evidence\)/);
 });
-test('known lookup does not require ventral; photo match still does', () => {
-  assert.match(modal, /disabled=\{intakeActive \|\| !photos.some\(p => p.view === 'ventral'\)\}/);
-  assert.match(modal, /disabled=\{intakeActive\} onClick=\{\(\) => setKnownOpen\(true\)\}/);
+test('known lookup does not require ventral; photo matching requires a designated Best Ventral', () => {
+  assert.match(modal, /bestVentral && <button/);
+  assert.match(modal, /setMatchOpen\(bestVentral\)/);
+  assert.doesNotMatch(modal, /photos.find\(p => p.view/);
+  assert.match(modal, /!bestVentral && <button[^\n]*disabled=\{intakeActive \|\| !allowMatching\} onClick=\{\(\) => setKnownOpen\(true\)\}/);
   assert.doesNotMatch(lookup, /setView|isBestVentral|view: /);
 });
 test('pending edit transports evidence unchanged through existing revision-aware RPC', async () => {

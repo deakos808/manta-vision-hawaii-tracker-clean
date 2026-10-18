@@ -1,7 +1,7 @@
 import { useMantaImageSource } from "@/features/photos/MantaImage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { measurementValues, valuesFromDistances, initialMeasurement, commitMeasurementStage, resetMeasurement, type MeasurementPoint as Pt, type MeasurementStage, type MeasureResult } from "@/features/photos/measurement";
+import { measurementPixelDistance, measurementValues, valuesFromDistances, initialMeasurement, commitMeasurementStage, resetMeasurement, type MeasurementPoint as Pt, type MeasurementStage, type MeasureResult } from "@/features/photos/measurement";
 export type { MeasureResult } from "@/features/photos/measurement";
 
 type Props = {
@@ -73,6 +73,12 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
   const { scalePx, discPx, dlCm, dwCm } = useMemo(() => legacyValues
     ? valuesFromDistances(initial!.scalePx!, initial!.discPx!, scaleCm)
     : measurementValues(points, dims.w, dims.h, scaleCm), [legacyValues, initial, points, dims, scaleCm]);
+  // Native pixels are display-only; retain the existing saved and physical values.
+  // Older evidence without points cannot recover prepared-image pixel distances.
+  const nativeScalePx = points.length >= 2 && natural.width
+    ? measurementPixelDistance(points[0], points[1], natural.width, natural.height) : null;
+  const nativeDiscPx = points.length >= 4 && natural.width
+    ? measurementPixelDistance(points[2], points[3], natural.width, natural.height) : null;
   const activeLabel = stage === "scale" ? "SCALE" : "DL";
   const nextStage = commitMeasurementStage(stage, points, scaleCm);
 
@@ -186,16 +192,17 @@ export default function MeasureModal({ open, src, onClose, onApply, initial }: P
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="text-sm">
-              <div><span className="text-slate-600">Disc length (px):</span> <span className="font-medium">{to2(discPx)}</span></div>
-              <div><span className="text-slate-600">Disc width (px):</span> <span className="font-medium">{to2(discPx * 2.3)}</span></div>
+              <div><span className="text-slate-600">Scale line (px):</span> <span className="font-medium">{nativeScalePx === null ? "—" : to2(nativeScalePx)}</span></div>
+              <div><span className="text-slate-600">Disc length line (px):</span> <span className="font-medium">{nativeDiscPx === null ? "—" : to2(nativeDiscPx)}</span></div>
               <div className="mt-1">
                 <span className="text-slate-600">Reference/Scale = </span>
                 {editScale ? (<><input type="number" aria-label="Reference scale in centimetres" className="border rounded px-2 py-1 w-20 mr-2" value={scaleCm} onChange={(e)=>setScaleCm(Number(e.target.value)||0)} /><span className="mr-2">cm</span><button className="text-blue-600 mr-2" onClick={()=>setEditScale(false)}>Done</button></>) : (<><span className="font-medium">{to2(scaleCm/100)}</span> <span className="text-slate-600">m</span><button className="text-blue-600 ml-2 underline" onClick={()=>setEditScale(true)}>change</button></>)}
               </div>
             </div>
             <div className="text-sm">
-              <div><span className="text-slate-600">DL (m):</span> <span className="font-medium">{to2(dlCm/100)}</span></div>
-              <div><span className="text-slate-600">DW (m):</span> <span className="font-medium">{to2(dwCm/100)}</span></div>
+              <div><span className="text-slate-600">Disc length (DL):</span> <span className="font-medium">{to2(dlCm/100)} m</span></div>
+              <div><span className="text-slate-600">Disc width (DW):</span> <span className="font-medium">{to2(dwCm/100)} m</span></div>
+              <div className="text-xs text-slate-600">DW = DL × 2.3</div>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               {stage !== "scale" && <button className="px-3 py-2 rounded border" onClick={back}>Back</button>}

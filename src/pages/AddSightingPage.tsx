@@ -1,3 +1,6 @@
+import KnownMantaLookup from "@/components/mantas/KnownMantaLookup";
+import { knownIdentification } from "@/features/sightings/knownIdentification";
+import { designatedBestPhoto, photoDisplaySource } from "@/features/photos/photoPresentation";
 import { STALE_SUBMISSION_MESSAGE, ADMIN_STALE_SUBMISSION_MESSAGE, RELOAD_SUBMISSION_MESSAGE, pendingEditProtocol, savePendingSubmission, type EditProtocol } from "@/features/sightings/pendingSubmission";
 import { useSession } from "@supabase/auth-helpers-react";
 import { notifySubmission } from "@/features/sightings/submissionNotification";
@@ -183,7 +186,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
   const [locationUnknown, setLocationUnknown] = useState(false);
-  const submissionIssues = getSubmissionIssues({ date, email, startTime, stopTime, standardizeSurvey, needsTimeReview, locationUnknown, locationId, locationName, latitude: lat, longitude: lng });
+  const submissionIssues = getSubmissionIssues({ date, email, startTime, stopTime, standardizeSurvey, needsTimeReview, locationUnknown, locationId, locationName, latitude: lat, longitude: lng, mantas });
   const approvalIssues = getApprovalIssues({ standardizeSurvey, startTime, stopTime, mantas });
   const readinessMessages = isReview ? approvalIssues : submissionIssues.map(issue => issue.message);
   const emailValid = !submissionIssues.some(issue => issue.field === "email");
@@ -626,14 +629,18 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
     } finally { setReviewBusy(false); }
   }
 
+  const [identityTarget, setIdentityTarget] = useState<MantaDraft | null>(null);
+
   // MantasList hooks
   const onEdit = (m: MantaDraft) => setEditingManta(m);
   const onRemove = (id: string) => setMantas(prev => prev.filter(x => String(x.id) !== String(id)));
   const allowMatching = access.isActive === true && (access.role === "user" || access.role === "admin");
   const openMatch = (m: MantaDraft, ventralUrl?: string) => {
-    if (!allowMatching || !ventralUrl) return;
+    const best = designatedBestPhoto(m.photos, "ventral");
+    const bestUrl = best ? photoDisplaySource(best) : undefined;
+    if (!allowMatching || !bestUrl) return;
     setPageMatchMeta({ species: m.species ?? null, name: m.name, gender: (m as any).gender ?? null, ageClass: (m as any).ageClass ?? null, meanSize: (m as any).size ?? null });
-    setPageMatchUrl(ventralUrl || "");
+    setPageMatchUrl(bestUrl);
     setPageMatchFor(String(m.id));
     setPageMatchOpen(true);
   };
@@ -654,8 +661,15 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         <span className="text-slate-600"> / {editId ? "Edit submission" : "Add Sighting"}</span>
       </div>
 
+{identityTarget && allowMatching && <KnownMantaLookup initialEvidence={identityTarget.identificationProposal?.evidence}
+  onClose={() => setIdentityTarget(null)} onConfirm={(row, evidence) => {
+    const proposal = knownIdentification(row, evidence);
+    setMantas(current => current.map(m => m.id === identityTarget.id ? { ...m, ...proposal } : m));
+    setIdentityTarget(null);
+  }} />}
 {/* __UNIFIED_MANTA_MODAL_MOUNT__ */}
 <UnifiedMantaModal
+  allowMatching={allowMatching}
   showSize={methods.pairedLaser}
   open={addOpen}
   onClose={()=>setAddOpen(false)}
@@ -664,6 +678,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
   automaticName={isReview ? undefined : nextAvailableMantaLabel()}
 />
 <UnifiedMantaModal
+  allowMatching={allowMatching}
   showSize={methods.pairedLaser}
   open={!!editingManta}
   onClose={()=>setEditingManta(null)}
@@ -918,6 +933,7 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
               setMantas={setMantas}
               onEdit={onEdit}
               onRemove={onRemove}
+              onSuggestIdentity={setIdentityTarget}
               openMatch={openMatch}
               totalPhotosAll={totalPhotosAll}
               sightingDate={date}
@@ -971,12 +987,13 @@ const [islandsLoading, setIslandsLoading] = useState<boolean>(true);
         tempUrl={pageMatchUrl}
         rankedEnabled={allowMatching}
         aMeta={pageMatchMeta}
-        onChoose={(catalogId) => {
+        onChoose={(catalogId, catalogName) => {
+          if (!Number.isInteger(catalogId) || catalogId <= 0) return;
           if (!pageMatchFor) { setPageMatchOpen(false); return; }
           setMantas(prev =>
             prev.map(mm =>
               String(mm.id) === String(pageMatchFor)
-                ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false, potentialCatalogId: catalogId, potentialNoMatch: false, identificationProposal: { method: "photo_match" } } as any)
+                ? ({ ...mm, matchedCatalogId: catalogId, noMatch: false, potentialCatalogId: catalogId, potentialNoMatch: false, identificationProposal: { method: "photo_match", catalogName } } as any)
                 : mm
             )
           );

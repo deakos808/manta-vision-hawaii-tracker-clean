@@ -1,9 +1,10 @@
 import MeasurementSummary from "./MeasurementSummary";
-import { measurementSummary } from "@/features/photos/photoMeasurements";
+import { designatedBestPhoto } from "@/features/photos/photoPresentation";
 import { mantaPhotoSource } from "@/features/photos/authenticatedPhotoUrl";
 import { MantaImage } from "@/features/photos/MantaImage";
 import { speciesLabel } from "@/features/sightings/catalogSpecies";
 import React from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { MantaDraft } from "@/components/mantas/UnifiedMantaModal";
 import {
   newOrganicBiopsy,
@@ -25,6 +26,7 @@ type Props = {
   setMantas: React.Dispatch<React.SetStateAction<MantaDraft[]>>;
   onEdit: (m: MantaDraft) => void;
   onRemove: (id: string) => void;
+  onSuggestIdentity: (m: MantaDraft) => void;
   openMatch: (m: MantaDraft, ventralUrl?: string) => void;
   totalPhotosAll: number;
   sightingDate: string;
@@ -33,20 +35,12 @@ type Props = {
   showSize: boolean;
 };
 
-const TILE_W=128;
-const TILE_H=80;
+const TILE_W=48;
+const TILE_H=36;
 const CELL_H = 136; // tile row + meta row baseline
 
 function urlFor(p: any): string | undefined {
   return mantaPhotoSource(p || {});
-}
-function strictPhoto(photos: any[] | undefined, view: "ventral"|"dorsal"){
-  const list = Array.isArray(photos) ? photos : [];
-  const flagKey = view === "ventral" ? "is_best_manta_ventral_photo" : "is_best_manta_dorsal_photo";
-  const byFlag = list.find(p => (p as any)[flagKey]);
-  if (byFlag) return byFlag;
-  const byView = list.find(p => (p?.photo_view ?? p?.view ?? p?.photoView ?? p?.view_label) === view);
-  return byView ?? undefined; // never mirror
 }
 function fmtSizeCm(v:any){ const n=Number(v); return Number.isFinite(n)&&n>0 ? n.toFixed(2)+" cm" : "0.00 cm"; }
 function tempName(m:any){
@@ -70,45 +64,27 @@ export default function MantasList({
   setMantas,
   onEdit,
   onRemove,
+  onSuggestIdentity,
   openMatch,
   sightingDate,
   allowBiopsyEntry,
   allowMatching,
-  showSize,
 }: Props){
-  // compact grid that fits inside the card with no horizontal scroll in normal widths
-  // ventral(128) dorsal(128) total(72) temp(120) gender(100) age(120) size(96) actions(84)
-  const GRID = showSize
-    ? "grid grid-cols-1 lg:grid-cols-[128px_128px_64px_120px_100px_120px_92px_84px] items-center gap-3"
-    : "grid grid-cols-1 lg:grid-cols-[128px_128px_64px_120px_100px_120px_84px] items-center gap-3";
-  const TH="text-[12px] font-medium text-slate-600 whitespace-nowrap text-center leading-tight";
-  const TD = "text-[13px] text-slate-700 min-w-0 break-words lg:whitespace-nowrap lg:overflow-hidden lg:text-ellipsis text-left lg:text-center";
+  const GRID = "grid grid-cols-[minmax(0,1fr)_112px] items-start gap-2 p-2 lg:grid-cols-[minmax(145px,1.2fr)_170px_minmax(150px,1fr)_125px_72px] lg:items-center";
 
   return (
-    <div className="rounded-lg border bg-white">
-      {/* Header */}
-      <div className={`${GRID} hidden lg:grid px-6 py-2 bg-slate-50 rounded-t-lg`}>
-        <div className={TH}>Best Ventral</div>
-        <div className={TH}>Best Dorsal</div>
-        <div className={TH}><div>Total</div><div className="-mt-1">Photos</div></div>
-        <div className={TH}>Temp Name</div>
-        <div className={TH}>Gender</div>
-        <div className={TH}>Age Class</div>
-        {showSize && <div className={TH}>Measured DW</div>}
-        <div className={TH}>Actions</div>
-      </div>
-
+    <div className="-mx-4 divide-y divide-slate-200 sm:mx-0">
       {/* Rows */}
       <div className="divide-y divide-slate-200">
         {mantas.map((m:any, idx:number)=>{
-          const vent = strictPhoto(m?.photos,'ventral');
-          const dor  = strictPhoto(m?.photos,'dorsal');
+          const vent = designatedBestPhoto(m?.photos,'ventral');
+          const dor  = designatedBestPhoto(m?.photos,'dorsal');
           const ventUrl = urlFor(vent);
           const dorUrl  = urlFor(dor);
-          const derivedDW = measurementSummary(m.photos ?? []).dw.mean;
           const count = Array.isArray(m?.photos) ? m.photos.length : 0;
-          const matchedId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id) ?? null;
-          const noMatch = !!(m?.noMatch || m?.no_match);
+          const matchedId = "matchedCatalogId" in m ? m.matchedCatalogId : (m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.potentialCatalogId) ?? null;
+          const hasMatch = Number.isInteger(Number(matchedId)) && Number(matchedId) > 0;
+          const noMatch = !!(m?.noMatch ?? m?.no_match ?? m?.potentialNoMatch);
           const biopsy = m.biopsy as OrganicBiopsyDraft | null | undefined;
           const updateBiopsy = (patch: Partial<OrganicBiopsyDraft>) => {
             setMantas((current) => current.map((candidate) =>
@@ -126,98 +102,51 @@ export default function MantasList({
 
           return (
             <div key={String(m?.id ?? idx)}>
-            <div className={`${GRID} px-3 lg:px-6 py-3 lg:overflow-hidden lg:pr-3`}>
-                              {/* Ventral column with baseline-aligned pill */}
-                <div className="lg:h-[136px] flex flex-col items-center lg:justify-end">
-                  <span className="lg:hidden text-xs text-slate-600 mb-1">Best Ventral</span><ImgTile url={ventUrl} placeholder="ventral" />
-                  {/* 3 compact rows below the tile */}
-                  <div className="mt-2 grid gap-1 w-[128px]">
-                    <div className="flex items-center justify-center">
-                      {matchedId !== null ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-emerald-100 text-emerald-700">Proposed identification</span>
-                      ) : noMatch ? (
-                        <span className="text-[11px] px-2 py-[3px] rounded-full bg-slate-100 text-slate-600">No matches</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-[11px] px-2 py-[3px] rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200"
-                          disabled={!allowMatching || !ventUrl}
-                          title={!ventUrl ? 'Add a ventral photo to find a match' : !allowMatching ? 'An active account is required' : 'Find catalog match'}
-                          onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        >
-                          Match from photo
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-center text-slate-600 font-mono">{matchedId !== null ? `Catalog #${matchedId}` : ""}</div>
-                    <div className="flex items-center justify-center">
-                      <button
-                        type="button"
-                        aria-label="Change match"
-                        className="p-[3px] rounded hover:bg-slate-100 text-slate-600"
-                        disabled={!allowMatching || !ventUrl}
-                        onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}
-                        title="Edit match"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                          <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
-                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+            <div className={GRID}>
+              <div className="min-w-0 lg:contents">
+                <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                  <div className="break-words text-sm font-medium">{tempName(m)}</div>
+                  <div className="text-xs text-slate-600"><span className="sr-only">Proposed species: </span>{speciesLabel(m?.species)}</div>
+                  <div className="text-[10px] text-slate-500">{m?.gender || "—"} · {m?.ageClass || "—"}</div>
+                  {hasMatch ? <details className="text-xs">
+                    <summary className="cursor-pointer py-1">{m.identificationProposal?.catalogName || 'Contributor proposed'} · Catalog #{matchedId}</summary>
+                    <div>{m.identificationProposal?.method === 'contributor_known' ? 'Contributor-known identity' : 'Photo match proposal'}</div>
+                    {m.identificationProposal?.evidence && <p className="whitespace-pre-wrap break-words">Recognition evidence: {m.identificationProposal.evidence}</p>}
+                    <div className="text-slate-600">Pending Admin review</div>
+                  </details> : <div className="text-xs">{noMatch ? 'New — pending Admin review' : 'Unknown'}</div>}
                 </div>
-
-                
-                {/* Dorsal column – always dorsal or placeholder */}
-                <div className="lg:h-[136px] flex flex-col items-center lg:justify-end">
-                  <span className="lg:hidden text-xs text-slate-600 mb-1">Best Dorsal</span><ImgTile url={dorUrl} placeholder="dorsal" />
-                  <div className="hidden lg:block mt-2 min-h-[64px]" />
+                <div className="flex items-center lg:col-start-5 lg:row-start-1">
+                  <button type="button" aria-label="Edit manta" title="Edit" className="min-h-11 min-w-11 rounded text-xs hover:bg-slate-100 lg:min-h-8 lg:min-w-8" onClick={()=>onEdit(m)}><Pencil className="mx-auto h-4 w-4" aria-hidden="true" /></button>
+                  <button type="button" aria-label="Remove manta" title="Remove" className="min-h-11 min-w-11 rounded text-xs text-red-700 hover:bg-slate-100 lg:min-h-8 lg:min-w-8" onClick={()=>onRemove(String(m?.id ?? idx))}><Trash2 className="mx-auto h-4 w-4" aria-hidden="true" /></button>
                 </div>
-
-
-              <div className={TD}><span className="lg:hidden font-medium">Photos: </span>{count}</div>
-              <div className={TD}><span className="lg:hidden font-medium">Name: </span>{tempName(m)}<div className="text-xs whitespace-normal">Proposed species: {speciesLabel(m?.species)}</div></div>
-              <div className={TD}><span className="lg:hidden font-medium">Gender: </span>{m?.gender || "—"}</div>
-              <div className={TD}><span className="lg:hidden font-medium">Age Class: </span>{m?.ageClass || "—"}</div>
-              {showSize && <div className={TD}><span className="lg:hidden font-medium">Measured DW: </span>{(derivedDW !== null ? derivedDW.toFixed(2) + " m" : "—")}</div>}
-
-              {/* Actions inside column */}
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  aria-label="Edit manta"
-                  className="min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 p-1 inline-flex items-center justify-center gap-1 rounded hover:bg-slate-100 text-slate-600"
-                  onClick={()=>onEdit(m)}
-                  title="Edit"
-                ><span className="lg:hidden">Edit</span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                    <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  aria-label="Remove manta"
-                  className="min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 p-1 inline-flex items-center justify-center gap-1 rounded hover:bg-rose-100 text-rose-600"
-                  onClick={()=>onRemove(String(m?.id ?? idx))}
-                  title="Remove"
-                ><span className="lg:hidden">Delete</span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
-                    <path d="M3 6h18" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 11v6M14 11v6" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
+              </div>
+              <div className="min-w-0 rounded bg-slate-50 p-1.5 lg:col-start-2 lg:row-start-1">
+                <div className="flex justify-center gap-1">
+                  <div><div className="mb-0.5 text-center text-[10px] text-slate-500">Ventral</div><ImgTile url={ventUrl} placeholder="ventral" /></div>
+                  <div><div className="mb-0.5 text-center text-[10px] text-slate-500">Dorsal</div><ImgTile url={dorUrl} placeholder="dorsal" /></div>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-x-2 text-[10px]">
+                  <span>{count} {count === 1 ? "photo" : "photos"}</span>
+                  {vent && allowMatching && <button type="button" aria-label="Match Photo"
+                    className="min-h-11 underline disabled:opacity-50 lg:min-h-7" disabled={!allowMatching || !ventUrl}
+                    title={!ventUrl ? 'Add a ventral photo to find a match' : !allowMatching ? 'An active account is required' : 'Find catalog match'}
+                    onClick={()=>{ (window as any).__matchStartCatalogId = (m?.matchedCatalogId ?? m?.matched_catalog_id ?? m?.fk_catalog_id ?? m?.pk_catalog_id ?? null); openMatch(m, ventUrl); }}>
+                    Match Photo
+                  </button>}
+                  {!vent && allowMatching && <button type="button" className="min-h-11 underline lg:min-h-7" onClick={() => onSuggestIdentity(m)}>Suggest Identity</button>}
+                </div>
+              </div>
+              <div className="min-w-0 rounded bg-slate-100/60 p-1.5 lg:col-start-3 lg:row-start-1 [&_dl]:gap-x-1 [&_dl]:text-center [&_dd]:break-words [&_dd]:text-xs [&_dd]:whitespace-normal [&_summary]:min-h-11 [&_summary]:text-xs lg:[&_summary]:min-h-7">
+                <MeasurementSummary photos={m.photos ?? []} legacySize={m.size} />
+              </div>
+              <div className="min-w-0 p-1.5 lg:col-start-4 lg:row-start-1">
+                <label htmlFor={`estimated-size-${m.id}`} className="block text-xs"><span className="sr-only">Visually estimated DW (m) — optional</span><span aria-hidden="true">Visual DW (m)</span></label>
+                <input id={`estimated-size-${m.id}`} type="number" min="0" step="any" placeholder="optional" value={m.estimatedSize ?? ""}
+                  className="mt-1 min-h-11 w-24 max-w-full rounded border px-2 text-sm lg:min-h-8" onChange={e => setMantas(previous => previous.map(candidate =>
+                    candidate.id === m.id ? { ...candidate, estimatedSize: e.target.value || null } : candidate))} />
+                <p className="mt-0.5 text-[10px] text-slate-600">Visual estimate only</p>
               </div>
             </div>
-            {matchedId != null && <div className="px-6 pb-3 text-sm">
-              <strong>{m.identificationProposal?.catalogName || 'Contributor proposed'} · Catalog #{matchedId}</strong>
-              <div>{m.identificationProposal?.method === 'contributor_known' ? 'Contributor-known identity — known individual / contributor supplied' : 'Photo match proposal'}</div>
-              {m.identificationProposal?.evidence && <p className="whitespace-pre-wrap break-words">Recognition evidence: {m.identificationProposal.evidence}</p>}
-              <div className="text-slate-600">Awaiting HAMER review</div>
-            </div>}
-            {allowMatching && <div className="px-6 pb-3"><button type="button" className="text-sm underline" onClick={() => onEdit(m)}>I know this manta / Edit identification</button></div>}
             {allowBiopsyEntry && (
               <div className="px-6 pb-3">
                 <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -274,7 +203,6 @@ export default function MantasList({
                 )}
               </div>
             )}
-              <div className="col-span-full"><MeasurementSummary photos={m.photos ?? []} estimatedSize={m.estimatedSize} legacySize={m.size} /></div>
             </div>
           );
         })}
